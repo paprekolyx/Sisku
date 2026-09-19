@@ -14,7 +14,7 @@
 const SUPABASE_URL = 'https://pvycejsqrkkmueyzijsp.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_LOV49t7eyUZbGP-dZMoGJw_rdGjLF14';
 
-const SITE_VERSION = '0.2.0-draft';
+const SITE_VERSION = '0.3.0-draft';
 
 /* Клиент БД. Если ключи не заполнены или библиотека не загрузилась —
    страницы покажут понятную плашку вместо бесконечного скелетона. */
