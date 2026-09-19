@@ -110,19 +110,19 @@
       var email = o.customer_email || '';
       return '<tr data-id="' + o.id + '">' +
         '<td class="tabular"><b>№ ' + o.id + '</b></td>' +
-        '<td class="tabular muted">' + fmtDate(o.created_at) + '</td>' +
+        '<td class="tabular muted col-created">' + fmtDate(o.created_at) + '</td>' +
         '<td>' + esc(o.customer_name) +
           '<div class="muted masked" style="font-size:12.5px">' +
             esc(revealed ? (phone || '—') : maskPhone(phone)) +
             (email ? '<div>' + esc(revealed ? email : maskEmail(email)) + '</div>' : '') +
             '<button class="eye" data-eye="' + o.id + '" title="Показать или скрыть контакты">' + (revealed ? 'скрыть' : 'показать') + '</button>' +
           '</div></td>' +
-        '<td class="tabular">' + n + ' шт.</td>' +
+        '<td class="tabular col-items">' + n + ' шт.</td>' +
         '<td class="tabular">' + money(o.total + o.delivery_cost) + '</td>' +
-        '<td>' + (o.is_paid
+        '<td class="col-paid">' + (o.is_paid
             ? '<span class="paid-mark">оплачен ' + (o.paid_at ? fmtDate(o.paid_at) : '') + '</span>'
             : '<span class="paid-mark no">не оплачен</span>') + '</td>' +
-        '<td class="muted" style="font-size:13px">' + esc(deliveryByid(o.delivery_method_id).name || '—') + '</td>' +
+        '<td class="muted col-delivery" style="font-size:13px">' + esc(deliveryByid(o.delivery_method_id).name || '—') + '</td>' +
         '<td><span class="status-pill" data-code="' + esc(st.code) + '">' + esc(st.name) + '</span></td>' +
       '</tr>';
     }).join('');
