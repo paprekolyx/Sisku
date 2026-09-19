@@ -209,3 +209,42 @@ table.orders tbody tr:hover { background: var(--card); }
 .metric-list li:last-child { border-bottom: 0; }
 .metric-list .val { color: var(--accent); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .metric-list .hint { display: block; color: var(--muted); font-size: 11.5px; }
+
+/* ==========================================================================
+   v0.3.0-draft: мобильная админка.
+   ВСЕ правила ниже живут ТОЛЬКО внутри media-query — десктоп не затронут.
+   Таблица на телефоне: №, Клиент, Сумма, Статус
+   (Создан, Состав, Оплата, Доставка скрыты по решению заказчика).
+   ========================================================================== */
+@media (max-width: 760px) {
+  .topbar-in { flex-wrap: wrap; height: auto; padding: 10px 0; gap: 8px 14px; }
+  .tabs { margin-left: 0; order: 3; width: 100%; }
+  .tab { flex: 1; text-align: center; }
+  .topbar-actions { margin-left: auto; }
+  .warnbar { font-size: 12px; padding: 8px 14px; }
+
+  .panel { padding: 18px 0 44px; }
+  .toolbar { gap: 8px; }
+  .toolbar input[type="search"] { min-width: 0; width: 100%; flex: 1 1 100%; }
+  .toolbar .spacer { display: none; }
+  .toolbar .btn { flex: 1; justify-content: center; }
+  .toolbar .cselect, .toolbar .cselect-btn { width: 100%; }
+
+  /* таблица заказов: прячем второстепенные столбцы, уплотняем остальное */
+  .col-created, .col-items, .col-paid, .col-delivery { display: none; }
+  table.orders { min-width: 0; }
+  table.orders th, table.orders td { padding: 10px 8px; font-size: 13px; }
+  table.orders .status-pill { font-size: 10.5px; padding: 3px 9px; }
+
+  /* карточка заказа и действия */
+  .modal { padding: 24px 18px; }
+  .modal-head-row h2 { font-size: 20px; }
+  .actions-row .btn { flex: 1; justify-content: center; }
+  .actions-row .cselect { flex: 1 1 100%; }
+  .actions-row .cselect-btn { width: 100%; }
+
+  /* статистика */
+  .kpi .val { font-size: 24px; }
+  .seg { width: 100%; }
+  .seg-btn { flex: 1; text-align: center; }
+}
