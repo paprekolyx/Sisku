@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -11,6 +12,7 @@
 </script>
 <link rel="stylesheet" href="assets/css/fonts.css">
 <link rel="stylesheet" href="assets/css/styles.css">
+<link rel="stylesheet" href="assets/css/ui.css">
 </head>
 <body>
 
@@ -160,7 +162,7 @@
       <dl style="margin:0">
         <div class="contact-line"><dt>Телефон</dt><dd><a data-content-href="contacts.phone_href" data-content="contacts.phone_display" href="tel:+79991234567">+7 (999) 123-45-67</a></dd></div>
         <div class="contact-line"><dt>E-mail</dt><dd><a href="mailto:hello@sisku.example" data-content="contacts.email" data-content-href="contacts.email.href">hello@sisku.example</a></dd></div>
-        <div class="contact-line"><dt>Мессенджер</dt><dd><a data-content-href="contacts.messenger_url" data-content="contacts.messenger" href="#">Написать в WhatsApp</a></dd></div>
+        <div class="contact-line"><dt>Мессенджер</dt><dd><a data-content-href="contacts.messenger_url" data-content="contacts.messenger" href="https://t.me/sisku_shop">Написать в Telegram</a></dd></div>
       </dl>
       <dl style="margin:0">
         <div class="contact-line"><dt>Шоурум</dt><dd data-content="contacts.city">Москва, шоурум по предварительной записи</dd></div>
@@ -168,6 +170,9 @@
         <div class="contact-line"><dt>Версия</dt><dd class="muted">черновой макет v<span id="ver-bottom"></span></dd></div>
       </dl>
     </div>
+    <p class="muted" style="margin:28px 0 0;font-size:13.5px">
+      Исходники макета: <a href="https://github.com/paprekolyx/Sisku" data-content-href="contacts.repo_url" target="_blank" rel="noopener">репозиторий на GitHub</a>
+    </p>
   </div>
 </section>
 
@@ -175,7 +180,7 @@
 <footer class="footer">
   <div class="container footer-in">
     <span data-content="footer.description">Sisku — мультибрендовый бутик одежды и парфюмерии.</span>
-    <span><a href="admin.html">Админ-панель (черновик)</a></span>
+    <span><button class="linklike" data-open="brandbook-modal-backdrop">Брендбук</button> · <a href="admin.html">Админ-панель (черновик)</a></span>
     <span data-content="footer.copyright">© 2026 Sisku</span>
   </div>
 </footer>
@@ -185,6 +190,8 @@
 <aside class="drawer" id="cart-drawer" aria-label="Корзина">
   <div class="drawer-head">
     <h3>Корзина</h3>
+    <span class="spacer"></span>
+    <button class="linklike" id="cart-clear" hidden>Очистить</button>
     <button class="icon-btn" id="cart-close" aria-label="Закрыть корзину">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
@@ -254,10 +261,66 @@
   </div>
 </div>
 
+<!-- ======================= МОДАЛКА БРЕНДБУКА ======================= -->
+<div class="modal-backdrop" id="brandbook-modal-backdrop">
+  <div class="modal bb-modal" role="dialog" aria-modal="true" aria-label="Брендбук Sisku">
+    <button class="modal-close" data-close="brandbook-modal-backdrop" aria-label="Закрыть">×</button>
+    <div class="bb">
+      <div class="eyebrow">Брендбук</div>
+      <h3>Sisku · мини-брендбук</h3>
+      <p class="muted" style="font-size:13.5px">Черновая версия дизайн-правил. Концепция — «тихая роскошь»: много воздуха, сдержанная палитра, один акцент.</p>
+
+      <div class="subhead">Палитра</div>
+      <div class="bb-themes">
+        <div>
+          <div class="bb-theme-name">Ivoire — основная тема витрины</div>
+          <div class="bb-swatches">
+            <div class="bb-swatch"><div class="color" style="background:#FAF7F2"></div><div class="meta"><b>Фон</b>#FAF7F2</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#FFFFFF"></div><div class="meta"><b>Карточки</b>#FFFFFF</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#1A1A1E"></div><div class="meta"><b>Текст</b>#1A1A1E · 16.2:1</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#6F6A60"></div><div class="meta"><b>Второстепенный</b>#6F6A60 · 5.0:1</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#7A5C2E"></div><div class="meta"><b>Бронза (акцент)</b>#7A5C2E · 5.8:1</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#E5E0D6"></div><div class="meta"><b>Линии</b>#E5E0D6</div></div>
+          </div>
+        </div>
+        <div>
+          <div class="bb-theme-name">Noir &amp; Champagne — вторая тема</div>
+          <div class="bb-swatches">
+            <div class="bb-swatch"><div class="color" style="background:#0D0D10"></div><div class="meta"><b>Фон</b>#0D0D10</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#1D1D24"></div><div class="meta"><b>Карточки</b>#1D1D24</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#F2EEE4"></div><div class="meta"><b>Текст</b>#F2EEE4 · 16.8:1</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#A79FB0"></div><div class="meta"><b>Второстепенный</b>#A79FB0 · 7.6:1</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#C9A96A"></div><div class="meta"><b>Шампань (акцент)</b>#C9A96A · 8.7:1</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#2A2A33"></div><div class="meta"><b>Линии</b>#2A2A33</div></div>
+          </div>
+        </div>
+      </div>
+      <p class="muted bb-note">Контрасты всех пар — WCAG 2.1 AA и выше. Акцент используется точечно: кнопки CTA, бейджи, тонкие разделители, hover. Цена всегда основным текстом, не акцентом.</p>
+
+      <div class="subhead">Типографика</div>
+      <div class="bb-type">
+        <div class="sample-prata">Prata — заголовки и логотип</div>
+        <div class="sample-manrope">Manrope — основной текст, кнопки, цены (tabular-nums)</div>
+        <div class="scale">Масштаб: 64 / 42 / 28 / 20 / 16 / 14 / 12 · межстрочный 1.15–1.25 заголовки, 1.6 текст · капс с разрядкой .12–.22em только для overline-подписей</div>
+      </div>
+
+      <div class="subhead">Графика, фото, логотип</div>
+      <ul>
+        <li>Хайрлайны 1px вместо теней; радиус 3px (острые углы читаются «дороже»); никакого неона, свечений и градиентов.</li>
+        <li>Фото товаров: портрет 3:4, однотонный айвори-фон или съёмка на модели, оригинал от 2000px; для парфюмерии допустим квадрат 1:1; минимум 3 кадра на товар.</li>
+        <li>Логотип — вордмарк капсом с разрядкой .3em; монограмма «S» в квадрате — favicon и заглушки фото.</li>
+        <li>Бейджи: New — акцент, Exclusive — тёмный графит, Limited — контурный; не более одного бейджа на карточку.</li>
+        <li>Motion сдержанный: fade/slide при скролле, hover-зум фото 1.03 за 600ms; уважать prefers-reduced-motion.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast" role="status"></div>
 
 <script src="assets/vendor/supabase.min.js"></script>
 <script src="assets/js/config.js"></script>
+<script src="assets/js/ui.js"></script>
 <script src="assets/js/site.js"></script>
 </body>
 </html>
