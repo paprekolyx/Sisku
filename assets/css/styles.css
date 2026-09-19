@@ -1,3 +1,4 @@
+
 /* ==========================================================================
    SISKU — черновик витрины · v0.1.0-draft
    Дизайн: «quiet luxury». Тема по умолчанию — светлая «Ivoire»,
@@ -357,3 +358,29 @@ img { max-width: 100%; display: block; }
 /* появление секций при скролле */
 .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s ease; }
 .reveal.in { opacity: 1; transform: none; }
+
+/* ---------- v0.2.0: брендбук (модальное окно) ---------- */
+.bb-modal { width: min(760px, 100%); padding: 44px 46px; }
+.bb h3 { font-size: 26px; margin-bottom: 6px; }
+.bb .subhead { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); margin: 26px 0 12px; font-weight: 600; }
+.bb-themes { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+@media (max-width: 640px) { .bb-themes { grid-template-columns: 1fr; } }
+.bb-theme-name { font-size: 13px; font-weight: 700; letter-spacing: .06em; margin-bottom: 10px; }
+.bb-swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.bb-swatch { border: 1px solid var(--line); }
+.bb-swatch .color { height: 46px; }
+.bb-swatch .meta { font-size: 10.5px; color: var(--muted); padding: 6px 8px; line-height: 1.35; }
+.bb-swatch .meta b { display: block; color: var(--text); font-size: 11px; }
+.bb-note { font-size: 13px; margin-top: 14px; }
+.bb-type .sample-prata { font-family: var(--font-display); font-size: 34px; line-height: 1.2; }
+.bb-type .sample-manrope { font-size: 16px; margin: 8px 0 4px; }
+.bb-type .scale { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.bb ul { margin: 0; padding-left: 18px; font-size: 14px; color: var(--muted); }
+.bb ul li { margin-bottom: 6px; }
+
+/* ---------- v0.2.0: кнопка «Очистить» в корзине ---------- */
+.drawer-head { gap: 10px; }
+.drawer-head .spacer { flex: 1; }
+
+/* v0.2.0: кастомные селекты в фильтрах сохраняют прижим вправо */
+#cat-chips + .cselect { margin-left: auto; }
