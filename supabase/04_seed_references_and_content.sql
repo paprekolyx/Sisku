@@ -15,12 +15,11 @@ select v.code, v.name, v.is_final, v.sort_order
 from (values
     ('new',       'Новый',      false, 1),
     ('confirmed', 'Подтверждён', false, 2),
-    ('paid',      'Оплачен',    false, 3),
-    ('packing',   'Сборка',     false, 4),
-    ('shipped',   'Отправлен',  false, 5),
-    ('delivered', 'Доставлен',  true,  6),
-    ('cancelled', 'Отменён',    true,  7),
-    ('returned',  'Возврат',    true,  8)
+    ('packing',   'Сборка',     false, 3),
+    ('shipped',   'Отправлен',  false, 4),
+    ('delivered', 'Доставлен',  true,  5),
+    ('cancelled', 'Отменён',    true,  6),
+    ('returned',  'Возврат',    true,  7)
 ) as v(code, name, is_final, sort_order)
 where not exists (select 1 from public.order_statuses s where s.code = v.code);
 
@@ -32,10 +31,8 @@ select a.id, b.id
 from (values
     ('new',       'confirmed'),
     ('new',       'cancelled'),
-    ('confirmed', 'paid'),
+    ('confirmed', 'packing'),
     ('confirmed', 'cancelled'),
-    ('paid',      'packing'),
-    ('paid',      'cancelled'),
     ('packing',   'shipped'),
     ('shipped',   'delivered'),
     ('delivered', 'returned')
@@ -104,8 +101,9 @@ from (values
     ('contacts.email',         'hello@sisku.example', 'Контакты: e-mail (заглушка)'),
     ('contacts.city',          'Москва, шоурум по предварительной записи', 'Контакты: город и шоурум'),
     ('contacts.hours',         'Ежедневно 11:00–21:00 (МСК)', 'Контакты: часы работы'),
-    ('contacts.messenger',     'Написать в WhatsApp', 'Контакты: подпись кнопки мессенджера'),
-    ('contacts.messenger_url', 'https://wa.me/79991234567', 'Контакты: ссылка на мессенджер (заглушка)'),
+    ('contacts.messenger',     'Написать в Telegram', 'Контакты: подпись кнопки мессенджера'),
+    ('contacts.messenger_url', 'https://t.me/sisku_shop', 'Контакты: ссылка на мессенджер (заглушка)'),
+    ('contacts.repo_url',      'https://github.com/paprekolyx/Sisku', 'Контакты: ссылка на репозиторий макета под блоком контактов'),
     ('footer.description', 'Sisku — мультибрендовый бутик одежды и парфюмерии. Черновой макет для обсуждения.', 'Футер: описание'),
     ('footer.copyright',   '© 2026 Sisku', 'Футер: копирайт')
 ) as v(key, value, description)
