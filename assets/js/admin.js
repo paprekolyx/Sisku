@@ -10,8 +10,9 @@
 
   var state = {
     orders: [], items: [], statuses: [], transitions: [],
-    payments: [], deliveries: [],
+    payments: [], deliveries: [], history: [],
     revealed: {},            /* заказ, у которого раскрыты контакты */
+    methodsMode: 'chart',    /* «Диаграмма» / «Таблица» в блоке доставки и оплаты */
     charts: {}
   };
 
@@ -59,7 +60,8 @@
       db.from('order_statuses').select('*').order('sort_order'),
       db.from('status_transitions').select('*'),
       db.from('payment_methods').select('*'),
-      db.from('delivery_methods').select('*')
+      db.from('delivery_methods').select('*'),
+      db.from('order_status_history').select('*')
     ]).then(function (res) {
       res.forEach(function (r) { if (r.error) throw r.error; });
       state.orders = res[0].data;
@@ -68,9 +70,11 @@
       state.transitions = res[3].data;
       state.payments = res[4].data;
       state.deliveries = res[5].data;
+      state.history = res[6].data;
 
       $('f-status').innerHTML = '<option value="">Все статусы</option>' +
         state.statuses.map(function (s) { return '<option value="' + s.id + '">' + esc(s.name) + '</option>'; }).join('');
+      if (window.enhanceSelects) enhanceSelects();
       renderOrders();
       renderStats();
     });
@@ -139,18 +143,22 @@
         .map(function (t) { return statusByid(t.to_status_id); });
 
       $('order-modal-body').innerHTML =
-        '<h2>Заказ № ' + o.id + '</h2>' +
-        '<div class="muted" style="font-size:13px">создан ' + fmtDate(o.created_at) + '</div>' +
+        '<div class="modal-head-row"><h2>Заказ № ' + o.id + '</h2>' +
+        '<span class="status-pill" data-code="' + esc(st.code) + '">' + esc(st.name) + '</span></div>' +
+        '<div class="muted" style="font-size:12.5px;margin-top:2px">создан ' + fmtDate(o.created_at) + '</div>' +
         '<div class="order-meta">' +
-          metaRow('Клиент', esc(o.customer_name)) +
-          metaRow('Телефон', '<span class="tabular">' + esc(o.customer_phone || '—') + '</span>') +
-          metaRow('E-mail', esc(o.customer_email || '—')) +
-          metaRow('Адрес', esc(o.customer_address || '—')) +
-          metaRow('Оплата', esc(paymentByid(o.payment_method_id).name || '—') + (o.is_paid ? ' · <b style="color:var(--ok)">оплачен</b>' : ' · не оплачен')) +
-          metaRow('Доставка', esc(deliveryByid(o.delivery_method_id).name || '—')) +
-          metaRow('Статус', '<span class="status-pill" data-code="' + esc(st.code) + '">' + esc(st.name) + '</span>') +
-          metaRow('Итого', '<span class="tabular">' + money(o.total) + ' + дост. ' + money(o.delivery_cost) + ' = <b>' + money(o.total + o.delivery_cost) + '</b></span>') +
-          (o.comment ? metaRow('Комментарий', esc(o.comment)) : '') +
+          '<div>' +
+            metaRow('Клиент', esc(o.customer_name)) +
+            metaRow('Телефон', '<span class="tabular">' + esc(o.customer_phone || '—') + '</span>') +
+            metaRow('E-mail', esc(o.customer_email || '—')) +
+            metaRow('Комментарий', o.comment ? esc(o.comment) : '—') +
+          '</div>' +
+          '<div>' +
+            metaRow('Оплата', esc(paymentByid(o.payment_method_id).name || '—') + (o.is_paid ? ' · <b style="color:var(--ok)">оплачен' + (o.paid_at ? ' ' + fmtDate(o.paid_at) : '') + '</b>' : ' · не оплачен')) +
+            metaRow('Адрес', esc(o.customer_address || '—')) +
+            metaRow('Доставка', esc(deliveryByid(o.delivery_method_id).name || '—')) +
+            metaRow('Итого', '<b class="tabular">' + money(o.total + o.delivery_cost) + '</b>') +
+          '</div>' +
         '</div>' +
         '<div class="subhead">Состав заказа</div>' +
         '<table class="items-table"><thead><tr><th>Товар</th><th>Вариант</th><th>Кол-во</th><th>Цена</th><th>Сумма</th></tr></thead><tbody>' +
@@ -193,6 +201,7 @@
       });
 
       $('order-modal-backdrop').classList.add('open');
+      if (window.enhanceSelects) enhanceSelects($('order-modal-body'));
     });
   }
   function metaRow(k, v) { return '<div class="row"><dt>' + k + '</dt><dd>' + v + '</dd></div>'; }
@@ -246,7 +255,8 @@
     drawDaysChart(list);
     drawFunnel(list);
     drawTop(list);
-    drawMethods(list);
+    renderMethods(list);
+    renderTiming(list);
   }
   function kpi(lbl, val, sub) {
     return '<div class="kpi"><div class="lbl">' + lbl + '</div><div class="val">' + val + '</div><div class="sub">' + sub + '</div></div>';
@@ -254,6 +264,9 @@
 
   var GOLD = '#C9A96A', MUTED = '#A79FB0', LINE = '#2A2A33', TEXT = '#F2EEE4';
   function chartDefaults() {
+    var light = document.documentElement.getAttribute('data-theme') === 'light';
+    if (light) { GOLD = '#7A5C2E'; MUTED = '#6F6A60'; LINE = '#E5E0D6'; TEXT = '#1A1A1E'; }
+    else       { GOLD = '#C9A96A'; MUTED = '#A79FB0'; LINE = '#2A2A33'; TEXT = '#F2EEE4'; }
     Chart.defaults.color = MUTED;
     Chart.defaults.borderColor = LINE;
     Chart.defaults.font.family = "'Manrope', sans-serif";
@@ -327,24 +340,94 @@
       : '<li class="muted">Нет данных за период</li>';
   }
 
-  function drawMethods(list) {
-    destroyChart('methods');
-    var dLabels = state.deliveries.map(function (m) { return m.name; });
-    var dCounts = state.deliveries.map(function (m) { return list.filter(function (o) { return o.delivery_method_id === m.id; }).length; });
-    var pLabels = state.payments.map(function (m) { return m.name; });
-    var pCounts = state.payments.map(function (m) { return list.filter(function (o) { return o.payment_method_id === m.id; }).length; });
-    state.charts.methods = new Chart($('chart-methods'), {
+  /* ---------- доставка и оплата: раздельно, диаграмма или таблицы ---------- */
+  function methodCounts(refs, field, list) {
+    return refs.map(function (m) {
+      return list.filter(function (o) { return o[field] === m.id; }).length;
+    });
+  }
+  function drawSimpleBar(key, canvas, labels, counts) {
+    chartDefaults(); destroyChart(key);
+    state.charts[key] = new Chart(canvas, {
       type: 'bar',
-      data: {
-        labels: dLabels.concat(pLabels),
-        datasets: [{ data: dCounts.concat(pCounts), backgroundColor: [GOLD, GOLD, GOLD, GOLD, MUTED, MUTED, MUTED], borderRadius: 2 }]
-      },
+      data: { labels: labels, datasets: [{ data: counts, backgroundColor: GOLD, borderRadius: 2 }] },
       options: {
-        responsive: true,
-        scales: { x: { grid: { display: false }, ticks: { maxRotation: 30, minRotation: 30 } }, y: { ticks: { precision: 0 }, grid: { color: LINE } } },
+        indexAxis: 'y', responsive: true,
+        scales: { x: { ticks: { precision: 0 }, grid: { color: LINE } }, y: { grid: { display: false } } },
         plugins: { legend: { display: false } }
       }
     });
+  }
+  function methodsTableHtml(refs, counts, total) {
+    var rows = refs.map(function (m, i) {
+      var share = total ? Math.round(counts[i] / total * 100) : 0;
+      return '<tr><td>' + esc(m.name) + '</td><td class="num">' + counts[i] + '</td><td class="num">' + share + '%</td></tr>';
+    }).join('');
+    return '<thead><tr><th>Способ</th><th style="text-align:right">Заказов</th><th style="text-align:right">Доля</th></tr></thead><tbody>' +
+      (rows || '<tr><td colspan="3" class="muted">Нет данных за период</td></tr>') + '</tbody>';
+  }
+  function renderMethods(list) {
+    var dCounts = methodCounts(state.deliveries, 'delivery_method_id', list);
+    var pCounts = methodCounts(state.payments, 'payment_method_id', list);
+    if (state.methodsMode === 'chart') {
+      $('methods-charts').hidden = false;
+      $('methods-tables').hidden = true;
+      drawSimpleBar('delivery', $('chart-delivery'), state.deliveries.map(function (m) { return m.name; }), dCounts);
+      drawSimpleBar('payment', $('chart-payment'), state.payments.map(function (m) { return m.name; }), pCounts);
+    } else {
+      destroyChart('delivery'); destroyChart('payment');
+      $('methods-charts').hidden = true;
+      $('methods-tables').hidden = false;
+      $('table-delivery').innerHTML = methodsTableHtml(state.deliveries, dCounts, list.length);
+      $('table-payment').innerHTML = methodsTableHtml(state.payments, pCounts, list.length);
+    }
+  }
+
+  /* ---------- метрики времени между статусами (под воронкой) ---------- */
+  function renderTiming(list) {
+    function statusId(code) {
+      var s = state.statuses.filter(function (x) { return x.code === code; })[0];
+      return s ? s.id : null;
+    }
+    function firstAt(orderId, code) {
+      var sid = statusId(code);
+      if (sid == null) return null;
+      var rows = state.history.filter(function (h) { return h.order_id === orderId && h.status_id === sid; })
+        .sort(function (a, b) { return new Date(a.changed_at) - new Date(b.changed_at); });
+      return rows.length ? new Date(rows[0].changed_at).getTime() : null;
+    }
+    function diffs(fromCode, toCodes) {
+      var out = [];
+      list.forEach(function (o) {
+        var f = firstAt(o.id, fromCode);
+        if (f == null) return;
+        var to = null;
+        toCodes.forEach(function (c) {
+          var t = firstAt(o.id, c);
+          if (t != null && (to == null || t < to)) to = t;
+        });
+        if (to != null && to >= f) out.push(to - f);
+      });
+      return out;
+    }
+    function fmt(ms) {
+      var min = Math.round(ms / 60000);
+      if (min < 60) return min + ' мин';
+      var h = Math.floor(min / 60), m = min % 60;
+      if (h < 48) return h + ' ч' + (m ? ' ' + m + ' мин' : '');
+      return Math.floor(h / 24) + ' д ' + (h % 24) + ' ч';
+    }
+    function stat(d) {
+      if (!d.length) return { v: '—', n: 0 };
+      return { v: fmt(d.reduce(function (s, x) { return s + x; }, 0) / d.length), n: d.length };
+    }
+    var a = stat(diffs('new', ['confirmed']));
+    var b = stat(diffs('new', ['delivered', 'cancelled', 'returned']));
+    var c = stat(diffs('delivered', ['returned']));
+    $('funnel-metrics').innerHTML =
+      '<li><span>Новый → Подтверждён<span class="hint">среднее время реакции на заявку</span></span><span class="val">' + a.v + (a.n ? ' · n=' + a.n : '') + '</span></li>' +
+      '<li><span>Новый → Завершён<span class="hint">до «Доставлен», «Отменён» или «Возврат»</span></span><span class="val">' + b.v + (b.n ? ' · n=' + b.n : '') + '</span></li>' +
+      '<li><span>Доставлен → Возврат<span class="hint">возвраты после завершения</span></span><span class="val">' + c.v + (c.n ? ' · n=' + c.n : '') + '</span></li>';
   }
 
   /* ---------- вкладки и события ---------- */
@@ -361,6 +444,31 @@
 
   document.addEventListener('DOMContentLoaded', function () {
     $('ver').textContent = SITE_VERSION;
+
+    /* тема админки: по умолчанию тёмная, выбор запоминается */
+    var ADMIN_THEME_KEY = 'sisku_admin_theme';
+    function applyAdminTheme(t) {
+      document.documentElement.setAttribute('data-theme', t);
+      try { localStorage.setItem(ADMIN_THEME_KEY, t); } catch (e) {}
+    }
+    var savedTheme = null;
+    try { savedTheme = localStorage.getItem(ADMIN_THEME_KEY); } catch (e) {}
+    applyAdminTheme(savedTheme === 'light' ? 'light' : 'dark');
+    $('admin-theme').addEventListener('click', function () {
+      var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+      applyAdminTheme(cur);
+      if (!$('panel-stats').hidden) renderStats();   /* перерисовать графики в цветах темы */
+    });
+
+    /* переключатель «Диаграмма / Таблица» в блоке доставки и оплаты */
+    $('methods-seg').addEventListener('click', function (e) {
+      var b = e.target.closest('.seg-btn');
+      if (!b) return;
+      state.methodsMode = b.getAttribute('data-mode') === 'table' ? 'table' : 'chart';
+      $('methods-seg').querySelectorAll('.seg-btn').forEach(function (x) { x.classList.toggle('active', x === b); });
+      renderMethods(periodOrders());
+    });
+
     $('tab-orders').addEventListener('click', function () { switchTab('orders'); });
     $('tab-stats').addEventListener('click', function () { switchTab('stats'); });
     $('f-search').addEventListener('input', renderOrders);

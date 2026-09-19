@@ -11,17 +11,17 @@
       доступ ограничивает RLS (см. supabase/02_rls_and_access.sql).
    ========================================================================== */
 
-const SUPABASE_URL = 'https://pvycejsqrkkmueyzijsp.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_LOV49t7eyUZbGP-dZMoGJw_rdGjLF14';
+const SUPABASE_URL = 'https://ВСТАВЬТЕ-PROJECT-URL.supabase.co';
+const SUPABASE_ANON_KEY = 'ВСТАВЬТЕ-anon-public-KEY';
 
-const SITE_VERSION = '0.1.0-draft';
+const SITE_VERSION = '0.2.0-draft';
 
 /* Клиент БД. Если ключи не заполнены или библиотека не загрузилась —
    страницы покажут понятную плашку вместо бесконечного скелетона. */
 let db = null;
 let dbError = null;
 try {
-  if (/ВСТАВИТЬ/.test(SUPABASE_URL) || /ВСТАВИТЬ/.test(SUPABASE_ANON_KEY)) {
+  if (/ВСТАВЬТЕ/.test(SUPABASE_URL) || /ВСТАВЬТЕ/.test(SUPABASE_ANON_KEY)) {
     dbError = 'Ключи базы не заполнены в assets/js/config.js';
   } else if (typeof window.supabase === 'undefined') {
     dbError = 'Библиотека Supabase не загрузилась (assets/vendor/supabase.min.js)';

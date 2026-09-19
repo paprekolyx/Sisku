@@ -131,6 +131,7 @@
       state.deliveries = res[6].data;
       buildFilters();
       buildOrderSelects();
+      if (window.enhanceSelects) enhanceSelects();   /* кастомные селекты поверх нативных */
       renderCatalog();
       renderCart();
     });
@@ -267,6 +268,7 @@
     var n = cartCount();
     $('cart-count').hidden = !n;
     $('cart-count').textContent = n;
+    $('cart-clear').hidden = !state.cart.length;
     if (!state.cart.length) {
       $('cart-body').innerHTML = '<div class="cart-empty">Корзина пуста</div>';
       $('cart-total').textContent = money(0);
@@ -418,6 +420,18 @@
     initTheme();
     initModals();
     initReveal();
+
+    /* кнопка «Очистить» в корзине */
+    $('cart-clear').addEventListener('click', function () {
+      if (!state.cart.length) return;
+      state.cart = [];
+      saveCart(); renderCart();
+      toast('Корзина очищена');
+    });
+    /* универсальное открытие модалок кнопками (брендбук и пр.) */
+    document.querySelectorAll('[data-open]').forEach(function (b) {
+      b.addEventListener('click', function () { openModal(b.getAttribute('data-open')); });
+    });
 
     $('product-grid').addEventListener('click', function (e) {
       var card = e.target.closest('.card');
