@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SISKU · Админ-панель (черновик)</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230D0D10'/%3E%3Ctext x='32' y='44' font-family='Georgia' font-size='36' fill='%23C9A96A' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+</head>
+<body>
+
+<div class="warnbar"><b>Черновик:</b> админ-панель открывается по ссылке без пароля — только для оценки функций. Реальные данные покупателей сюда вводить нельзя. В боевой версии — авторизация с ролями и 2FA.</div>
+
+<header class="topbar">
+  <div class="container topbar-in">
+    <a class="logo" href="index.html">SISKU<b>.</b></a>
+    <span class="muted" style="font-size:13px">админ-панель · макет</span>
+    <div class="tabs" role="tablist">
+      <button class="tab active" id="tab-orders" role="tab" aria-selected="true">Заказы</button>
+      <button class="tab" id="tab-stats" role="tab" aria-selected="false">Статистика</button>
+    </div>
+    <span class="ver">v<span id="ver"></span></span>
+  </div>
+</header>
+
+<!-- ======================= ЗАКАЗЫ ======================= -->
+<main class="panel container" id="panel-orders">
+  <div class="toolbar">
+    <input type="search" id="f-search" placeholder="Поиск: №, имя, телефон, e-mail" aria-label="Поиск заказов">
+    <select id="f-status" aria-label="Фильтр по статусу"><option value="">Все статусы</option></select>
+    <select id="f-paid" aria-label="Фильтр по оплате">
+      <option value="">Оплата: любая</option>
+      <option value="1">Оплаченные</option>
+      <option value="0">Неоплаченные</option>
+    </select>
+    <span class="spacer"></span>
+    <button class="btn" id="btn-refresh">Обновить</button>
+    <button class="btn" id="btn-csv">Выгрузить CSV</button>
+  </div>
+  <div class="table-wrap">
+    <table class="orders">
+      <thead>
+        <tr>
+          <th>№</th><th>Создан</th><th>Клиент</th><th>Состав</th>
+          <th>Сумма</th><th>Оплата</th><th>Доставка</th><th>Статус</th>
+        </tr>
+      </thead>
+      <tbody id="orders-body"></tbody>
+    </table>
+  </div>
+  <div class="loading" id="orders-loading">Загружаем заказы…</div>
+  <div class="empty" id="orders-empty" hidden>Заказов пока нет. Оформите тестовый заказ на витрине — он появится здесь.</div>
+  <div class="err-box" id="orders-error" hidden></div>
+</main>
+
+<!-- ======================= СТАТИСТИКА ======================= -->
+<main class="panel container" id="panel-stats" hidden>
+  <div class="toolbar">
+    <select id="s-period" aria-label="Период статистики">
+      <option value="7">Последние 7 дней</option>
+      <option value="30" selected>Последние 30 дней</option>
+      <option value="90">Последние 90 дней</option>
+      <option value="all">Всё время</option>
+    </select>
+    <span class="muted" style="font-size:13px">Суммы считаются по оформленным заявкам (сайт не видит фактические оплаты — они происходят вне сайта).</span>
+  </div>
+  <div class="kpi-grid" id="kpi-grid"></div>
+  <div class="charts-grid">
+    <div class="chart-box">
+      <h3>Заявки и суммы по дням</h3>
+      <canvas id="chart-days" height="220"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>Воронка статусов</h3>
+      <canvas id="chart-funnel" height="220"></canvas>
+    </div>
+    <div class="chart-box">
+      <h3>Топ товаров периода</h3>
+      <ol class="top-list" id="top-products"></ol>
+    </div>
+    <div class="chart-box">
+      <h3>Способы доставки и оплаты</h3>
+      <canvas id="chart-methods" height="200"></canvas>
+    </div>
+  </div>
+</main>
+
+<!-- ======================= КАРТОЧКА ЗАКАЗА ======================= -->
+<div class="modal-backdrop" id="order-modal-backdrop">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Карточка заказа">
+    <button class="modal-close" id="order-modal-close" aria-label="Закрыть">×</button>
+    <div id="order-modal-body"></div>
+  </div>
+</div>
+
+<script src="assets/vendor/supabase.min.js"></script>
+<script src="assets/vendor/chart.umd.min.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/admin.js"></script>
+</body>
+</html>

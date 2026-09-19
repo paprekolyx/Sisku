@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SISKU — мультибрендовый бутик одежды и парфюмерии</title>
+<meta name="description" content="Sisku: избранные коллекции одежды и нишевая парфюмерия. Оригиналы с гарантией подлинности, доставка по всей России. Черновой макет.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230D0D10'/%3E%3Ctext x='32' y='44' font-family='Georgia' font-size='36' fill='%23C9A96A' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<script>/* тема до отрисовки — без «вспышки» (паттерн учебного проекта) */
+(function(){try{var t=localStorage.getItem('sisku_theme');if(!t)t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();
+</script>
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/styles.css">
+</head>
+<body>
+
+<div class="draft-note"><b>Черновой макет</b> для обсуждения дизайна и функций · данные тестовые · версия <span id="ver-top"></span></div>
+
+<!-- ======================= ШАПКА ======================= -->
+<header class="header">
+  <div class="container header-in">
+    <a class="logo" href="#" data-content="brand.name">SISKU</a>
+    <nav class="nav" aria-label="Основная навигация">
+      <a href="#about">О магазине</a>
+      <a href="#catalog">Товары</a>
+      <a href="#order-info">Условия заказа</a>
+      <a href="#contacts">Контакты</a>
+    </nav>
+    <div class="header-actions">
+      <button class="icon-btn" id="theme-toggle" title="Переключить тему" aria-label="Переключить тему">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <button class="icon-btn" id="cart-open" title="Корзина" aria-label="Корзина">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 7h12l1.5 13h-15L6 7z"/><path d="M9 10V6a3 3 0 0 1 6 0v4"/></svg>
+        <span class="cart-count" id="cart-count" hidden>0</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ======================= HERO ======================= -->
+<section class="hero">
+  <img class="hero-img" src="assets/img/hero.jpg" alt="Коллекция Sisku: пальто и парфюмерия в светлом интерьере">
+  <div class="container hero-in">
+    <div class="eyebrow" data-content="hero.eyebrow">Осень — зима 2026</div>
+    <h1 data-content="hero.title">Одежда и ароматы, которые остаются с вами</h1>
+    <p data-content="hero.subtitle">Избранные коллекции небольших домов и нишевая парфюмерия.</p>
+    <div class="hero-cta">
+      <a class="btn" href="#catalog">Смотреть коллекцию</a>
+      <a class="btn ghost" href="#order-info">Условия заказа</a>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= О МАГАЗИНЕ ======================= -->
+<section class="section" id="about">
+  <div class="container">
+    <div class="about-grid reveal">
+      <div>
+        <div class="eyebrow">О магазине</div>
+        <h2 data-content="about.title">О магазине</h2>
+        <p class="lead" data-content="about.lead">Sisku — витрина избранного.</p>
+        <p class="muted" data-content="about.text">Каждая вещь проходит ручной отбор.</p>
+      </div>
+      <div class="about-img">
+        <img src="assets/img/products/p001.jpg" alt="Пальто из коллекции Sisku">
+      </div>
+    </div>
+    <div class="advantages reveal">
+      <div class="advantage">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3l7 4v5c0 5-3.5 8-7 9-3.5-1-7-4-7-9V7l7-4z"/></svg>
+        <h3 data-content="adv.1.title">Ручной отбор</h3>
+        <p data-content="adv.1.text">Каждая позиция проходит отбор.</p>
+      </div>
+      <div class="advantage">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.5 2.5 4.5-5"/></svg>
+        <h3 data-content="adv.2.title">Гарантия подлинности</h3>
+        <p data-content="adv.2.text">Работаем с брендами напрямую.</p>
+      </div>
+      <div class="advantage">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h11v9H3zM14 11h4l3 3v3h-7z"/><circle cx="7" cy="18.5" r="1.6"/><circle cx="17" cy="18.5" r="1.6"/></svg>
+        <h3 data-content="adv.3.title">Бережная доставка</h3>
+        <p data-content="adv.3.text">Плотная упаковка и фирменная лента.</p>
+      </div>
+      <div class="advantage">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 12a8 8 0 0 1-8 8H4l2-3a8 8 0 1 1 15-5z"/><path d="M9 11h.01M13 11h.01M17 11h.01"/></svg>
+        <h3 data-content="adv.4.title">Поддержка без скриптов</h3>
+        <p data-content="adv.4.text">Отвечаем лично.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= ТОВАРЫ ======================= -->
+<section class="section" id="catalog" style="background:var(--surface)">
+  <div class="container">
+    <div class="section-head reveal">
+      <div>
+        <div class="eyebrow" data-content="catalog.eyebrow">Каталог</div>
+        <h2 data-content="catalog.title">Коллекция</h2>
+      </div>
+      <span class="muted" id="catalog-count"></span>
+    </div>
+    <div class="filters" id="filters">
+      <div id="cat-chips" style="display:flex;flex-wrap:wrap;gap:10px"></div>
+      <select id="brand-filter" aria-label="Фильтр по бренду"><option value="">Все бренды</option></select>
+      <select id="sort-filter" aria-label="Сортировка">
+        <option value="new">Сначала новинки</option>
+        <option value="asc">Сначала дешевле</option>
+        <option value="desc">Сначала дороже</option>
+      </select>
+      <button class="chip" id="stock-filter">Только в наличии</button>
+    </div>
+    <div class="grid" id="product-grid" aria-live="polite"></div>
+    <div style="text-align:center;margin-top:44px">
+      <button class="btn ghost" id="show-more" hidden>Показать ещё</button>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= УСЛОВИЯ ЗАКАЗА ======================= -->
+<section class="section" id="order-info">
+  <div class="container">
+    <div class="section-head reveal">
+      <div>
+        <div class="eyebrow">Как мы работаем</div>
+        <h2>Условия заказа</h2>
+      </div>
+    </div>
+    <div class="terms-grid reveal">
+      <div class="term-card">
+        <span class="num">01</span>
+        <h3 data-content="order.payment.title">Оплата</h3>
+        <p data-content="order.payment.text">Перевод по СБП или на карту после подтверждения заказа.</p>
+      </div>
+      <div class="term-card">
+        <span class="num">02</span>
+        <h3 data-content="order.delivery.title">Доставка</h3>
+        <p data-content="order.delivery.text">Курьер по Москве, СДЭК и Boxberry по России, самовывоз.</p>
+      </div>
+      <div class="term-card">
+        <span class="num">03</span>
+        <h3 data-content="order.returns.title">Возврат</h3>
+        <p data-content="order.returns.text">7 дней на обмен или возврат после получения.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= КОНТАКТЫ ======================= -->
+<section class="section" id="contacts" style="background:var(--surface)">
+  <div class="container">
+    <div class="section-head reveal">
+      <div>
+        <div class="eyebrow">Связаться с нами</div>
+        <h2>Контакты</h2>
+      </div>
+    </div>
+    <div class="contacts-grid reveal">
+      <dl style="margin:0">
+        <div class="contact-line"><dt>Телефон</dt><dd><a data-content-href="contacts.phone_href" data-content="contacts.phone_display" href="tel:+79991234567">+7 (999) 123-45-67</a></dd></div>
+        <div class="contact-line"><dt>E-mail</dt><dd><a href="mailto:hello@sisku.example" data-content="contacts.email" data-content-href="contacts.email.href">hello@sisku.example</a></dd></div>
+        <div class="contact-line"><dt>Мессенджер</dt><dd><a data-content-href="contacts.messenger_url" data-content="contacts.messenger" href="#">Написать в WhatsApp</a></dd></div>
+      </dl>
+      <dl style="margin:0">
+        <div class="contact-line"><dt>Шоурум</dt><dd data-content="contacts.city">Москва, шоурум по предварительной записи</dd></div>
+        <div class="contact-line"><dt>Часы работы</dt><dd data-content="contacts.hours">Ежедневно 11:00–21:00 (МСК)</dd></div>
+        <div class="contact-line"><dt>Версия</dt><dd class="muted">черновой макет v<span id="ver-bottom"></span></dd></div>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<!-- ======================= ФУТЕР ======================= -->
+<footer class="footer">
+  <div class="container footer-in">
+    <span data-content="footer.description">Sisku — мультибрендовый бутик одежды и парфюмерии.</span>
+    <span><a href="admin.html">Админ-панель (черновик)</a></span>
+    <span data-content="footer.copyright">© 2026 Sisku</span>
+  </div>
+</footer>
+
+<!-- ======================= КОРЗИНА (DRAWER) ======================= -->
+<div class="drawer-backdrop" id="drawer-backdrop"></div>
+<aside class="drawer" id="cart-drawer" aria-label="Корзина">
+  <div class="drawer-head">
+    <h3>Корзина</h3>
+    <button class="icon-btn" id="cart-close" aria-label="Закрыть корзину">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body" id="cart-body"></div>
+  <div class="drawer-foot">
+    <div class="cart-total"><span>Итого</span><span id="cart-total">0 ₽</span></div>
+    <button class="btn accent" id="checkout-btn" style="width:100%">Оформить заказ</button>
+  </div>
+</aside>
+
+<!-- ======================= МОДАЛКА ТОВАРА ======================= -->
+<div class="modal-backdrop" id="product-modal-backdrop">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Карточка товара">
+    <button class="modal-close" data-close="product-modal-backdrop" aria-label="Закрыть">×</button>
+    <div class="product-grid">
+      <div class="product-media"><img id="pm-img" src="" alt=""></div>
+      <div class="product-info">
+        <div class="brand" id="pm-brand"></div>
+        <h3 id="pm-name"></h3>
+        <div class="price" id="pm-price"></div>
+        <p class="desc" id="pm-desc"></p>
+        <div class="variant-label" id="pm-variant-label">Размер</div>
+        <div class="variants" id="pm-variants"></div>
+        <div style="margin-top:26px;display:flex;gap:12px;align-items:center">
+          <button class="btn accent" id="pm-add">В корзину</button>
+          <span class="muted" id="pm-stock" style="font-size:13px"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= МОДАЛКА ОФОРМЛЕНИЯ ======================= -->
+<div class="modal-backdrop" id="order-modal-backdrop">
+  <div class="modal form-modal" role="dialog" aria-modal="true" aria-label="Оформление заказа">
+    <button class="modal-close" data-close="order-modal-backdrop" aria-label="Закрыть">×</button>
+    <div id="order-form-view">
+      <h3>Оформление заказа</h3>
+      <p class="muted" style="font-size:13.5px">Черновик: данные никуда не уходят, кроме тестовой базы.</p>
+      <div class="order-summary" id="order-summary"></div>
+      <form id="order-form" novalidate>
+        <div class="hp-field" aria-hidden="true"><label>Не заполнять<input type="text" name="company" id="of-hp" tabindex="-1" autocomplete="off"></label></div>
+        <div class="field"><label for="of-name">Имя *</label><input id="of-name" autocomplete="name" placeholder="Как к вам обращаться"><div class="err" hidden></div></div>
+        <div class="field-row">
+          <div class="field"><label for="of-phone">Телефон *</label><input id="of-phone" type="tel" autocomplete="tel" placeholder="+7 (___) ___-__-__"><div class="err" hidden></div></div>
+          <div class="field"><label for="of-email">E-mail</label><input id="of-email" type="email" autocomplete="email" placeholder="для подтверждения заказа"><div class="err" hidden></div></div>
+        </div>
+        <div class="field"><label for="of-address">Город и адрес / пункт выдачи</label><input id="of-address" placeholder="Москва, ул. … или ПВЗ СДЭК …"><div class="err" hidden></div></div>
+        <div class="field-row">
+          <div class="field"><label for="of-payment">Оплата</label><select id="of-payment"></select></div>
+          <div class="field"><label for="of-delivery">Доставка</label><select id="of-delivery"></select></div>
+        </div>
+        <div class="field"><label for="of-comment">Комментарий</label><textarea id="of-comment" placeholder="Пожелания по размеру, упаковке, времени доставки"></textarea></div>
+        <button class="btn accent" type="submit" id="of-submit" style="width:100%">Отправить заказ</button>
+        <div class="err" id="of-error" style="margin-top:12px;text-align:center" hidden></div>
+      </form>
+    </div>
+    <div id="order-success-view" hidden>
+      <div class="success-box">
+        <div class="eyebrow">Заказ принят</div>
+        <div class="num" id="os-number"></div>
+        <p class="muted" style="max-width:32em;margin:14px auto 26px">Мы свяжемся с вами для подтверждения деталей оплаты и доставки. Номер заказа сохраните — по нему можно следить за статусом.</p>
+        <button class="btn" data-close="order-modal-backdrop">Продолжить покупки</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script src="assets/vendor/supabase.min.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/site.js"></script>
+</body>
+</html>
