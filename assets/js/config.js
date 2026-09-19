@@ -21,7 +21,7 @@ const SITE_VERSION = '0.1.0-draft';
 let db = null;
 let dbError = null;
 try {
-  if (/pvycejsqrkkmueyzijsp/.test(SUPABASE_URL) || /sb_publishable_LOV49t7eyUZbGP-dZMoGJw_rdGjLF14/.test(SUPABASE_ANON_KEY)) {
+  if (/ВСТАВИТЬ/.test(SUPABASE_URL) || /ВСТАВИТЬ/.test(SUPABASE_ANON_KEY)) {
     dbError = 'Ключи базы не заполнены в assets/js/config.js';
   } else if (typeof window.supabase === 'undefined') {
     dbError = 'Библиотека Supabase не загрузилась (assets/vendor/supabase.min.js)';
