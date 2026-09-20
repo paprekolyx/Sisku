@@ -144,11 +144,7 @@ table.orders tbody tr:hover { background: var(--card); }
 .charts-grid .chart-box h3 { font-size: 16px; font-family: var(--font-body); font-weight: 700; letter-spacing: .06em; margin-bottom: 16px; }
 .charts-grid canvas { width: 100% !important; }
 @media (max-width: 1000px) { .charts-grid { grid-template-columns: 1fr; } }
-.top-list { list-style: none; margin: 0; padding: 0; font-size: 14px; }
-.top-list li { display: flex; justify-content: space-between; gap: 16px; padding: 9px 0; border-bottom: 1px solid var(--line); }
-.top-list li:last-child { border-bottom: 0; }
-.top-list .n { color: var(--muted); width: 22px; flex: none; }
-.top-list .v { font-variant-numeric: tabular-nums; color: var(--accent); white-space: nowrap; }
+/* .top-list удалён в v0.4.0: топ товаров теперь таблица .mini-table */
 
 /* загрузка и пустые состояния */
 .loading, .empty { text-align: center; color: var(--muted); padding: 60px 0; font-size: 14px; }
