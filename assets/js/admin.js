@@ -55,23 +55,17 @@
       $('orders-error').textContent = 'База не подключена: ' + (dbError || 'заполните assets/js/config.js');
       return Promise.reject(new Error(dbError || 'нет БД'));
     }
-    return Promise.all([
-      db.from('orders').select('*').order('created_at', { ascending: false }),
-      db.from('order_items').select('*'),
-      db.from('order_statuses').select('*').order('sort_order'),
-      db.from('status_transitions').select('*'),
-      db.from('payment_methods').select('*'),
-      db.from('delivery_methods').select('*'),
-      db.from('order_status_history').select('*')
-    ]).then(function (res) {
-      res.forEach(function (r) { if (r.error) throw r.error; });
-      state.orders = res[0].data;
-      state.items = res[1].data;
-      state.statuses = res[2].data;
-      state.transitions = res[3].data;
-      state.payments = res[4].data;
-      state.deliveries = res[5].data;
-      state.history = res[6].data;
+    /* v0.5.0: один запрос-сборка вместо семи — лечит долгую загрузку */
+    return db.rpc('draft_admin_bundle').then(function (res) {
+      if (res.error) throw res.error;
+      var d = res.data;
+      state.orders = d.orders;
+      state.items = d.items;
+      state.statuses = d.statuses;
+      state.transitions = d.transitions;
+      state.payments = d.payments;
+      state.deliveries = d.deliveries;
+      state.history = d.history;
 
       $('f-status').innerHTML = '<option value="">Все статусы</option>' +
         state.statuses.map(function (s) { return '<option value="' + s.id + '">' + esc(s.name) + '</option>'; }).join('');

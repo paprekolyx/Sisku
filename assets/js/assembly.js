@@ -1,8 +1,9 @@
 /* ==========================================================================
-   SISKU · assembly.js — экран «Сборка» (v0.4.0-draft)
+   SISKU · assembly.js — экран «Сборка» (v0.5.0-draft)
    Обезличенный производственный список: заказы в статусе «Сборка»
-   с позициями и остатками склада. Данные клиента и доставки НЕ читаются
-   вовсе (select только нужных колонок) — минимизация ПДн даже в черновике.
+   с позициями и остатками склада (данные клиента и доставки не читаются).
+   v0.5.0: один запрос-сборка draft_assembly_bundle(); кнопка перевода
+   заказа в следующий статус («Отправлен»); сигнализация остатка < 3 шт.
    ========================================================================== */
 (function () {
   'use strict';
@@ -24,34 +25,16 @@
     $('asm-loading').hidden = false;
     $('asm-empty').hidden = true;
     $('asm-error').hidden = true;
+    $('asm-warn').hidden = true;
     if (!db) { showError('База не подключена: ' + (dbError || 'заполните assets/js/config.js')); return; }
 
-    Promise.all([
-      db.from('order_statuses').select('id').eq('code', 'packing').limit(1),
-      db.from('product_variants').select('id,stock')
-    ]).then(function (prep) {
-      var packing = prep[0].data.length ? prep[0].data[0].id : null;
+    db.rpc('draft_assembly_bundle').then(function (res) {
+      if (res.error) throw res.error;
+      var d = res.data;
       var stock = {};
-      (prep[1].data || []).forEach(function (v) { stock[v.id] = v.stock; });
-      if (packing == null) { showEmpty(); return null; }
-
-      /* только обезличенные поля заказа */
-      return db.from('orders')
-        .select('id,comment,created_at')
-        .eq('status_id', packing)
-        .order('created_at')
-        .then(function (oRes) {
-          var orders = oRes.data || [];
-          if (!orders.length) { showEmpty(); return null; }
-          var ids = orders.map(function (o) { return o.id; });
-          return db.from('order_items')
-            .select('order_id,title_snapshot,variant_snapshot,quantity,variant_id')
-            .in('order_id', ids)
-            .then(function (iRes) {
-              render(orders, iRes.data || [], stock);
-              return null;
-            });
-        });
+      (d.stock || []).forEach(function (v) { stock[v.id] = v.stock; });
+      if (!(d.orders || []).length) { showEmpty(); $('asm-body').innerHTML = ''; return; }
+      render(d.orders, d.items || [], stock);
     }).catch(function (e) { showError('Ошибка загрузки: ' + e.message); });
   }
 
@@ -60,6 +43,20 @@
     $('asm-empty').hidden = true;
     var byOrder = {};
     items.forEach(function (i) { (byOrder[i.order_id] = byOrder[i.order_id] || []).push(i); });
+
+    /* сигнализация: варианты с остатком < 3 среди собираемых */
+    var low = {};
+    items.forEach(function (i) {
+      var st = stock[i.variant_id];
+      if (st != null && st < 3) low[i.variant_id] = true;
+    });
+    var lowCount = Object.keys(low).length;
+    if (lowCount) {
+      $('asm-warn').hidden = false;
+      $('asm-warn').textContent = '⚠ После сборки остаток менее 3 шт: ' + lowCount +
+        ' товар(ов) — проверьте закупку (отмечены в таблице).';
+    }
+
     var html = '';
     orders.forEach(function (o) {
       var list = byOrder[o.id] || [];
@@ -67,6 +64,7 @@
       list.forEach(function (i, idx) {
         var st = stock[i.variant_id];
         var short = st != null && st < i.quantity;
+        var lowStock = st != null && st < 3;
         html += '<tr>' +
           (idx === 0
             ? '<td rowspan="' + list.length + '"><b>№ ' + o.id + '</b>' +
@@ -76,12 +74,16 @@
           '<td>' + esc(i.title_snapshot) + '</td>' +
           '<td class="muted">' + esc(i.variant_snapshot || '—') + '</td>' +
           '<td class="tabular">' + i.quantity + '</td>' +
-          '<td class="tabular"' + (short ? ' style="color:var(--danger)" title="Остатка меньше, чем нужно в заказе"' : '') + '>' +
-            (st != null ? st : '—') + '</td>' +
+          '<td class="tabular' + (lowStock ? ' low-stock' : '') + '"' +
+            (short ? ' title="Остатка меньше, чем нужно в заказе"' : (lowStock ? ' title="Остаток менее 3 шт"' : '')) + '>' +
+            (st != null ? st + (lowStock ? ' ⚠' : '') : '—') + '</td>' +
+          (idx === 0
+            ? '<td rowspan="' + list.length + '"><button class="btn" data-ship="' + o.id + '" style="min-height:34px;padding:0 14px">→ Отправлен</button></td>'
+            : '') +
         '</tr>';
       });
     });
-    $('asm-body').innerHTML = html || '<tr><td colspan="6" class="muted">Нет позиций</td></tr>';
+    $('asm-body').innerHTML = html || '<tr><td colspan="7" class="muted">Нет позиций</td></tr>';
   }
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -89,6 +91,26 @@
     if (window.initAdminTheme) window.initAdminTheme();
     $('btn-logout').addEventListener('click', function () { if (window.mockLogout) window.mockLogout(); });
     $('btn-refresh').addEventListener('click', load);
+
+    /* перевод заказа из «Сборка» в следующий статус модели («Отправлен») */
+    $('asm-body').addEventListener('click', function (e) {
+      var b = e.target.closest('button[data-ship]');
+      if (!b || b.disabled) return;
+      var id = Number(b.getAttribute('data-ship'));
+      b.disabled = true;
+      b.textContent = 'Переводим…';
+      db.rpc('admin_set_status', { p_order_id: id, p_status_code: 'shipped', p_changed_by: 'assembly' })
+        .then(function (res) {
+          if (res.error) { alert('Не удалось перевести статус: ' + res.error.message); b.disabled = false; b.textContent = '→ Отправлен'; return; }
+          load();
+        })
+        .catch(function (err) {
+          alert('Ошибка сети: ' + err.message);
+          b.disabled = false;
+          b.textContent = '→ Отправлен';
+        });
+    });
+
     load();
   });
 })();

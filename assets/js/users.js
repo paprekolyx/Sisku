@@ -57,12 +57,13 @@
       if (!state.users.length) { $('users-empty').hidden = false; $('users-body').innerHTML = ''; return; }
       $('users-body').innerHTML = state.users.map(function (u) {
         return '<tr>' +
-          '<td><b>' + esc(u.fio) + '</b>' + (u.is_active ? '' : ' <span class="muted">(отключён)</span>') + '</td>' +
+          '<td class="user-fio" data-edit="' + u.id + '" title="Открыть редактирование">' + esc(u.fio) +
+            (u.is_active ? '' : ' <span class="muted">(отключён)</span>') + '</td>' +
           '<td class="muted">' + esc(u.email) + '</td>' +
           '<td>' + (u.messenger_url ? '<a href="' + esc(u.messenger_url) + '" target="_blank" rel="noopener">ссылка</a>' : '<span class="muted">—</span>') + '</td>' +
           '<td><span class="role-pill" data-role="' + esc(u.role) + '">' + esc(ROLES[u.role] || u.role) + '</span></td>' +
           '<td class="tabular muted">' + new Date(u.created_at).toLocaleDateString('ru-RU') + '</td>' +
-          '<td><button class="btn" data-edit="' + u.id + '" style="min-height:34px;padding:0 14px">Изменить</button></td>' +
+          '<td><button class="btn" data-del="' + u.id + '" style="min-height:34px;padding:0 14px">Удалить</button></td>' +
         '</tr>';
       }).join('');
     });
@@ -71,6 +72,9 @@
   /* ---------- модалка ---------- */
   function openModal(userId) {
     state.editingId = userId || null;
+    state.saving = false;
+    var submitBtn = $('um-submit');
+    if (submitBtn) submitBtn.disabled = false;
     var u = userId ? state.users.filter(function (x) { return x.id === userId; })[0] : null;
     $('um-title').textContent = u ? 'Редактирование: ' + u.fio : 'Новый администратор';
     $('um-fio').value = u ? u.fio : '';
@@ -87,6 +91,7 @@
 
   function save(e) {
     e.preventDefault();
+    if (state.saving) return;                 /* защита от повторных кликов «Сохранить» */
     var errBox = $('um-error');
     errBox.hidden = true;
     var fio = $('um-fio').value.trim();
@@ -103,16 +108,23 @@
     if (!ok) return;
 
     var finish = function (hash) {
+      state.saving = true;
+      var btn = $('um-submit');
+      btn.disabled = true;
       var row = { fio: fio, email: email, messenger_url: mess || null, role: role, updated_at: new Date().toISOString() };
       if (hash) row.password_hash = hash;
       var q = state.editingId
         ? db.from('admin_users').update(row).eq('id', state.editingId)
         : db.from('admin_users').insert(Object.assign({ password_hash: hash, is_active: true }, row));
       q.then(function (res) {
+        state.saving = false;
+        btn.disabled = false;
         if (res.error) { errBox.textContent = res.error.message; errBox.hidden = false; return; }
         closeModal();
         load();
       }).catch(function (e) {
+        state.saving = false;
+        btn.disabled = false;
         errBox.textContent = 'Ошибка сети: ' + e.message;
         errBox.hidden = false;
       });
@@ -131,8 +143,22 @@
     $('user-modal-backdrop').addEventListener('click', function (e) { if (e.target === $('user-modal-backdrop')) closeModal(); });
     $('user-form').addEventListener('submit', save);
     $('users-body').addEventListener('click', function (e) {
-      var b = e.target.closest('button[data-edit]');
-      if (b) openModal(Number(b.getAttribute('data-edit')));
+      /* удаление администратора */
+      var del = e.target.closest('button[data-del]');
+      if (del) {
+        var id = Number(del.getAttribute('data-del'));
+        var u = state.users.filter(function (x) { return x.id === id; })[0];
+        if (!confirm('Удалить администратора ' + (u ? u.fio : '№ ' + id) + '? Действие необратимо.')) return;
+        del.disabled = true;
+        db.from('admin_users').delete().eq('id', id).then(function (res) {
+          if (res.error) { alert('Не удалось удалить: ' + res.error.message); del.disabled = false; return; }
+          load();
+        }).catch(function (err) { alert('Ошибка сети: ' + err.message); del.disabled = false; });
+        return;
+      }
+      /* редактирование — клик по ФИО */
+      var ed = e.target.closest('[data-edit]');
+      if (ed) openModal(Number(ed.getAttribute('data-edit')));
     });
     load();
   });

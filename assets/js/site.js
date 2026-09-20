@@ -70,11 +70,19 @@
   }
 
   /* ---------- тема (механизм учебного проекта) ---------- */
+  function setHeroImage() {
+    var img = document.querySelector('.hero-img');
+    if (!img) return;
+    var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    img.src = dark ? 'assets/img/hero-dark.jpg' : 'assets/img/hero.jpg';
+  }
   function initTheme() {
+    setHeroImage();   /* герой зависит от темы: светлая — женский образ, тёмная — мужской */
     $('theme-toggle').addEventListener('click', function () {
       var cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', cur);
       try { localStorage.setItem('sisku_theme', cur); } catch (e) {}
+      setHeroImage();
     });
   }
 
