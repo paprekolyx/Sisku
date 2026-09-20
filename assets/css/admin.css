@@ -313,3 +313,7 @@ th.sortable.active .sort-ic { color: var(--accent); }
 /* «Сборка»: подсветка всей группы заказа (строки с rowspan) */
 #asm-body tr:hover { background: none; }
 #asm-body tr.group-hover { background: var(--card); }
+
+/* пагинация таблицы заказов */
+.pager { display: flex; gap: 14px; align-items: center; justify-content: flex-end; margin-top: 14px; }
+.pager .btn[disabled] { opacity: .4; cursor: not-allowed; }

@@ -463,3 +463,9 @@ body::-webkit-scrollbar-thumb:hover, .modal::-webkit-scrollbar-thumb:hover,
 .track-list .st { font-weight: 600; }
 .track-list .dt { color: var(--muted); font-size: 13px; margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .track-list .cm { color: var(--muted); font-size: 12.5px; width: 100%; }
+
+/* v0.7.0: все плашки палитры брендбука — одного фиксированного размера */
+.bb-swatches { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 118px; }
+.bb-swatch { height: 118px; }
+.bb-swatch .color { height: 66px; flex: none; }
+.bb-swatch .meta { height: 52px; min-height: 52px; flex: none; font-size: 10.5px; line-height: 1.35; overflow: hidden; }
