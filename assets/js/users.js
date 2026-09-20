@@ -112,6 +112,9 @@
         if (res.error) { errBox.textContent = res.error.message; errBox.hidden = false; return; }
         closeModal();
         load();
+      }).catch(function (e) {
+        errBox.textContent = 'Ошибка сети: ' + e.message;
+        errBox.hidden = false;
       });
     };
     if (pass) sha256hex(pass).then(finish);

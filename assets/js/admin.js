@@ -1,5 +1,5 @@
 /* ==========================================================================
-   SISKU · admin.js — админ-панель черновика (без пароля, доступ по ссылке)
+   SISKU · admin.js — админ-панель черновика (вход через мок-авторизацию login.html, v0.4.0-draft)
    Вкладки: заказы (список, карточка, смена статусов по модели переходов,
    признак оплаты, маскирование контактов, CSV) и статистика (KPI, графики).
    Паттерны учебного проекта: маска + «глазик», CSV с BOM и «;»,
@@ -212,12 +212,23 @@
           .then(function (res) {
             if (res.error) { $('oc-error').textContent = res.error.message; $('oc-error').hidden = false; this.disabled = false; return; }
             loadAll().then(function () { openOrder(o.id); });
-          }.bind(this));
+          }.bind(this))
+          .catch(function (e) {
+            $('oc-error').textContent = 'Ошибка сети: ' + e.message;
+            $('oc-error').hidden = false;
+          });
       });
       $('oc-paid').addEventListener('click', function () {
         this.disabled = true;
         db.rpc('admin_set_paid', { p_order_id: o.id, p_is_paid: !o.is_paid })
-          .then(function () { loadAll().then(function () { openOrder(o.id); }); });
+          .then(function (res) {
+            if (res && res.error) { $('oc-error').textContent = res.error.message; $('oc-error').hidden = false; return; }
+            loadAll().then(function () { openOrder(o.id); });
+          })
+          .catch(function (e) {
+            $('oc-error').textContent = 'Ошибка сети: ' + e.message;
+            $('oc-error').hidden = false;
+          });
       });
 
       $('order-modal-backdrop').classList.add('open');
