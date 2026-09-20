@@ -1,0 +1,55 @@
+
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SISKU · Вход в админ-панель (черновик)</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230D0D10'/%3E%3Ctext x='32' y='44' font-family='Georgia' font-size='36' fill='%23C9A96A' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<link rel="stylesheet" href="assets/css/ui.css">
+</head>
+<body>
+
+<div class="login-wrap">
+  <div class="login-card">
+    <div style="font-family:var(--font-display);font-size:15px;letter-spacing:.28em;text-transform:uppercase;color:var(--muted)">Sisku · админ-панель</div>
+    <h1 style="margin-top:10px">Вход</h1>
+    <p class="muted" style="font-size:13px">Черновик: авторизация демонстрационная, пароль не хранится в базе.</p>
+    <div class="login-hint">Пароль черновика: <b>123456</b> — написан здесь специально, чтобы любой смотрящий мог войти и оценить интерфейс.</div>
+    <form id="login-form" novalidate>
+      <div class="field">
+        <label for="lp" style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px">Пароль</label>
+        <input type="password" id="lp" autocomplete="current-password" placeholder="Введите пароль">
+      </div>
+      <button class="btn primary" type="submit" style="width:100%">Войти</button>
+      <div class="login-err" id="login-err" hidden></div>
+    </form>
+    <p style="margin:18px 0 0;font-size:13px"><a href="index.html" style="color:var(--muted)">← Вернуться на сайт</a></p>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var MOCK_PASSWORD = '123456';   /* сознательно здесь, а не в базе: это макет */
+  document.getElementById('login-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var err = document.getElementById('login-err');
+    err.hidden = true;
+    var v = document.getElementById('lp').value;
+    if (v === MOCK_PASSWORD) {
+      try { sessionStorage.setItem('sisku_mock_admin', '1'); } catch (ex) {}
+      var next = new URLSearchParams(location.search).get('next');
+      location.replace(next && next.indexOf('login.html') === -1 ? next : 'admin.html');
+    } else {
+      err.textContent = 'Пароль не подошёл. Пароль черновика: 123456.';
+      err.hidden = false;
+    }
+  });
+})();
+</script>
+</body>
+</html>

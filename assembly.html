@@ -1,0 +1,68 @@
+
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SISKU · Сборка (черновик)</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230D0D10'/%3E%3Ctext x='32' y='44' font-family='Georgia' font-size='36' fill='%23C9A96A' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<link rel="stylesheet" href="assets/css/ui.css">
+</head>
+<body>
+
+<div class="warnbar"><b>Черновик:</b> экран «Сборка» — обезличенный производственный список: без данных клиента и доставки, только состав и комментарии.</div>
+
+<header class="topbar">
+  <div class="container topbar-in">
+    <a class="logo" href="index.html">SISKU<b>.</b></a>
+    <span class="muted" style="font-size:13px">админ-панель · макет</span>
+    <div class="tabs" role="tablist">
+      <a class="tab" href="admin.html">Заказы</a>
+      <a class="tab" href="admin.html#stats">Статистика</a>
+      <a class="tab active" href="assembly.html">Сборка</a>
+      <a class="tab" href="users.html">Пользователи</a>
+    </div>
+    <div class="topbar-actions">
+      <a class="btn" href="index.html" style="min-height:38px;padding:0 16px">На сайт</a>
+      <button class="btn" id="btn-logout" style="min-height:38px;padding:0 16px">Выйти</button>
+      <button class="icon-btn" id="admin-theme" title="Переключить тему" aria-label="Переключить тему">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <span class="ver">v<span id="ver"></span></span>
+    </div>
+  </div>
+</header>
+
+<main class="panel container">
+  <div class="toolbar">
+    <span class="muted" style="font-size:13px">Заказы в статусе «Сборка»: что и в каком количестве собрать со склада</span>
+    <span class="spacer"></span>
+    <button class="btn" id="btn-refresh">Обновить</button>
+  </div>
+  <div class="table-wrap">
+    <table class="orders" style="min-width:760px">
+      <thead>
+        <tr>
+          <th>Заказ</th><th>Комментарий к заказу</th><th>Товар</th><th>Вариант</th>
+          <th>Кол-во в заказе</th><th>Остаток на складе</th>
+        </tr>
+      </thead>
+      <tbody id="asm-body"></tbody>
+    </table>
+  </div>
+  <div class="loading" id="asm-loading">Загружаем заказы в сборке…</div>
+  <div class="empty" id="asm-empty" hidden>Заказов в сборке сейчас нет.</div>
+  <div class="err-box" id="asm-error" hidden></div>
+</main>
+
+<script src="assets/vendor/supabase.min.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/admintheme.js"></script>
+<script src="assets/js/mockauth.js"></script>
+<script src="assets/js/assembly.js"></script>
+</body>
+</html>

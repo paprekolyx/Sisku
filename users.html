@@ -1,0 +1,109 @@
+
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SISKU · Пользователи (черновик)</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230D0D10'/%3E%3Ctext x='32' y='44' font-family='Georgia' font-size='36' fill='%23C9A96A' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<link rel="stylesheet" href="assets/css/ui.css">
+</head>
+<body>
+
+<div class="warnbar"><b>Черновик:</b> ролевая модель копится (администратор, сборщик, менеджер, бизнес-партнёр), страницы ролями пока не ограничены. Пароли хранятся хешем SHA-256 только для макета.</div>
+
+<header class="topbar">
+  <div class="container topbar-in">
+    <a class="logo" href="index.html">SISKU<b>.</b></a>
+    <span class="muted" style="font-size:13px">админ-панель · макет</span>
+    <div class="tabs" role="tablist">
+      <a class="tab" href="admin.html">Заказы</a>
+      <a class="tab" href="admin.html#stats">Статистика</a>
+      <a class="tab" href="assembly.html">Сборка</a>
+      <a class="tab active" href="users.html">Пользователи</a>
+    </div>
+    <div class="topbar-actions">
+      <a class="btn" href="index.html" style="min-height:38px;padding:0 16px">На сайт</a>
+      <button class="btn" id="btn-logout" style="min-height:38px;padding:0 16px">Выйти</button>
+      <button class="icon-btn" id="admin-theme" title="Переключить тему" aria-label="Переключить тему">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <span class="ver">v<span id="ver"></span></span>
+    </div>
+  </div>
+</header>
+
+<main class="panel container">
+  <div class="toolbar">
+    <span class="muted" style="font-size:13px">Администраторы панели: учётные записи и роли</span>
+    <span class="spacer"></span>
+    <button class="btn" id="btn-refresh">Обновить</button>
+    <button class="btn primary" id="btn-new">Новый администратор</button>
+  </div>
+  <div class="table-wrap">
+    <table class="orders" style="min-width:860px">
+      <thead>
+        <tr>
+          <th>ФИО</th><th>E-mail</th><th>Мессенджер</th><th>Роль</th><th>Создан</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="users-body"></tbody>
+    </table>
+  </div>
+  <div class="loading" id="users-loading">Загружаем пользователей…</div>
+  <div class="empty" id="users-empty" hidden>Пользователей пока нет — создайте первого.</div>
+  <div class="err-box" id="users-error" hidden></div>
+</main>
+
+<!-- ========== модалка создания / редактирования ========== -->
+<div class="modal-backdrop" id="user-modal-backdrop">
+  <div class="modal" style="width:min(560px,100%);padding:36px 38px" role="dialog" aria-modal="true" aria-label="Администратор">
+    <button class="modal-close" id="user-modal-close" aria-label="Закрыть">×</button>
+    <h2 id="um-title" style="font-size:24px;margin-bottom:18px">Новый администратор</h2>
+    <form id="user-form" novalidate>
+      <div class="field" style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="um-fio">ФИО *</label>
+        <input id="um-fio" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="Фамилия Имя Отчество">
+        <div class="err" id="um-fio-err" style="color:var(--danger);font-size:12.5px;margin-top:5px" hidden></div>
+      </div>
+      <div class="field" style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="um-email">Электронная почта *</label>
+        <input id="um-email" type="email" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="name@example.ru">
+        <div class="err" id="um-email-err" style="color:var(--danger);font-size:12.5px;margin-top:5px" hidden></div>
+      </div>
+      <div class="field" style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="um-mess">Ссылка на мессенджер</label>
+        <input id="um-mess" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="https://t.me/username">
+      </div>
+      <div class="field" style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="um-role">Роль *</label>
+        <select id="um-role">
+          <option value="admin">Администратор</option>
+          <option value="assembler">Сборщик</option>
+          <option value="manager">Менеджер</option>
+          <option value="partner">Бизнес-партнёр</option>
+        </select>
+      </div>
+      <div class="field" style="margin-bottom:18px">
+        <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="um-pass">Пароль *</label>
+        <input id="um-pass" type="password" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="Минимум 6 символов">
+        <div class="err" id="um-pass-err" style="color:var(--danger);font-size:12.5px;margin-top:5px" hidden></div>
+        <div class="muted" id="um-pass-hint" style="font-size:12px;margin-top:6px" hidden>Оставьте пустым, чтобы не менять текущий пароль.</div>
+      </div>
+      <button class="btn primary" type="submit" style="width:100%">Сохранить</button>
+      <div class="err-box" id="um-error" style="margin-top:12px" hidden></div>
+    </form>
+  </div>
+</div>
+
+<script src="assets/vendor/supabase.min.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/admintheme.js"></script>
+<script src="assets/js/mockauth.js"></script>
+<script src="assets/js/users.js"></script>
+</body>
+</html>
