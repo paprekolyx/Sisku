@@ -52,7 +52,7 @@ insert into public.products (id, article, name, price, brand_id, category_id, de
     (5, '20001', 'Парфюм Lumière Fleurale eau de parfum',  17900.00, 5, 5, 'Цветочный аромат: пион и белая роза с магнолией на мускусной базе. Стойкость 6–8 часов.',                        'assets/img/products/p005.jpg', true),
     (6, '20002', 'Парфюм Maison Nord Bois eau de parfum',  19500.00, 2, 5, 'Древесный аромат: кедр и ветивер с серой амброй. Скандинавская сдержанность.',                                  'assets/img/products/p006.jpg', true),
     (7, '20003', 'Парфюм Ombre Oud extrait',               27400.00, 4, 5, 'Нишевый экстракт: уд и смолы на кожаной базе. Ограниченная серия с нумерованными флаконами.',                    'assets/img/products/p007.jpg', true),
-    (8, '30001', 'Платок Aurelle Carré шёлковый',           9800.00, 1, 6, 'Квадратный платок 90×90 из шёлка твил с авторским принтом. Края подшиты вручную.',                              'assets/img/products/p008.jpg', true)
+    (8, '30001', 'Платок Aurelle Carré шёлковый',           9800.00, 1, 6, 'Квадратный платок 90×90 см из шёлка твил с авторским принтом. Края подшиты вручную.',                              'assets/img/products/p008.jpg', true)
 on conflict (id) do nothing;
 select setval(pg_get_serial_sequence('public.products', 'id'), coalesce(max(id), 1)) from public.products;
 
