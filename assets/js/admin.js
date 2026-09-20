@@ -13,6 +13,7 @@
     payments: [], deliveries: [], history: [],
     revealed: {},            /* заказ, у которого раскрыты контакты */
     methodsMode: 'chart',    /* «Диаграмма» / «Таблица» в блоке доставки и оплаты */
+    sort: { field: 'created', dir: 'desc' },   /* сортировка таблицы заказов */
     charts: {}
   };
 
@@ -85,7 +86,7 @@
     var q = $('f-search').value.trim().toLowerCase();
     var st = $('f-status').value;
     var pd = $('f-paid').value;
-    return state.orders.filter(function (o) {
+    var list = state.orders.filter(function (o) {
       if (st && String(o.status_id) !== st) return false;
       if (pd === '1' && !o.is_paid) return false;
       if (pd === '0' && o.is_paid) return false;
@@ -94,6 +95,21 @@
         if (hay.indexOf(q) === -1) return false;
       }
       return true;
+    });
+    /* сортировка: № / дата / сумма, asc и desc */
+    var f = state.sort.field, dir = state.sort.dir === 'asc' ? 1 : -1;
+    list.sort(function (a, b) {
+      if (f === 'id') return (a.id - b.id) * dir;
+      if (f === 'total') return ((a.total + a.delivery_cost) - (b.total + b.delivery_cost)) * dir;
+      return (new Date(a.created_at) - new Date(b.created_at)) * dir;
+    });
+    return list;
+  }
+  function renderSortIcons() {
+    document.querySelectorAll('th.sortable').forEach(function (th) {
+      var active = th.getAttribute('data-sort') === state.sort.field;
+      th.classList.toggle('active', active);
+      th.querySelector('.sort-ic').textContent = active ? (state.sort.dir === 'asc' ? '▲' : '▼') : '↕';
     });
   }
 
@@ -126,6 +142,7 @@
         '<td><span class="status-pill" data-code="' + esc(st.code) + '">' + esc(st.name) + '</span></td>' +
       '</tr>';
     }).join('');
+    renderSortIcons();
   }
 
   /* ---------- карточка заказа ---------- */
@@ -140,7 +157,9 @@
       var st = statusByid(o.status_id);
       var allowed = state.transitions
         .filter(function (t) { return t.from_status_id === o.status_id; })
-        .map(function (t) { return statusByid(t.to_status_id); });
+        .map(function (t) { return statusByid(t.to_status_id); })
+        .sort(function (a, b) { return (a.sort_order || 0) - (b.sort_order || 0); });   /* «Сборка» раньше «Отменён» */
+      var locked = st.code === 'cancelled';   /* отменённые заказы не изменяются */
 
       $('order-modal-body').innerHTML =
         '<div class="modal-head-row"><h2>Заказ № ' + o.id + '</h2>' +
@@ -169,14 +188,15 @@
         }).join('') + '</tbody></table>' +
         '<div class="subhead">Смена статуса (модель переходов)</div>' +
         '<div class="actions-row">' +
-          '<select id="oc-status">' +
+          '<select id="oc-status"' + (locked ? ' disabled' : '') + '>' +
             (allowed.length
               ? allowed.map(function (s) { return '<option value="' + esc(s.code) + '">→ ' + esc(s.name) + '</option>'; }).join('')
               : '<option value="">переходы недоступны (финальный статус)</option>') +
           '</select>' +
-          '<button class="btn" id="oc-apply"' + (allowed.length ? '' : ' disabled') + '>Применить</button>' +
-          '<button class="btn" id="oc-paid">' + (o.is_paid ? 'Снять отметку оплаты' : 'Отметить оплаченным') + '</button>' +
+          '<button class="btn" id="oc-apply"' + (allowed.length && !locked ? '' : ' disabled') + '>Применить</button>' +
+          '<button class="btn" id="oc-paid"' + (locked ? ' disabled' : '') + '>' + (o.is_paid ? 'Снять отметку оплаты' : 'Отметить оплаченным') + '</button>' +
         '</div>' +
+        (locked ? '<div class="locked-note">Заказ отменён — изменения статусов и оплаты заблокированы.</div>' : '') +
         '<div class="err-box" id="oc-error" hidden></div>' +
         '<div class="subhead">История статусов</div>' +
         '<ul class="history">' + history.map(function (h) {
@@ -333,11 +353,14 @@
     });
     var top = Object.keys(ids).map(function (k) { return { k: k, v: ids[k] }; })
       .sort(function (a, b) { return b.v.sum - a.v.sum; }).slice(0, 6);
-    $('top-products').innerHTML = top.length
-      ? top.map(function (t, i) {
-          return '<li><span class="n">' + (i + 1) + '</span><span>' + esc(t.k) + ' · ' + t.v.n + ' шт.</span><span class="v">' + money(t.v.sum) + '</span></li>';
-        }).join('')
-      : '<li class="muted">Нет данных за период</li>';
+    $('top-products').innerHTML =
+      '<thead><tr><th>№</th><th>Товар</th><th style="text-align:right">Кол-во</th><th style="text-align:right">Сумма</th></tr></thead><tbody>' +
+      (top.length
+        ? top.map(function (t, i) {
+            return '<tr><td>' + (i + 1) + '</td><td>' + esc(t.k) + '</td><td class="num">' + t.v.n + ' шт.</td><td class="num">' + money(t.v.sum) + '</td></tr>';
+          }).join('')
+        : '<tr><td colspan="4" class="muted">Нет данных за период</td></tr>') +
+      '</tbody>';
   }
 
   /* ---------- доставка и оплата: раздельно, диаграмма или таблицы ---------- */
@@ -350,7 +373,7 @@
     chartDefaults(); destroyChart(key);
     state.charts[key] = new Chart(canvas, {
       type: 'bar',
-      data: { labels: labels, datasets: [{ data: counts, backgroundColor: GOLD, borderRadius: 2 }] },
+      data: { labels: labels, datasets: [{ data: counts, backgroundColor: GOLD, borderRadius: 2, barThickness: 20 }] },
       options: {
         indexAxis: 'y', responsive: true,
         scales: { x: { ticks: { precision: 0 }, grid: { color: LINE } }, y: { grid: { display: false } } },
@@ -424,10 +447,12 @@
     var a = stat(diffs('new', ['confirmed']));
     var b = stat(diffs('new', ['delivered', 'cancelled', 'returned']));
     var c = stat(diffs('delivered', ['returned']));
+    var d = stat(diffs('new', ['cancelled']));
     $('funnel-metrics').innerHTML =
-      '<li><span>Новый → Подтверждён<span class="hint">среднее время реакции на заявку</span></span><span class="val">' + a.v + (a.n ? ' · n=' + a.n : '') + '</span></li>' +
-      '<li><span>Новый → Завершён<span class="hint">до «Доставлен», «Отменён» или «Возврат»</span></span><span class="val">' + b.v + (b.n ? ' · n=' + b.n : '') + '</span></li>' +
-      '<li><span>Доставлен → Возврат<span class="hint">возвраты после завершения</span></span><span class="val">' + c.v + (c.n ? ' · n=' + c.n : '') + '</span></li>';
+      '<li><span>Новый → Подтверждён<span class="hint">среднее время реакции на заявку</span></span><span class="val">' + a.v + (a.n ? ' · кол-во: ' + a.n : '') + '</span></li>' +
+      '<li><span>Новый → Завершён<span class="hint">до «Доставлен», «Отменён» или «Возврат»</span></span><span class="val">' + b.v + (b.n ? ' · кол-во: ' + b.n : '') + '</span></li>' +
+      '<li><span>Новый → Отменён<span class="hint">как быстро отменяют заказы</span></span><span class="val">' + d.v + (d.n ? ' · кол-во: ' + d.n : '') + '</span></li>' +
+      '<li><span>Доставлен → Возврат<span class="hint">возвраты после завершения</span></span><span class="val">' + c.v + (c.n ? ' · кол-во: ' + c.n : '') + '</span></li>';
   }
 
   /* ---------- вкладки и события ---------- */
@@ -445,18 +470,8 @@
   document.addEventListener('DOMContentLoaded', function () {
     $('ver').textContent = SITE_VERSION;
 
-    /* тема админки: по умолчанию тёмная, выбор запоминается */
-    var ADMIN_THEME_KEY = 'sisku_admin_theme';
-    function applyAdminTheme(t) {
-      document.documentElement.setAttribute('data-theme', t);
-      try { localStorage.setItem(ADMIN_THEME_KEY, t); } catch (e) {}
-    }
-    var savedTheme = null;
-    try { savedTheme = localStorage.getItem(ADMIN_THEME_KEY); } catch (e) {}
-    applyAdminTheme(savedTheme === 'light' ? 'light' : 'dark');
-    $('admin-theme').addEventListener('click', function () {
-      var cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
-      applyAdminTheme(cur);
+    /* тема админки: общий модуль admintheme.js (тёмная по умолчанию) */
+    if (window.initAdminTheme) window.initAdminTheme(function () {
       if (!$('panel-stats').hidden) renderStats();   /* перерисовать графики в цветах темы */
     });
 
@@ -467,6 +482,28 @@
       state.methodsMode = b.getAttribute('data-mode') === 'table' ? 'table' : 'chart';
       $('methods-seg').querySelectorAll('.seg-btn').forEach(function (x) { x.classList.toggle('active', x === b); });
       renderMethods(periodOrders());
+    });
+
+    /* сортировка таблицы заказов кликом по заголовку */
+    document.querySelectorAll('th.sortable').forEach(function (th) {
+      th.addEventListener('click', function () {
+        var f = th.getAttribute('data-sort');
+        if (state.sort.field === f) {
+          state.sort.dir = state.sort.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+          state.sort.field = f;
+          state.sort.dir = f === 'created' ? 'desc' : 'asc';
+        }
+        renderOrders();
+      });
+    });
+
+    /* ссылка admin.html#stats открывает сразу вкладку статистики */
+    if (location.hash === '#stats') switchTab('stats');
+
+    /* выход из мок-сессии черновика */
+    $('btn-logout').addEventListener('click', function () {
+      if (window.mockLogout) window.mockLogout();
     });
 
     $('tab-orders').addEventListener('click', function () { switchTab('orders'); });

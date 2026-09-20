@@ -347,6 +347,18 @@
       '<div class="row total"><span>Итого</span><span>' + money(total + deliv) + '</span></div>';
   }
 
+  /* ---------- валидация контактов (российские форматы) ----------
+     Телефон: +7 (999) 123-45-67 или 8 999 123-45-67 — после очистки
+     от пробелов, скобок и дефисов остаётся код страны + 10 цифр.
+     E-mail: локальная часть @ домен с точкой и TLD от 2 символов,
+     допускаются кириллические домены (.рф). */
+  function phoneOk(v) {
+    return /^(\+7|8)\d{10}$/.test(v.replace(/[\s()-]/g, ''));
+  }
+  function emailOk(v) {
+    return /^[a-zа-яё0-9._%+-]+@[a-zа-яё0-9-]+(\.[a-zа-яё0-9-]+)*\.[a-zа-яё]{2,}$/i.test(v);
+  }
+
   function setFieldError(inputId, msg) {
     var box = $(inputId).parentElement.querySelector('.err');
     if (msg) { box.textContent = msg; box.hidden = false; } else { box.hidden = true; }
@@ -366,7 +378,14 @@
     setFieldError('of-name', ''); setFieldError('of-phone', ''); setFieldError('of-email', '');
     if (name.length < 2) { setFieldError('of-name', 'Укажите имя'); ok = false; }
     if (!phone && !email) { setFieldError('of-phone', 'Телефон или e-mail для связи'); ok = false; }
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { setFieldError('of-email', 'Похоже, в адресе ошибка'); ok = false; }
+    if (phone && !phoneOk(phone)) {
+      setFieldError('of-phone', 'Формат: +7 (999) 123-45-67 или 8 999 123-45-67 — 11 цифр с кодом страны');
+      ok = false;
+    }
+    if (email && !emailOk(email)) {
+      setFieldError('of-email', 'Формат: text@domen.ru или text@domen.com');
+      ok = false;
+    }
     if (!ok) return;
 
     var btn = $('of-submit');
