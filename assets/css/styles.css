@@ -437,3 +437,29 @@ body::-webkit-scrollbar-thumb:hover, .modal::-webkit-scrollbar-thumb:hover,
 .bb-size .val { font-size: 19px; }
 .bb-size .val.prata { font-family: var(--font-display); }
 .bb-size .hint { font-size: 12px; color: var(--muted); }
+
+/* ==========================================================================
+   v0.6.0-draft: таблица размеров, отслеживание заказа
+   ========================================================================== */
+.subhead-site { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); font-weight: 600; margin: 0 0 14px; }
+.size-wrap { margin-top: 40px; }
+.size-scroll { overflow-x: auto; border: 1px solid var(--line); background: var(--surface); }
+.size-table { width: 100%; border-collapse: collapse; font-size: 14px; min-width: 760px; }
+.size-table th {
+  text-align: left; padding: 14px 18px; font-size: 11px; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--muted); font-weight: 600;
+  border-bottom: 1px solid var(--line); background: var(--bg);
+}
+.size-table td { padding: 13px 18px; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.size-table tbody tr:last-child td { border-bottom: 0; }
+.size-table tbody tr:hover { background: var(--accent-soft); }
+.size-table td b { font-weight: 700; letter-spacing: .04em; }
+.size-note { font-size: 13px; margin-top: 12px; max-width: 60em; }
+
+.track-list { list-style: none; margin: 0; padding: 0; }
+.track-list li { display: flex; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--line); font-size: 14px; }
+.track-list li:last-child { border-bottom: 0; }
+.track-list .dot { flex: none; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); margin-top: 6px; }
+.track-list .st { font-weight: 600; }
+.track-list .dt { color: var(--muted); font-size: 13px; margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.track-list .cm { color: var(--muted); font-size: 12.5px; width: 100%; }
