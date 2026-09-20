@@ -146,6 +146,31 @@
         <p data-content="order.returns.text">7 дней на обмен или возврат после получения.</p>
       </div>
     </div>
+    <div class="size-wrap reveal">
+      <div class="subhead-site">Таблица размеров</div>
+      <div class="size-scroll">
+        <table class="size-table">
+          <thead>
+            <tr>
+              <th>Международный размер</th>
+              <th>Российский размер (женский)</th>
+              <th>Российский размер (мужской)</th>
+              <th>Обхват груди, см</th>
+              <th>Обхват талии, см</th>
+              <th>Обхват бёдер, см</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><b>XS</b> <span class="muted">(Extra Small)</span></td><td>40–42</td><td>40–42</td><td>78–82</td><td>60–64</td><td>84–88</td></tr>
+            <tr><td><b>S</b> <span class="muted">(Small)</span></td><td>44</td><td>42–44</td><td>86–90</td><td>68–72</td><td>92–96</td></tr>
+            <tr><td><b>M</b> <span class="muted">(Medium)</span></td><td>46</td><td>46–48</td><td>90–94</td><td>72–76</td><td>96–100</td></tr>
+            <tr><td><b>L</b> <span class="muted">(Large)</span></td><td>48</td><td>50–52</td><td>94–98</td><td>76–80</td><td>100–104</td></tr>
+            <tr><td><b>XL</b> <span class="muted">(Extra Large)</span></td><td>52</td><td>54–56</td><td>102–106</td><td>84–88</td><td>108–112</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted size-note">Соотношение может незначительно отличаться в зависимости от бренда, типа кроя (оверсайз или приталенный) и страны производства. Для точного подбора ориентируйтесь на личные измерения сантиметровой лентой.</p>
+    </div>
   </div>
 </section>
 
@@ -163,6 +188,7 @@
         <div class="contact-line"><dt>Телефон</dt><dd><a data-content-href="contacts.phone_href" data-content="contacts.phone_display" href="tel:+79991234567">+7 (999) 123-45-67</a></dd></div>
         <div class="contact-line"><dt>E-mail</dt><dd><a href="mailto:hello@sisku.example" data-content="contacts.email" data-content-href="contacts.email.href">hello@sisku.example</a></dd></div>
         <div class="contact-line"><dt>Мессенджер</dt><dd><a data-content-href="contacts.messenger_url" data-content="contacts.messenger" href="https://t.me/sisku_shop">Написать в Telegram</a></dd></div>
+        <div class="contact-line"><dt>Отслеживание</dt><dd><button class="linklike" data-open="track-modal-backdrop">Статус заказа по номеру</button></dd></div>
       </dl>
       <dl style="margin:0">
         <div class="contact-line"><dt>Шоурум</dt><dd data-content="contacts.city">Москва, шоурум по предварительной записи</dd></div>
@@ -243,6 +269,13 @@
         <div class="field"><label for="of-address">Город и адрес / пункт выдачи</label><input id="of-address" placeholder="Город, улица, дом, квартира — или номер пункта выдачи (СДЭК, Boxberry)"><div class="err" hidden></div></div>
         <div class="field"><label for="of-payment">Оплата</label><select id="of-payment"></select></div>
         <div class="field"><label for="of-delivery">Доставка</label><select id="of-delivery"></select></div>
+        <div class="field"><label for="of-promo">Промокод</label>
+          <div style="display:flex;gap:10px">
+            <input id="of-promo" placeholder="Например, SISKU10" style="flex:1">
+            <button type="button" class="btn ghost small" id="of-promo-apply">Применить</button>
+          </div>
+          <div class="muted" id="of-promo-msg" style="font-size:12.5px;margin-top:6px" hidden></div>
+        </div>
         <div class="field"><label for="of-comment">Комментарий</label><textarea id="of-comment" placeholder="Пожелания по размеру, упаковке, времени доставки"></textarea></div>
         <button class="btn accent" type="submit" id="of-submit" style="width:100%">Отправить заказ</button>
         <div class="err" id="of-error" style="margin-top:12px;text-align:center" hidden></div>
@@ -253,7 +286,10 @@
         <div class="eyebrow">Заказ принят</div>
         <div class="num" id="os-number"></div>
         <p class="muted" style="max-width:32em;margin:14px auto 26px">Мы свяжемся с вами для подтверждения деталей оплаты и доставки. Номер заказа сохраните — по нему можно следить за статусом.</p>
-        <button class="btn" data-close="order-modal-backdrop">Продолжить покупки</button>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+          <button class="btn ghost" id="os-track">Отследить заказ</button>
+          <button class="btn" data-close="order-modal-backdrop">Продолжить покупки</button>
+        </div>
       </div>
     </div>
   </div>
@@ -324,6 +360,27 @@
         <li>Бейджи: New — акцент, Exclusive — тёмный графит, Limited — контурный; не более одного бейджа на карточку.</li>
         <li>Motion сдержанный: fade/slide при скролле, hover-зум фото 1.03 за 600ms; уважать prefers-reduced-motion.</li>
       </ul>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= МОДАЛКА ОТСЛЕЖИВАНИЯ ЗАКАЗА ======================= -->
+<div class="modal-backdrop" id="track-modal-backdrop">
+  <div class="modal form-modal" role="dialog" aria-modal="true" aria-label="Отслеживание заказа">
+    <button class="modal-close" data-close="track-modal-backdrop" aria-label="Закрыть">×</button>
+    <h3>Отследить заказ</h3>
+    <p class="muted" style="font-size:13.5px">Введите номер заказа и код подтверждения: последние 4 цифры телефона ИЛИ первые 4 символа e-mail до «@».</p>
+    <form id="track-form" novalidate>
+      <div class="field-row">
+        <div class="field"><label for="tr-id">Номер заказа</label><input id="tr-id" type="number" min="1" placeholder="Например, 7"></div>
+        <div class="field"><label for="tr-tail">Код подтверждения</label><input id="tr-tail" placeholder="4 цифры или 4 символа"></div>
+      </div>
+      <button class="btn accent" type="submit" style="width:100%">Показать статус</button>
+      <div class="err" id="tr-error" style="margin-top:10px;text-align:center" hidden></div>
+    </form>
+    <div id="track-result" hidden>
+      <div class="subhead-site" style="margin-top:24px">История статусов</div>
+      <ul class="track-list" id="track-list"></ul>
     </div>
   </div>
 </div>

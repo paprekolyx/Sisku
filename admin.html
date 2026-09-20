@@ -23,6 +23,7 @@
       <button class="tab active" id="tab-orders" role="tab" aria-selected="true">Заказы</button>
       <button class="tab" id="tab-stats" role="tab" aria-selected="false">Статистика</button>
       <a class="tab" href="assembly.html">Сборка</a>
+      <a class="tab" href="shop.html">Магазин</a>
       <a class="tab" href="users.html">Пользователи</a>
     </div>
     <div class="topbar-actions">
@@ -81,6 +82,7 @@
       <option value="90">Последние 90 дней</option>
       <option value="all" selected>Всё время</option>
     </select>
+    <button class="btn" id="btn-stats-csv">Выгрузить CSV</button>
     <span class="muted" style="font-size:13px">Суммы считаются по оформленным заявкам (сайт не видит фактические оплаты — они происходят вне сайта).</span>
   </div>
   <div class="kpi-grid" id="kpi-grid"></div>
@@ -102,16 +104,16 @@
     <div class="chart-box">
       <h3>Доставка и оплата</h3>
       <div class="seg" id="methods-seg" role="group" aria-label="Вид представления">
-        <button class="seg-btn active" data-mode="chart">Диаграмма</button>
-        <button class="seg-btn" data-mode="table">Таблица</button>
+        <button class="seg-btn" data-mode="chart">Диаграмма</button>
+        <button class="seg-btn active" data-mode="table">Таблица</button>
       </div>
-      <div id="methods-charts">
+      <div id="methods-charts" class="methods-view" hidden>
         <div class="subhead-sm">Способы доставки</div>
         <canvas id="chart-delivery" height="150"></canvas>
         <div class="subhead-sm">Способы оплаты</div>
         <canvas id="chart-payment" height="150"></canvas>
       </div>
-      <div id="methods-tables" hidden>
+      <div id="methods-tables" class="methods-view">
         <div class="subhead-sm">Способы доставки</div>
         <table class="mini-table" id="table-delivery"></table>
         <div class="subhead-sm">Способы оплаты</div>
