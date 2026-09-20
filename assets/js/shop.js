@@ -44,20 +44,18 @@
         var period = (p.valid_from || p.valid_until)
           ? fmtDate(p.valid_from) + ' — ' + fmtDate(p.valid_until)
           : 'бессрочно';
-        var limit = p.usage_limit != null ? (p.usage_limit + ' / ' + p.used_count) : ('без лимита / ' + p.used_count);
+        var used = 'Использовано ' + p.used_count +
+          (p.usage_limit != null ? ' из ' + p.usage_limit + ' лимита' : ', без лимита');
         return '<tr>' +
-          '<td><b>' + esc(p.code) + '</b></td>' +
+          '<td class="user-fio" data-edit="' + p.id + '" title="Открыть редактирование">' + esc(p.code) + '</td>' +
           '<td>' + discount + '</td>' +
           '<td class="tabular muted">' + (p.min_order_amount > 0 ? money(p.min_order_amount) : '—') + '</td>' +
           '<td class="muted" style="font-size:13px">' + period + '</td>' +
-          '<td class="tabular muted">' + limit + '</td>' +
+          '<td class="muted" style="font-size:13px">' + used + '</td>' +
           '<td>' + (p.is_active
               ? '<span class="role-pill" data-role="admin">активен</span>'
               : '<span class="role-pill">отключён</span>') + '</td>' +
-          '<td style="white-space:nowrap">' +
-            '<button class="btn" data-edit="' + p.id + '" style="min-height:34px;padding:0 12px;margin-right:6px">Изменить</button>' +
-            '<button class="btn" data-toggle="' + p.id + '" style="min-height:34px;padding:0 12px">' + (p.is_active ? 'Отключить' : 'Включить') + '</button>' +
-          '</td>' +
+          '<td><button class="btn" data-toggle="' + p.id + '" style="min-height:34px;padding:0 12px">' + (p.is_active ? 'Отключить' : 'Включить') + '</button></td>' +
         '</tr>';
       }).join('');
     });
@@ -81,6 +79,8 @@
     ['pc-code-err', 'pc-value-err', 'pc-error'].forEach(function (x) { $(x).hidden = true; });
     $('promo-modal-backdrop').classList.add('open');
     if (window.enhanceSelects) enhanceSelects($('promo-modal-backdrop'));
+    if (window.enhanceDates) enhanceDates($('promo-modal-backdrop'));
+    if (window.enhanceNumbers) enhanceNumbers($('promo-modal-backdrop'));
   }
   function closeModal() { $('promo-modal-backdrop').classList.remove('open'); }
 

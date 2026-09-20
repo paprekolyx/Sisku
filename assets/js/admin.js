@@ -14,6 +14,7 @@
     revealed: {},            /* заказ, у которого раскрыты контакты */
     methodsMode: 'table',    /* «Таблица» по умолчанию, «Диаграмма» — по переключателю */
     sort: { field: 'created', dir: 'desc' },   /* сортировка таблицы заказов */
+    page: 1,                                    /* пагинация таблицы заказов */
     charts: {}
   };
 
@@ -109,10 +110,15 @@
 
   function renderOrders() {
     var list = filteredOrders();
+    var PAGESIZE = 30;                                  /* пагинация: 30 заказов на страницу */
+    var pages = Math.max(1, Math.ceil(list.length / PAGESIZE));
+    if (state.page > pages) state.page = pages;
+    if (state.page < 1) state.page = 1;
+    var visible = list.slice((state.page - 1) * PAGESIZE, state.page * PAGESIZE);
     $('orders-loading').hidden = true;
     $('orders-empty').hidden = state.orders.length !== 0;
     $('orders-error').hidden = true;
-    $('orders-body').innerHTML = list.map(function (o) {
+    $('orders-body').innerHTML = visible.map(function (o) {
       var st = statusByid(o.status_id);
       var n = itemsOf(o.id).reduce(function (s, i) { return s + i.quantity; }, 0);
       var revealed = state.revealed[o.id];
@@ -137,6 +143,18 @@
       '</tr>';
     }).join('');
     renderSortIcons();
+    /* пагинация */
+    var pager = $('orders-pager');
+    if (pages > 1) {
+      pager.hidden = false;
+      $('pg-info').textContent = 'Стр. ' + state.page + ' из ' + pages +
+        ' (показано ' + ((state.page - 1) * PAGESIZE + 1) + '–' +
+        Math.min(list.length, state.page * PAGESIZE) + ' из ' + list.length + ')';
+      $('pg-prev').disabled = state.page <= 1;
+      $('pg-next').disabled = state.page >= pages;
+    } else {
+      pager.hidden = true;
+    }
   }
 
   /* ---------- карточка заказа ---------- */
@@ -298,11 +316,16 @@
   }
   function destroyChart(key) { if (state.charts[key]) { state.charts[key].destroy(); state.charts[key] = null; } }
 
+  /* локальный ключ даты (без UTC-сдвига, который давал «лишние» дни) */
+  function dayKey(iso) {
+    var d = new Date(iso);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
   function drawDaysChart(list) {
     chartDefaults(); destroyChart('days');
     var byDay = {};
     list.forEach(function (o) {
-      var k = new Date(o.created_at).toISOString().slice(0, 10);   /* ключ — ISO-дата */
+      var k = dayKey(o.created_at);
       byDay[k] = byDay[k] || { n: 0, sum: 0 };
       byDay[k].n += 1; byDay[k].sum += o.total + o.delivery_cost;
     });
@@ -338,7 +361,7 @@
       type: 'bar',
       data: {
         labels: state.statuses.map(function (s) { return s.name; }),
-        datasets: [{ data: counts, backgroundColor: GOLD, borderRadius: 2 }]
+        datasets: [{ data: counts, backgroundColor: GOLD, borderRadius: 2, barThickness: 12 }]
       },
       options: {
         indexAxis: 'y', responsive: true,
@@ -480,10 +503,10 @@
       ['Оплачено, ₽', paidSum],
       ['Средний чек, ₽', list.length ? Math.round(sum / list.length) : 0],
       ['Отменено', cancelled + (list.length ? ' (' + Math.round(cancelled / list.length * 100) + '%)' : '')], []);
-    /* по дням — хронологически */
+    /* по дням — хронологически, ключ по локальной дате */
     var byDay = {};
     list.forEach(function (o) {
-      var k = new Date(o.created_at).toISOString().slice(0, 10);
+      var k = dayKey(o.created_at);
       byDay[k] = byDay[k] || { n: 0, sum: 0 };
       byDay[k].n += 1; byDay[k].sum += o.total + o.delivery_cost;
     });
@@ -574,6 +597,7 @@
           state.sort.field = f;
           state.sort.dir = f === 'created' ? 'desc' : 'asc';
         }
+        state.page = 1;
         renderOrders();
       });
     });
@@ -586,11 +610,15 @@
       if (window.mockLogout) window.mockLogout();
     });
 
+    /* пагинация таблицы заказов */
+    $('pg-prev').addEventListener('click', function () { state.page -= 1; renderOrders(); });
+    $('pg-next').addEventListener('click', function () { state.page += 1; renderOrders(); });
+
     $('tab-orders').addEventListener('click', function () { switchTab('orders'); });
     $('tab-stats').addEventListener('click', function () { switchTab('stats'); });
-    $('f-search').addEventListener('input', renderOrders);
-    $('f-status').addEventListener('change', renderOrders);
-    $('f-paid').addEventListener('change', renderOrders);
+    $('f-search').addEventListener('input', function () { state.page = 1; renderOrders(); });
+    $('f-status').addEventListener('change', function () { state.page = 1; renderOrders(); });
+    $('f-paid').addEventListener('change', function () { state.page = 1; renderOrders(); });
     $('s-period').addEventListener('change', renderStats);
     $('btn-refresh').addEventListener('click', function () {
       $('orders-loading').hidden = false;
