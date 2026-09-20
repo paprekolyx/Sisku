@@ -278,3 +278,21 @@ th.sortable.active .sort-ic { color: var(--accent); }
 .login-card input { width: 100%; min-height: 48px; padding: 10px 14px; background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: var(--radius); font-family: var(--font-body); font-size: 15px; }
 .login-card input:focus { border-color: var(--accent); outline: none; }
 .login-err { color: var(--danger); font-size: 13px; margin-top: 10px; }
+
+/* ==========================================================================
+   v0.5.0-draft
+   ========================================================================== */
+
+/* вкладки-ссылки без подчеркивания */
+.tabs a.tab, .tabs .tab { text-decoration: none; }
+
+/* остаток менее 3 шт на экране «Сборка» */
+.low-stock { color: var(--danger); font-weight: 700; }
+.asm-warn {
+  border: 1px solid var(--danger); color: var(--danger);
+  padding: 10px 16px; font-size: 13px; margin-bottom: 14px; border-radius: var(--radius);
+}
+
+/* пользователи: ФИО кликабельно (редактирование), без жирного */
+.user-fio { cursor: pointer; }
+.user-fio:hover { color: var(--accent); text-decoration: underline; text-underline-offset: 3px; }
