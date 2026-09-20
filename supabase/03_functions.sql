@@ -224,9 +224,19 @@ create or replace function public.admin_set_paid(p_order_id integer, p_is_paid b
 returns jsonb
 language plpgsql security definer set search_path = public
 as $$
+declare
+    v_status text;
 begin
-    if not exists (select 1 from public.orders where id = p_order_id) then
+    select s.code into v_status
+    from public.orders o
+    join public.order_statuses s on s.id = o.status_id
+    where o.id = p_order_id;
+
+    if v_status is null then
         raise exception 'Заказ не найден';
+    end if;
+    if v_status = 'cancelled' then
+        raise exception 'Заказ отменён: изменять признак оплаты нельзя';
     end if;
 
     update public.orders
