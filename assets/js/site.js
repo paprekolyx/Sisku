@@ -15,7 +15,9 @@
     filterCat: '', filterBrand: '', filterStock: false, sort: 'new',
     shown: PAGE_SIZE,
     cart: loadCart(),
-    currentProduct: null, currentVariant: null
+    currentProduct: null, currentVariant: null,
+    promo: null,            /* применённый промокод: {code, amount} */
+    lastOrderId: null       /* для кнопки «Отследить заказ» на экране успеха */
   };
 
   /* ---------- утилиты ---------- */
@@ -349,10 +351,12 @@
     var d = state.deliveries.filter(function (x) { return x.id === Number($('of-delivery').value); })[0];
     var deliv = d ? d.base_price : 0;
     var total = cartTotal();
+    var disc = state.promo ? state.promo.amount : 0;
     $('order-summary').innerHTML =
       '<div class="row"><span>Товары (' + cartCount() + ' шт.)</span><span>' + money(total) + '</span></div>' +
+      (disc > 0 ? '<div class="row"><span>Скидка по промокоду ' + esc(state.promo.code) + '</span><span>−' + money(disc) + '</span></div>' : '') +
       '<div class="row"><span>Доставка</span><span>' + (deliv > 0 ? 'от ' + money(deliv) : 'бесплатно') + '</span></div>' +
-      '<div class="row total"><span>Итого</span><span>' + money(total + deliv) + '</span></div>';
+      '<div class="row total"><span>Итого</span><span>' + money(total - disc + deliv) + '</span></div>';
   }
 
   /* ---------- валидация контактов (российские форматы) ----------
@@ -408,6 +412,7 @@
       payment_method_id: Number($('of-payment').value),
       delivery_method_id: Number($('of-delivery').value),
       comment: $('of-comment').value.trim() || null,
+      promo_code: state.promo ? state.promo.code : null,
       items: state.cart.map(function (l) {
         return { product_id: l.product_id, variant_id: l.variant_id, quantity: l.qty };
       })
@@ -416,10 +421,14 @@
       btn.textContent = 'Отправить заказ';
       if (res.error) { errBox.textContent = res.error.message; errBox.hidden = false; return; }
       $('os-number').textContent = '№ ' + res.data.order_id;
+      state.lastOrderId = res.data.order_id;
       $('order-form-view').hidden = true;
       $('order-success-view').hidden = false;
       state.cart = [];
-      saveCart(); renderCart(); renderCatalog();   /* остатки изменились на сервере */
+      state.promo = null;
+      $('of-promo').value = '';
+      $('of-promo-msg').hidden = true;
+      saveCart(); renderCart(); renderCatalog(); renderOrderSummary();   /* остатки и скидки пересчитаны на сервере */
     }).catch(function (err) {
       btn.disabled = false;
       btn.textContent = 'Отправить заказ';
@@ -458,6 +467,74 @@
     /* универсальное открытие модалок кнопками (брендбук и пр.) */
     document.querySelectorAll('[data-open]').forEach(function (b) {
       b.addEventListener('click', function () { openModal(b.getAttribute('data-open')); });
+    });
+
+    /* промокод: проверка и расчёт скидки только на сервере */
+    $('of-promo-apply').addEventListener('click', function () {
+      var code = $('of-promo').value.trim();
+      var msg = $('of-promo-msg');
+      msg.hidden = false;
+      if (!code) {
+        state.promo = null;
+        msg.textContent = 'Введите код промокода';
+        msg.style.color = '';
+        renderOrderSummary();
+        return;
+      }
+      msg.textContent = 'Проверяем…';
+      msg.style.color = '';
+      db.rpc('check_promo', { p_code: code, p_total: cartTotal() }).then(function (res) {
+        if (res.error) {
+          state.promo = null;
+          msg.textContent = res.error.message;
+          msg.style.color = 'var(--danger)';
+          renderOrderSummary();
+          return;
+        }
+        var d = res.data;
+        if (d.ok) {
+          state.promo = { code: d.code, amount: Number(d.discount_amount) };
+          msg.textContent = 'Промокод ' + d.code + ' применён: −' + money(d.discount_amount);
+          msg.style.color = 'var(--accent)';
+        } else {
+          state.promo = null;
+          msg.textContent = d.error || 'Промокод не применён';
+          msg.style.color = 'var(--danger)';
+        }
+        renderOrderSummary();
+      });
+    });
+
+    /* отслеживание заказа покупателем */
+    $('track-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var err = $('tr-error');
+      err.hidden = true;
+      var id = Number($('tr-id').value);
+      var tail = $('tr-tail').value.trim();
+      if (!id || !tail) { err.textContent = 'Заполните оба поля'; err.hidden = false; return; }
+      db.rpc('track_order', { p_order_id: id, p_tail: tail }).then(function (res) {
+        if (res.error) { err.textContent = res.error.message; err.hidden = false; return; }
+        var d = res.data;
+        if (!d.found) {
+          $('track-result').hidden = true;
+          err.textContent = 'Заказ не найден или код подтверждения не совпадает';
+          err.hidden = false;
+          return;
+        }
+        $('track-result').hidden = false;
+        $('track-list').innerHTML = d.history.map(function (h) {
+          return '<li><span class="dot"></span><span><span class="st">' + esc(h.status) + '</span>' +
+            (h.comment ? '<div class="cm">' + esc(h.comment) + '</div>' : '') + '</span>' +
+            '<span class="dt">' + new Date(h.changed_at).toLocaleString('ru-RU',
+              { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }) + '</span></li>';
+        }).join('');
+      });
+    });
+    $('os-track').addEventListener('click', function () {
+      closeModal('order-modal-backdrop');
+      if (state.lastOrderId) $('tr-id').value = state.lastOrderId;
+      openModal('track-modal-backdrop');
     });
 
     $('product-grid').addEventListener('click', function (e) {

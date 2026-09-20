@@ -12,7 +12,7 @@
     orders: [], items: [], statuses: [], transitions: [],
     payments: [], deliveries: [], history: [],
     revealed: {},            /* заказ, у которого раскрыты контакты */
-    methodsMode: 'chart',    /* «Диаграмма» / «Таблица» в блоке доставки и оплаты */
+    methodsMode: 'table',    /* «Таблица» по умолчанию, «Диаграмма» — по переключателю */
     sort: { field: 'created', dir: 'desc' },   /* сортировка таблицы заказов */
     charts: {}
   };
@@ -157,7 +157,7 @@
 
       $('order-modal-body').innerHTML =
         '<div class="modal-head-row"><h2>Заказ № ' + o.id + '</h2>' +
-        '<span class="status-pill" data-code="' + esc(st.code) + '">' + esc(st.name) + '</span></div>' +
+        '<span class="status-pill status-pill-lg" data-code="' + esc(st.code) + '">' + esc(st.name) + '</span></div>' +
         '<div class="muted" style="font-size:12.5px;margin-top:2px">создан ' + fmtDate(o.created_at) + '</div>' +
         '<div class="order-meta">' +
           '<div>' +
@@ -302,18 +302,19 @@
     chartDefaults(); destroyChart('days');
     var byDay = {};
     list.forEach(function (o) {
-      var d = new Date(o.created_at).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
-      byDay[d] = byDay[d] || { n: 0, sum: 0 };
-      byDay[d].n += 1; byDay[d].sum += o.total + o.delivery_cost;
+      var k = new Date(o.created_at).toISOString().slice(0, 10);   /* ключ — ISO-дата */
+      byDay[k] = byDay[k] || { n: 0, sum: 0 };
+      byDay[k].n += 1; byDay[k].sum += o.total + o.delivery_cost;
     });
-    var labels = Object.keys(byDay);
+    var keys = Object.keys(byDay).sort();   /* хронология: старые слева, новые справа */
+    var labels = keys.map(function (k) { var p = k.split('-'); return p[2] + '.' + p[1]; });
     state.charts.days = new Chart($('chart-days'), {
       type: 'line',
       data: {
         labels: labels,
         datasets: [
-          { label: 'Заявки', data: labels.map(function (d) { return byDay[d].n; }), borderColor: GOLD, backgroundColor: 'rgba(201,169,106,.15)', fill: true, tension: .35, yAxisID: 'y' },
-          { label: 'Сумма, ₽', data: labels.map(function (d) { return byDay[d].sum; }), borderColor: MUTED, borderDash: [5, 4], tension: .35, yAxisID: 'y1' }
+          { label: 'Заявки', data: keys.map(function (k) { return byDay[k].n; }), borderColor: GOLD, backgroundColor: 'rgba(201,169,106,.15)', fill: true, tension: .35, yAxisID: 'y' },
+          { label: 'Сумма, ₽', data: keys.map(function (k) { return byDay[k].sum; }), borderColor: MUTED, borderDash: [5, 4], tension: .35, yAxisID: 'y1' }
         ]
       },
       options: {
@@ -378,7 +379,7 @@
     chartDefaults(); destroyChart(key);
     state.charts[key] = new Chart(canvas, {
       type: 'bar',
-      data: { labels: labels, datasets: [{ data: counts, backgroundColor: GOLD, borderRadius: 2, barThickness: 20 }] },
+      data: { labels: labels, datasets: [{ data: counts, backgroundColor: GOLD, borderRadius: 2, barThickness: 12 }] },
       options: {
         indexAxis: 'y', responsive: true,
         scales: { x: { ticks: { precision: 0 }, grid: { color: LINE } }, y: { grid: { display: false } } },
@@ -411,8 +412,8 @@
     }
   }
 
-  /* ---------- метрики времени между статусами (под воронкой) ---------- */
-  function renderTiming(list) {
+  /* ---------- метрики времени между статусами (под воронкой и в CSV) ---------- */
+  function computeTiming(list) {
     function statusId(code) {
       var s = state.statuses.filter(function (x) { return x.code === code; })[0];
       return s ? s.id : null;
@@ -449,15 +450,86 @@
       if (!d.length) return { v: '—', n: 0 };
       return { v: fmt(d.reduce(function (s, x) { return s + x; }, 0) / d.length), n: d.length };
     }
-    var a = stat(diffs('new', ['confirmed']));
-    var b = stat(diffs('new', ['delivered', 'cancelled', 'returned']));
-    var c = stat(diffs('delivered', ['returned']));
-    var d = stat(diffs('new', ['cancelled']));
-    $('funnel-metrics').innerHTML =
-      '<li><span>Новый → Подтверждён<span class="hint">среднее время реакции на заявку</span></span><span class="val">' + a.v + (a.n ? ' · кол-во: ' + a.n : '') + '</span></li>' +
-      '<li><span>Новый → Завершён<span class="hint">до «Доставлен», «Отменён» или «Возврат»</span></span><span class="val">' + b.v + (b.n ? ' · кол-во: ' + b.n : '') + '</span></li>' +
-      '<li><span>Новый → Отменён<span class="hint">как быстро отменяют заказы</span></span><span class="val">' + d.v + (d.n ? ' · кол-во: ' + d.n : '') + '</span></li>' +
-      '<li><span>Доставлен → Возврат<span class="hint">возвраты после завершения</span></span><span class="val">' + c.v + (c.n ? ' · кол-во: ' + c.n : '') + '</span></li>';
+    return [
+      { label: 'Новый → Подтверждён', hint: 'среднее время реакции на заявку', st: stat(diffs('new', ['confirmed'])) },
+      { label: 'Новый → Завершён', hint: 'до «Доставлен», «Отменён» или «Возврат»', st: stat(diffs('new', ['delivered', 'cancelled', 'returned'])) },
+      { label: 'Новый → Отменён', hint: 'как быстро отменяют заказы', st: stat(diffs('new', ['cancelled'])) },
+      { label: 'Доставлен → Возврат', hint: 'возвраты после завершения', st: stat(diffs('delivered', ['returned'])) }
+    ];
+  }
+  function renderTiming(list) {
+    $('funnel-metrics').innerHTML = computeTiming(list).map(function (m) {
+      return '<li><span>' + m.label + '<span class="hint">' + m.hint + '</span></span>' +
+        '<span class="val">' + m.st.v + (m.st.n ? ' · кол-во: ' + m.st.n : '') + '</span></li>';
+    }).join('');
+  }
+
+  /* ---------- выгрузка статистики в CSV (все показатели периода) ---------- */
+  function exportStatsCsv() {
+    var list = periodOrders();
+    var periodLabel = $('s-period').selectedOptions[0].textContent;
+    var sum = list.reduce(function (s, o) { return s + o.total + o.delivery_cost; }, 0);
+    var paidSum = list.filter(function (o) { return o.is_paid; })
+      .reduce(function (s, o) { return s + o.total + o.delivery_cost; }, 0);
+    var cancelled = list.filter(function (o) { return statusByid(o.status_id).code === 'cancelled'; }).length;
+    var R = [];
+    R.push(['Sisku — выгрузка статистики'], ['Период', periodLabel], ['Дата выгрузки', new Date().toLocaleString('ru-RU')], []);
+    R.push(['1. Ключевые показатели'], ['Метрика', 'Значение'],
+      ['Заказов', list.length],
+      ['Сумма заявок, ₽', sum],
+      ['Оплачено, ₽', paidSum],
+      ['Средний чек, ₽', list.length ? Math.round(sum / list.length) : 0],
+      ['Отменено', cancelled + (list.length ? ' (' + Math.round(cancelled / list.length * 100) + '%)' : '')], []);
+    /* по дням — хронологически */
+    var byDay = {};
+    list.forEach(function (o) {
+      var k = new Date(o.created_at).toISOString().slice(0, 10);
+      byDay[k] = byDay[k] || { n: 0, sum: 0 };
+      byDay[k].n += 1; byDay[k].sum += o.total + o.delivery_cost;
+    });
+    var keys = Object.keys(byDay).sort();
+    R.push(['2. Заявки и суммы по дням'], ['Дата', 'Заказов', 'Сумма, ₽']);
+    keys.forEach(function (k) { R.push([k, byDay[k].n, byDay[k].sum]); });
+    R.push([]);
+    R.push(['3. Воронка статусов'], ['Статус', 'Заказов']);
+    state.statuses.forEach(function (s) {
+      R.push([s.name, list.filter(function (o) { return o.status_id === s.id; }).length]);
+    });
+    R.push([]);
+    R.push(['4. Топ товаров'], ['№', 'Товар', 'Кол-во', 'Сумма, ₽']);
+    var ids = {};
+    list.forEach(function (o) {
+      itemsOf(o.id).forEach(function (i) {
+        ids[i.title_snapshot] = ids[i.title_snapshot] || { n: 0, sum: 0 };
+        ids[i.title_snapshot].n += i.quantity;
+        ids[i.title_snapshot].sum += i.price * i.quantity;
+      });
+    });
+    Object.keys(ids).map(function (k) { return { k: k, v: ids[k] }; })
+      .sort(function (a, b) { return b.v.sum - a.v.sum; })
+      .forEach(function (t, i) { R.push([i + 1, t.k, t.v.n, t.v.sum]); });
+    R.push([]);
+    function block(title, refs, field) {
+      R.push([title], ['Способ', 'Заказов', 'Доля, %']);
+      var counts = refs.map(function (m) { return list.filter(function (o) { return o[field] === m.id; }).length; });
+      refs.forEach(function (m, i) {
+        R.push([m.name, counts[i], list.length ? Math.round(counts[i] / list.length * 100) : 0]);
+      });
+      R.push([]);
+    }
+    block('5. Способы доставки', state.deliveries, 'delivery_method_id');
+    block('6. Способы оплаты', state.payments, 'payment_method_id');
+    R.push(['7. Время между статусами'], ['Метрика', 'Среднее', 'Кол-во']);
+    computeTiming(list).forEach(function (m) { R.push([m.label, m.st.v, m.st.n]); });
+    var csv = R.map(function (row) {
+      return row.map(function (c) { return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(';');
+    }).join('\r\n');
+    var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'sisku-stats-' + $('s-period').value + '-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
   }
 
   /* ---------- вкладки и события ---------- */
@@ -488,6 +560,9 @@
       $('methods-seg').querySelectorAll('.seg-btn').forEach(function (x) { x.classList.toggle('active', x === b); });
       renderMethods(periodOrders());
     });
+
+    /* выгрузка статистики в CSV */
+    $('btn-stats-csv').addEventListener('click', exportStatsCsv);
 
     /* сортировка таблицы заказов кликом по заголовку */
     document.querySelectorAll('th.sortable').forEach(function (th) {

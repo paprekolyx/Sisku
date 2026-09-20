@@ -65,7 +65,7 @@
         var st = stock[i.variant_id];
         var short = st != null && st < i.quantity;
         var lowStock = st != null && st < 3;
-        html += '<tr>' +
+        html += '<tr data-order="' + o.id + '">' +
           (idx === 0
             ? '<td rowspan="' + list.length + '"><b>№ ' + o.id + '</b>' +
               '<div class="muted" style="font-size:12px">' + new Date(o.created_at).toLocaleDateString('ru-RU') + '</div></td>' +
@@ -102,7 +102,19 @@
       db.rpc('admin_set_status', { p_order_id: id, p_status_code: 'shipped', p_changed_by: 'assembly' })
         .then(function (res) {
           if (res.error) { alert('Не удалось перевести статус: ' + res.error.message); b.disabled = false; b.textContent = '→ Отправлен'; return; }
-          load();
+          /* подсветка всей группы строк заказа при наведении (rowspan-таблица) */
+    var asmBody = $('asm-body');
+    function setGroup(id) {
+      asmBody.querySelectorAll('tr.group-hover').forEach(function (r) { r.classList.remove('group-hover'); });
+      if (id) asmBody.querySelectorAll('tr[data-order="' + id + '"]').forEach(function (r) { r.classList.add('group-hover'); });
+    }
+    asmBody.addEventListener('mouseover', function (e) {
+      var tr = e.target.closest('tr[data-order]');
+      setGroup(tr ? tr.getAttribute('data-order') : null);
+    });
+    asmBody.addEventListener('mouseleave', function () { setGroup(null); });
+
+    load();
         })
         .catch(function (err) {
           alert('Ошибка сети: ' + err.message);
