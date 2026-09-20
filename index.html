@@ -146,30 +146,8 @@
         <p data-content="order.returns.text">7 дней на обмен или возврат после получения.</p>
       </div>
     </div>
-    <div class="size-wrap reveal">
-      <div class="subhead-site">Таблица размеров</div>
-      <div class="size-scroll">
-        <table class="size-table">
-          <thead>
-            <tr>
-              <th>Международный размер</th>
-              <th>Российский размер (женский)</th>
-              <th>Российский размер (мужской)</th>
-              <th>Обхват груди, см</th>
-              <th>Обхват талии, см</th>
-              <th>Обхват бёдер, см</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr><td><b>XS</b> <span class="muted">(Extra Small)</span></td><td>40–42</td><td>40–42</td><td>78–82</td><td>60–64</td><td>84–88</td></tr>
-            <tr><td><b>S</b> <span class="muted">(Small)</span></td><td>44</td><td>42–44</td><td>86–90</td><td>68–72</td><td>92–96</td></tr>
-            <tr><td><b>M</b> <span class="muted">(Medium)</span></td><td>46</td><td>46–48</td><td>90–94</td><td>72–76</td><td>96–100</td></tr>
-            <tr><td><b>L</b> <span class="muted">(Large)</span></td><td>48</td><td>50–52</td><td>94–98</td><td>76–80</td><td>100–104</td></tr>
-            <tr><td><b>XL</b> <span class="muted">(Extra Large)</span></td><td>52</td><td>54–56</td><td>102–106</td><td>84–88</td><td>108–112</td></tr>
-          </tbody>
-        </table>
-      </div>
-      <p class="muted size-note">Соотношение может незначительно отличаться в зависимости от бренда, типа кроя (оверсайз или приталенный) и страны производства. Для точного подбора ориентируйтесь на личные измерения сантиметровой лентой.</p>
+    <div style="margin-top:32px" class="reveal">
+      <button class="btn ghost" data-open="size-modal-backdrop">Таблица размеров</button>
     </div>
   </div>
 </section>
@@ -188,7 +166,7 @@
         <div class="contact-line"><dt>Телефон</dt><dd><a data-content-href="contacts.phone_href" data-content="contacts.phone_display" href="tel:+79991234567">+7 (999) 123-45-67</a></dd></div>
         <div class="contact-line"><dt>E-mail</dt><dd><a href="mailto:hello@sisku.example" data-content="contacts.email" data-content-href="contacts.email.href">hello@sisku.example</a></dd></div>
         <div class="contact-line"><dt>Мессенджер</dt><dd><a data-content-href="contacts.messenger_url" data-content="contacts.messenger" href="https://t.me/sisku_shop">Написать в Telegram</a></dd></div>
-        <div class="contact-line"><dt>Отслеживание</dt><dd><button class="linklike" data-open="track-modal-backdrop">Статус заказа по номеру</button></dd></div>
+        <div class="contact-line"><dt>Отслеживание</dt><dd><button class="btn accent" data-open="track-modal-backdrop" style="min-height:44px;padding:0 22px">Статус заказа по номеру</button></dd></div>
       </dl>
       <dl style="margin:0">
         <div class="contact-line"><dt>Шоурум</dt><dd data-content="contacts.city">Москва, шоурум по предварительной записи</dd></div>
@@ -196,9 +174,6 @@
         <div class="contact-line"><dt>Версия</dt><dd class="muted">черновой макет v<span id="ver-bottom"></span></dd></div>
       </dl>
     </div>
-    <p class="muted" style="margin:28px 0 0;font-size:13.5px">
-      Исходники макета: <a href="https://github.com/paprekolyx/Sisku" data-content-href="contacts.repo_url" target="_blank" rel="noopener">репозиторий на GitHub</a>
-    </p>
   </div>
 </section>
 
@@ -206,7 +181,7 @@
 <footer class="footer">
   <div class="container footer-in">
     <span data-content="footer.description">Sisku — мультибрендовый бутик одежды и парфюмерии.</span>
-    <span><button class="linklike" data-open="brandbook-modal-backdrop">Брендбук</button> · <a href="admin.html">Админ-панель (черновик)</a></span>
+    <span><button class="linklike" data-open="brandbook-modal-backdrop">Брендбук</button> · <a href="admin.html">Админ-панель</a></span>
     <span data-content="footer.copyright">© 2026 Sisku</span>
   </div>
 </footer>
@@ -311,9 +286,9 @@
           <div class="bb-swatches">
             <div class="bb-swatch"><div class="color" style="background:#FAF7F2"></div><div class="meta"><b>Фон</b>#FAF7F2</div></div>
             <div class="bb-swatch"><div class="color" style="background:#FFFFFF"></div><div class="meta"><b>Карточки</b>#FFFFFF</div></div>
-            <div class="bb-swatch"><div class="color" style="background:#1A1A1E"></div><div class="meta"><b>Текст</b>#1A1A1E · 16.2:1</div></div>
-            <div class="bb-swatch"><div class="color" style="background:#6F6A60"></div><div class="meta"><b>Второстепенный</b>#6F6A60 · 5.0:1</div></div>
-            <div class="bb-swatch"><div class="color" style="background:#7A5C2E"></div><div class="meta"><b>Бронза (акцент)</b>#7A5C2E · 5.8:1</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#1A1A1E"></div><div class="meta"><b>Текст</b>#1A1A1E</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#6F6A60"></div><div class="meta"><b>Второстепенный</b>#6F6A60</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#7A5C2E"></div><div class="meta"><b>Бронза (акцент)</b>#7A5C2E</div></div>
             <div class="bb-swatch"><div class="color" style="background:#E5E0D6"></div><div class="meta"><b>Линии</b>#E5E0D6</div></div>
           </div>
         </div>
@@ -322,9 +297,9 @@
           <div class="bb-swatches">
             <div class="bb-swatch"><div class="color" style="background:#0D0D10"></div><div class="meta"><b>Фон</b>#0D0D10</div></div>
             <div class="bb-swatch"><div class="color" style="background:#1D1D24"></div><div class="meta"><b>Карточки</b>#1D1D24</div></div>
-            <div class="bb-swatch"><div class="color" style="background:#F2EEE4"></div><div class="meta"><b>Текст</b>#F2EEE4 · 16.8:1</div></div>
-            <div class="bb-swatch"><div class="color" style="background:#A79FB0"></div><div class="meta"><b>Второстепенный</b>#A79FB0 · 7.6:1</div></div>
-            <div class="bb-swatch"><div class="color" style="background:#C9A96A"></div><div class="meta"><b>Шампань (акцент)</b>#C9A96A · 8.7:1</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#F2EEE4"></div><div class="meta"><b>Текст</b>#F2EEE4</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#A79FB0"></div><div class="meta"><b>Второстепенный</b>#A79FB0</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#C9A96A"></div><div class="meta"><b>Шампань (акцент)</b>#C9A96A</div></div>
             <div class="bb-swatch"><div class="color" style="background:#2A2A33"></div><div class="meta"><b>Линии</b>#2A2A33</div></div>
           </div>
         </div>
@@ -382,6 +357,37 @@
       <div class="subhead-site" style="margin-top:24px">История статусов</div>
       <ul class="track-list" id="track-list"></ul>
     </div>
+  </div>
+</div>
+
+<!-- ======================= МОДАЛКА ТАБЛИЦЫ РАЗМЕРОВ ======================= -->
+<div class="modal-backdrop" id="size-modal-backdrop">
+  <div class="modal" style="width:min(880px,100%);padding:40px 42px" role="dialog" aria-modal="true" aria-label="Таблица размеров">
+    <button class="modal-close" data-close="size-modal-backdrop" aria-label="Закрыть">×</button>
+    <div class="eyebrow">Подбор размера</div>
+    <h3 style="font-size:28px;margin-bottom:18px">Таблица размеров</h3>
+    <div class="size-scroll">
+      <table class="size-table">
+        <thead>
+          <tr>
+            <th>Международный размер</th>
+            <th>Российский размер (женский)</th>
+            <th>Российский размер (мужской)</th>
+            <th>Обхват груди, см</th>
+            <th>Обхват талии, см</th>
+            <th>Обхват бёдер, см</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><b>XS</b> <span class="muted">(Extra Small)</span></td><td>40–42</td><td>40–42</td><td>78–82</td><td>60–64</td><td>84–88</td></tr>
+          <tr><td><b>S</b> <span class="muted">(Small)</span></td><td>44</td><td>42–44</td><td>86–90</td><td>68–72</td><td>92–96</td></tr>
+          <tr><td><b>M</b> <span class="muted">(Medium)</span></td><td>46</td><td>46–48</td><td>90–94</td><td>72–76</td><td>96–100</td></tr>
+          <tr><td><b>L</b> <span class="muted">(Large)</span></td><td>48</td><td>50–52</td><td>94–98</td><td>76–80</td><td>100–104</td></tr>
+          <tr><td><b>XL</b> <span class="muted">(Extra Large)</span></td><td>52</td><td>54–56</td><td>102–106</td><td>84–88</td><td>108–112</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="muted size-note">Соотношение может незначительно отличаться в зависимости от бренда, типа кроя (оверсайз или приталенный) и страны производства. Для точного подбора ориентируйтесь на личные измерения сантиметровой лентой.</p>
   </div>
 </div>
 
