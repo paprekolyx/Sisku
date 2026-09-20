@@ -1,6 +1,6 @@
 # SISKU · черновой макет интернет-магазина
 
-> **v0.3.0-draft · 20.09.2026.** Макет для оценки дизайна и функций владельцем
+> **v0.4.0-draft · 20.09.2026.** Макет для оценки дизайна и функций владельцем
 > магазина. Название Sisku — временное заглушечное, будет заменено.
 > Не является боевым сайтом: юридические страницы, оплата и защита админки —
 > следующих версий (см. SECURITY.md).
@@ -42,15 +42,19 @@
 ## Структура
 
 ```
-index.html  admin.html  README.md  LICENSE.md  SECURITY.md
+index.html  admin.html  login.html  assembly.html  users.html
+README.md  LICENSE.md  SECURITY.md
 assets/css/      fonts.css · styles.css (витрина) · admin.css · ui.css (общие компоненты)
-assets/js/       config.js (КЛЮЧИ БАЗЫ — только здесь, SITE_VERSION) · ui.js · site.js · admin.js
+assets/js/       config.js (КЛЮЧИ БАЗЫ — только здесь, SITE_VERSION) · ui.js · site.js ·
+                 admin.js · mockauth.js (гейт входа) · admintheme.js · assembly.js · users.js
 assets/vendor/   supabase.min.js · chart.umd.min.js
 assets/fonts/    prata-*.woff2 · manrope-*.woff2
 assets/img/      hero.jpg · products/p001…p008.jpg (AI-заглушки для оценки дизайна)
 data/            brands.csv · categories.csv · products.csv · variants.csv
-supabase/        01_schema → 06_remove_paid_status (выполнять по порядку, все идемпотентны)
-docs/            setup-repo-pages.md · setup-supabase.md
+supabase/        01_schema → 08_text_fixes (выполнять по порядку, все идемпотентны)
+docs/            setup-repo-pages.md · setup-supabase.md · update-v040.md ·
+                 feature-proposals.md · code-review-v040.md
+tests/           check-repo.py — автоматическая проверка целостности репозитория
 ```
 
 ## Инструкции
