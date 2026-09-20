@@ -384,3 +384,56 @@ img { max-width: 100%; display: block; }
 
 /* v0.2.0: кастомные селекты в фильтрах сохраняют прижим вправо */
 #cat-chips + .cselect { margin-left: auto; }
+
+/* ==========================================================================
+   v0.4.0-draft
+   ========================================================================== */
+
+/* 1) hero: окно кадра выше — голова не обрезается шапкой */
+.hero-img { object-position: center 15%; }
+
+/* 2) подвал и текстовые кнопки без подчеркивания */
+.linklike { text-decoration: none; }
+.footer a, .footer .linklike { text-decoration: none; }
+.footer a:hover, .footer .linklike:hover { color: var(--accent); }
+
+/* 3) скроллбары в стиле сайта (тонкие, в цвет линий) */
+body, .modal, .drawer-body, .cselect-list, .table-wrap {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+body::-webkit-scrollbar, .modal::-webkit-scrollbar, .drawer-body::-webkit-scrollbar,
+.cselect-list::-webkit-scrollbar, .table-wrap::-webkit-scrollbar { width: 8px; height: 8px; }
+body::-webkit-scrollbar-track, .modal::-webkit-scrollbar-track, .drawer-body::-webkit-scrollbar-track,
+.cselect-list::-webkit-scrollbar-track, .table-wrap::-webkit-scrollbar-track { background: transparent; }
+body::-webkit-scrollbar-thumb, .modal::-webkit-scrollbar-thumb, .drawer-body::-webkit-scrollbar-thumb,
+.cselect-list::-webkit-scrollbar-thumb, .table-wrap::-webkit-scrollbar-thumb {
+  background: var(--line); border-radius: 4px;
+}
+body::-webkit-scrollbar-thumb:hover, .modal::-webkit-scrollbar-thumb:hover,
+.drawer-body::-webkit-scrollbar-thumb:hover, .cselect-list::-webkit-scrollbar-thumb:hover,
+.table-wrap::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* 4) форма заказа: селекты оплаты/доставки на всю ширину, без обрезания */
+.form-modal .cselect, .form-modal .cselect-btn { width: 100%; }
+.form-modal .cselect-btn { white-space: normal; }
+
+/* 5) брендбук: плашки палитры одинаковой высоты */
+.bb-swatches { grid-auto-rows: 1fr; }
+.bb-swatch { display: flex; flex-direction: column; height: 100%; }
+.bb-swatch .color { height: 56px; flex: none; }
+.bb-swatch .meta { flex: 1; min-height: 58px; }
+
+/* 6) брендбук: типографика карточками (референс учебного проекта) */
+.bb-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 640px) { .bb-type-grid { grid-template-columns: 1fr; } }
+.bb-type-card { border: 1px solid var(--line); background: var(--surface); padding: 26px 24px; }
+.bb-type-card .tag { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 14px; }
+.bb-type-card .sample { font-size: 30px; line-height: 1.2; margin-bottom: 8px; }
+.bb-type-card .sample.prata { font-family: var(--font-display); }
+.bb-type-card .note { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
+.bb-size { margin-bottom: 12px; }
+.bb-size:last-child { margin-bottom: 0; }
+.bb-size .val { font-size: 19px; }
+.bb-size .val.prata { font-family: var(--font-display); }
+.bb-size .hint { font-size: 12px; color: var(--muted); }

@@ -248,3 +248,37 @@ table.orders tbody tr:hover { background: var(--card); }
   .seg { width: 100%; }
   .seg-btn { flex: 1; text-align: center; }
 }
+
+/* ==========================================================================
+   v0.4.0-draft
+   ========================================================================== */
+
+/* кнопки-ссылки без подчеркивания; «На сайт» — в цвет вкладок */
+.btn, a.btn { text-decoration: none; }
+.topbar-actions .btn { color: var(--muted); }
+.topbar-actions .btn:hover { color: var(--accent); border-color: var(--accent); }
+
+/* сортировка в заголовках таблицы заказов */
+th.sortable { cursor: pointer; user-select: none; white-space: nowrap; }
+th.sortable:hover { color: var(--text); }
+th.sortable .sort-ic { color: var(--muted); font-size: 10px; margin-left: 6px; }
+th.sortable.active { color: var(--accent); }
+th.sortable.active .sort-ic { color: var(--accent); }
+
+/* заблокированные действия у отменённых заказов */
+.locked-note { color: var(--muted); font-size: 12.5px; margin-top: 10px; }
+
+/* роли пользователей */
+.role-pill { display: inline-block; padding: 3px 11px; border: 1px solid var(--line); border-radius: 999px; font-size: 11.5px; letter-spacing: .06em; color: var(--muted); white-space: nowrap; }
+.role-pill[data-role="admin"] { color: var(--accent); border-color: var(--accent); }
+
+/* страница входа (мок-авторизация черновика) */
+.login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
+.login-card { width: min(430px, 100%); border: 1px solid var(--line); background: var(--surface); padding: 38px 36px; }
+.login-card h1 { font-size: 26px; margin-bottom: 6px; }
+.login-hint { border: 1px dashed var(--line); border-radius: var(--radius); padding: 10px 14px; font-size: 13px; color: var(--muted); margin: 16px 0; }
+.login-hint b { color: var(--accent); }
+.login-card .field { margin-bottom: 14px; }
+.login-card input { width: 100%; min-height: 48px; padding: 10px 14px; background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: var(--radius); font-family: var(--font-body); font-size: 15px; }
+.login-card input:focus { border-color: var(--accent); outline: none; }
+.login-err { color: var(--danger); font-size: 13px; margin-top: 10px; }
