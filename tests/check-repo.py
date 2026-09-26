@@ -44,6 +44,7 @@ REQUIRED = [
     'supabase/06_remove_paid_status.sql', 'supabase/07_draft_v040.sql', 'supabase/08_text_fixes.sql', 'supabase/09_admin_bundles.sql',
     'assets/img/hero-dark.jpg', 'docs/update-v050.md', 'docs/update-v060.md',
     'shop.html', 'assets/js/shop.js', 'supabase/10_promo_and_tracking.sql', 'docs/update-v070.md',
+    'products.html', 'assets/js/products.js', 'supabase/11_product_management.sql', 'docs/update-v080.md',
     'docs/setup-repo-pages.md', 'docs/setup-supabase.md', 'docs/update-v040.md',
     'docs/feature-proposals.md', 'docs/code-review-v040.md',
 ] + ['assets/img/products/p00%d.jpg' % i for i in range(1, 9)]
