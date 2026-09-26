@@ -54,6 +54,11 @@ select:-webkit-autofill {
   display: none; border-radius: var(--radius, 3px);
 }
 .cselect.open .cselect-list { display: block; }
+.cselect-list { scrollbar-width: thin; scrollbar-color: var(--line, #e5e0d6) transparent; }
+.cselect-list::-webkit-scrollbar { width: 8px; }
+.cselect-list::-webkit-scrollbar-track { background: transparent; }
+.cselect-list::-webkit-scrollbar-thumb { background: var(--line, #e5e0d6); border-radius: 4px; }
+.cselect-list::-webkit-scrollbar-thumb:hover { background: var(--muted, #6f6a60); }
 .cselect-list li {
   padding: 10px 16px; font-size: 14px; color: var(--text, #1a1a1e);
   cursor: pointer; white-space: nowrap;
@@ -76,14 +81,15 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .stepper { position: relative; display: flex; }
 .stepper input { flex: 1; padding-right: 44px !important; }
 .st-btn {
-  position: absolute; right: 7px; width: 26px; height: 21px;
+  position: absolute; right: 7px; width: 26px; height: 18px;
   border: 1px solid var(--line, #e5e0d6); background: var(--surface, #fff);
   color: var(--muted, #6f6a60); border-radius: 3px; cursor: pointer;
   font-size: 13px; line-height: 1; padding: 0;
 }
 .st-btn:hover { color: var(--accent, #7a5c2e); border-color: var(--accent, #7a5c2e); }
-.st-btn.plus { top: 7px; }
-.st-btn.minus { bottom: 7px; }
+.st-btn.plus { top: 4px; }
+.st-btn.minus { bottom: 4px; }
+.stepper input { min-height: 46px; }
 
 .dp { position: relative; display: block; }
 .dp-native { position: absolute; opacity: 0; pointer-events: none; width: 1px; height: 1px; }

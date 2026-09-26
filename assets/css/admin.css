@@ -372,3 +372,24 @@ a.map-node:hover { border-color: var(--accent); color: var(--accent); }
 
 /* правка текстов сайта */
 .sc-val { max-width: 420px; font-size: 13px; }
+
+/* v0.9.1: фирменные скроллбары в админке (модалки, таблицы, списки) */
+body, .modal, .table-wrap {
+  scrollbar-width: thin;
+  scrollbar-color: var(--line) transparent;
+}
+body::-webkit-scrollbar, .modal::-webkit-scrollbar, .table-wrap::-webkit-scrollbar { width: 8px; height: 8px; }
+body::-webkit-scrollbar-track, .modal::-webkit-scrollbar-track, .table-wrap::-webkit-scrollbar-track { background: transparent; }
+body::-webkit-scrollbar-thumb, .modal::-webkit-scrollbar-thumb, .table-wrap::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
+body::-webkit-scrollbar-thumb:hover, .modal::-webkit-scrollbar-thumb:hover, .table-wrap::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* v0.9.1: пилюля статуса в карточке заказа читаема в обеих темах
+   (правило идёт ПОСЛЕ [data-code]-правил и перебивает их цвет) */
+.status-pill.status-pill-lg,
+.status-pill.status-pill-lg[data-code] {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--bg);
+}
+[data-theme="light"] .status-pill.status-pill-lg,
+[data-theme="light"] .status-pill.status-pill-lg[data-code] { color: #FFFFFF; }
