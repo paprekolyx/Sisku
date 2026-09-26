@@ -7,6 +7,9 @@
 <title>SISKU · Вход в админ-панель (черновик)</title>
 <meta name="robots" content="noindex">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230D0D10'/%3E%3Ctext x='32' y='44' font-family='Georgia' font-size='36' fill='%23C9A96A' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<script>/* тема до отрисовки — без «моргания» (паттерн витрины) */
+(function(){try{var t=localStorage.getItem('sisku_admin_theme');document.documentElement.setAttribute('data-theme', t==='light'?'light':'dark');}catch(e){}})();
+</script>
 <link rel="stylesheet" href="assets/css/fonts.css">
 <link rel="stylesheet" href="assets/css/admin.css">
 <link rel="stylesheet" href="assets/css/ui.css">
@@ -28,13 +31,16 @@
       <div class="login-err" id="login-err" hidden></div>
     </form>
     <p style="margin:18px 0 0;font-size:13px"><a href="index.html" style="color:var(--muted)">← Вернуться на сайт</a></p>
+    <p class="muted" style="margin:6px 0 0;font-size:12px">черновой макет v<span id="ver"></span></p>
   </div>
 </div>
 
+<script src="assets/js/config.js"></script>
 <script>
 (function () {
   'use strict';
   var MOCK_PASSWORD = '123456';   /* сознательно здесь, а не в базе: это макет */
+  document.getElementById('ver').textContent = SITE_VERSION;
   document.getElementById('login-form').addEventListener('submit', function (e) {
     e.preventDefault();
     var err = document.getElementById('login-err');

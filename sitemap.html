@@ -1,0 +1,113 @@
+
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SISKU · Карта сайта (черновик)</title>
+<meta name="robots" content="noindex">
+<script>/* тема до отрисовки — без «моргания» (паттерн витрины) */
+(function(){try{var t=localStorage.getItem('sisku_admin_theme');document.documentElement.setAttribute('data-theme', t==='light'?'light':'dark');}catch(e){}})();
+</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230D0D10'/%3E%3Ctext x='32' y='44' font-family='Georgia' font-size='36' fill='%23C9A96A' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<link rel="stylesheet" href="assets/css/ui.css">
+</head>
+<body>
+
+<div class="warnbar">Карта сайта черновика: все ссылки кликабельны и открывают соответствующие страницы.</div>
+
+<header class="topbar">
+  <div class="container topbar-in">
+    <a class="logo" href="index.html">SISKU<b>.</b></a>
+    <span class="muted" style="font-size:13px">админ-панель · макет</span>
+    <div class="tabs" role="tablist">
+      <a class="tab" href="admin.html">Заказы</a>
+      <a class="tab" href="admin.html#stats">Статистика</a>
+      <a class="tab" href="shop.html">Магазин</a>
+      <a class="tab active" href="manage.html">Управление</a>
+      <a class="tab" href="users.html">Пользователи</a>
+    </div>
+    <div class="topbar-actions">
+      <a class="btn" href="index.html" style="min-height:38px;padding:0 16px">На сайт</a>
+      <button class="btn" id="btn-logout" style="min-height:38px;padding:0 16px">Выйти</button>
+      <button class="icon-btn" id="admin-theme" title="Переключить тему" aria-label="Переключить тему">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <span class="ver">v<span id="ver"></span></span>
+    </div>
+  </div>
+</header>
+
+<main class="panel container">
+  <div class="seg subseg">
+    <a class="seg-btn" href="manage.html">Оплата и доставка</a>
+    <a class="seg-btn" href="sitecontent.html">Сайт</a>
+    <a class="seg-btn active" href="sitemap.html">Карта сайта</a>
+  </div>
+
+  <div class="map">
+    <div class="map-group">
+      <h3>Витрина (для покупателей)</h3>
+      <a class="map-node" href="index.html">Главная страница<span class="map-sub">
+        <a href="index.html#about">о магазине</a> · <a href="index.html#catalog">товары</a> ·
+        <a href="index.html#order-info">условия заказа</a> · <a href="index.html#contacts">контакты</a></span></a>
+      <span class="map-node static">Модальные окна витрины<span class="map-sub">корзина и оформление заказа · карточка товара · брендбук (из подвала) · таблица размеров · отслеживание заказа</span></span>
+      <div class="map-arrow">↓ заказ попадает в базу</div>
+      <a class="map-node" href="admin.html">Админ-панель (после входа)<span class="map-sub">вход — по ссылке ниже</span></a>
+    </div>
+
+    <div class="map-group">
+      <h3>Вход</h3>
+      <a class="map-node" href="login.html">Страница входа<span class="map-sub">черновик: пароль 123456, мок-сессия</span></a>
+      <div class="map-arrow">↓ сессия открывает разделы</div>
+      <a class="map-node" href="admin.html">Заказы</a>
+      <a class="map-node" href="admin.html#stats">Статистика</a>
+      <a class="map-node" href="shop.html">Магазин</a>
+      <a class="map-node" href="manage.html">Управление</a>
+      <a class="map-node" href="users.html">Пользователи</a>
+    </div>
+
+    <div class="map-group">
+      <h3>Заказы и производство</h3>
+      <a class="map-node" href="admin.html">Список заказов<span class="map-sub">фильтры, сортировка, пагинация, карточка заказа, статусы, CSV</span></a>
+      <a class="map-node" href="assembly.html">Сборка<span class="map-sub">обезличенные заказы в сборке, остатки склада, перевод в «Отправлен»</span></a>
+      <a class="map-node" href="admin.html#stats">Статистика<span class="map-sub">KPI, дни, воронка и время статусов, топ товаров, доставка/оплата, CSV</span></a>
+    </div>
+
+    <div class="map-group">
+      <h3>Магазин</h3>
+      <a class="map-node" href="shop.html">Промокоды</a>
+      <a class="map-node" href="categories.html">Категории</a>
+      <a class="map-node" href="brands.html">Бренды</a>
+      <a class="map-node" href="products.html">Товары<span class="map-sub">карточки, активация, фото, варианты, CSV</span></a>
+    </div>
+
+    <div class="map-group">
+      <h3>Управление</h3>
+      <a class="map-node" href="manage.html">Оплата и доставка<span class="map-sub">справочники способов, цены и вилки, активность</span></a>
+      <a class="map-node" href="sitecontent.html">Сайт<span class="map-sub">тексты site_content: hero, о магазине, условия, контакты, футер</span></a>
+      <a class="map-node static">Карта сайта<span class="map-sub">эта страница</span></a>
+      <a class="map-node" href="users.html">Пользователи<span class="map-sub">роли: администратор, сборщик, менеджер, бизнес-партнёр</span></a>
+    </div>
+
+    <div class="map-group">
+      <h3>Внешние системы</h3>
+      <span class="map-node static">GitHub Pages<span class="map-sub">хостинг статических страниц черновика</span></span>
+      <span class="map-node static">Supabase (проект sisku-draft)<span class="map-sub">каталог, заказы, промокоды, тексты, пользователи — в боевой версии переезжает в РФ</span></span>
+      <span class="map-node static">Telegram-бот и эквайринг<span class="map-sub">запланированы в боевой версии (волны M1–M2 миграции)</span></span>
+    </div>
+  </div>
+</main>
+
+<script src="assets/js/config.js"></script>
+<script src="assets/js/admintheme.js"></script>
+<script src="assets/js/mockauth.js"></script>
+<script>
+document.getElementById('ver').textContent = SITE_VERSION;
+if (window.initAdminTheme) window.initAdminTheme();
+document.getElementById('btn-logout').addEventListener('click', function () { if (window.mockLogout) window.mockLogout(); });
+</script>
+</body>
+</html>

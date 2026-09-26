@@ -1,0 +1,126 @@
+
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SISKU · Оплата и доставка (черновик)</title>
+<meta name="robots" content="noindex">
+<script>/* тема до отрисовки — без «моргания» (паттерн витрины) */
+(function(){try{var t=localStorage.getItem('sisku_admin_theme');document.documentElement.setAttribute('data-theme', t==='light'?'light':'dark');}catch(e){}})();
+</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230D0D10'/%3E%3Ctext x='32' y='44' font-family='Georgia' font-size='36' fill='%23C9A96A' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<link rel="stylesheet" href="assets/css/ui.css">
+</head>
+<body>
+
+<div class="warnbar"><b>Черновик:</b> способы оплаты и доставки видны в форме заказа сразу после сохранения. Отключённый способ исчезает из формы, история заказов сохраняется.</div>
+
+<header class="topbar">
+  <div class="container topbar-in">
+    <a class="logo" href="index.html">SISKU<b>.</b></a>
+    <span class="muted" style="font-size:13px">админ-панель · макет</span>
+    <div class="tabs" role="tablist">
+      <a class="tab" href="admin.html">Заказы</a>
+      <a class="tab" href="admin.html#stats">Статистика</a>
+      <a class="tab" href="shop.html">Магазин</a>
+      <a class="tab active" href="manage.html">Управление</a>
+      <a class="tab" href="users.html">Пользователи</a>
+    </div>
+    <div class="topbar-actions">
+      <a class="btn" href="index.html" style="min-height:38px;padding:0 16px">На сайт</a>
+      <button class="btn" id="btn-logout" style="min-height:38px;padding:0 16px">Выйти</button>
+      <button class="icon-btn" id="admin-theme" title="Переключить тему" aria-label="Переключить тему">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <span class="ver">v<span id="ver"></span></span>
+    </div>
+  </div>
+</header>
+
+<main class="panel container">
+  <div class="seg subseg">
+    <a class="seg-btn active" href="manage.html">Оплата и доставка</a>
+    <a class="seg-btn" href="sitecontent.html">Сайт</a>
+    <a class="seg-btn" href="sitemap.html">Карта сайта</a>
+  </div>
+
+  <!-- ================== ДОСТАВКА ================== -->
+  <div class="toolbar">
+    <span class="muted" style="font-size:13px">Способы доставки: цена берётся в заказ на сервере при оформлении</span>
+    <span class="spacer"></span>
+    <button class="btn primary" id="btn-new-delivery">Новый способ доставки</button>
+  </div>
+  <div class="table-wrap">
+    <table class="orders" style="min-width:860px">
+      <thead>
+        <tr><th>Название</th><th>Код</th><th>Цена от, ₽</th><th>Вилка до, ₽</th><th>Активен</th><th></th></tr>
+      </thead>
+      <tbody id="del-body"></tbody>
+    </table>
+  </div>
+
+  <!-- ================== ОПЛАТА ================== -->
+  <div class="toolbar" style="margin-top:36px">
+    <span class="muted" style="font-size:13px">Способы оплаты: показываются в форме заказа и в карточке заказа</span>
+    <span class="spacer"></span>
+    <button class="btn" id="btn-refresh">Обновить</button>
+    <button class="btn primary" id="btn-new-payment">Новый способ оплаты</button>
+  </div>
+  <div class="table-wrap">
+    <table class="orders" style="min-width:640px">
+      <thead>
+        <tr><th>Название</th><th>Код</th><th>Активен</th><th></th></tr>
+      </thead>
+      <tbody id="pay-body"></tbody>
+    </table>
+  </div>
+  <div class="err-box" id="mng-error" hidden></div>
+</main>
+
+<!-- ========== модалка способа ========== -->
+<div class="modal-backdrop" id="mng-modal-backdrop">
+  <div class="modal" style="width:min(560px,100%);padding:36px 38px" role="dialog" aria-modal="true" aria-label="Способ оплаты или доставки">
+    <button class="modal-close" id="mng-modal-close" aria-label="Закрыть">×</button>
+    <h2 id="mm-title" style="font-size:24px;margin-bottom:18px">Новый способ</h2>
+    <form id="mng-form" novalidate>
+      <div class="field" style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="mm-name">Название *</label>
+        <input id="mm-name" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="Курьер по Москве, 1–2 дня">
+        <div class="err" id="mm-name-err" style="color:var(--danger);font-size:12.5px;margin-top:5px" hidden></div>
+      </div>
+      <div class="field" id="mm-code-field" style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="mm-code">Код (латиницей) *</label>
+        <input id="mm-code" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="courier">
+        <div class="err" id="mm-code-err" style="color:var(--danger);font-size:12.5px;margin-top:5px" hidden></div>
+      </div>
+      <div class="field-row2" id="mm-prices" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="field" style="margin-bottom:14px">
+          <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="mm-base">Цена от, ₽</label>
+          <input id="mm-base" type="number" min="0" step="50" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="0 — бесплатно">
+        </div>
+        <div class="field" style="margin-bottom:14px">
+          <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="mm-max">Вилка до, ₽</label>
+          <input id="mm-max" type="number" min="0" step="50" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="пусто — цена известна заранее">
+        </div>
+      </div>
+      <div class="field" style="margin-bottom:18px;display:flex;align-items:center;gap:10px">
+        <input id="mm-active" type="checkbox" checked style="width:18px;height:18px;accent-color:var(--accent)">
+        <label for="mm-active" style="font-size:13px;color:var(--text)">Способ активен (виден в форме заказа)</label>
+      </div>
+      <button class="btn primary" type="submit" id="mm-submit" style="width:100%">Сохранить</button>
+      <div class="err-box" id="mm-error" style="margin-top:12px" hidden></div>
+    </form>
+  </div>
+</div>
+
+<script src="assets/vendor/supabase.min.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/admintheme.js"></script>
+<script src="assets/js/mockauth.js"></script>
+<script src="assets/js/manage.js"></script>
+</body>
+</html>

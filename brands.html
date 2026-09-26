@@ -1,0 +1,100 @@
+
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SISKU · Бренды (черновик)</title>
+<meta name="robots" content="noindex">
+<script>/* тема до отрисовки — без «моргания» (паттерн витрины) */
+(function(){try{var t=localStorage.getItem('sisku_admin_theme');document.documentElement.setAttribute('data-theme', t==='light'?'light':'dark');}catch(e){}})();
+</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230D0D10'/%3E%3Ctext x='32' y='44' font-family='Georgia' font-size='36' fill='%23C9A96A' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<link rel="stylesheet" href="assets/css/ui.css">
+</head>
+<body>
+
+<div class="warnbar"><b>Черновик:</b> отключённый бренд исчезает из фильтров витрины, но товары бренда остаются в каталоге до их скрытия.</div>
+
+<header class="topbar">
+  <div class="container topbar-in">
+    <a class="logo" href="index.html">SISKU<b>.</b></a>
+    <span class="muted" style="font-size:13px">админ-панель · макет</span>
+    <div class="tabs" role="tablist">
+      <a class="tab" href="admin.html">Заказы</a>
+      <a class="tab" href="admin.html#stats">Статистика</a>
+      <a class="tab active" href="shop.html">Магазин</a>
+      <a class="tab" href="manage.html">Управление</a>
+      <a class="tab" href="users.html">Пользователи</a>
+    </div>
+    <div class="topbar-actions">
+      <a class="btn" href="index.html" style="min-height:38px;padding:0 16px">На сайт</a>
+      <button class="btn" id="btn-logout" style="min-height:38px;padding:0 16px">Выйти</button>
+      <button class="icon-btn" id="admin-theme" title="Переключить тему" aria-label="Переключить тему">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <span class="ver">v<span id="ver"></span></span>
+    </div>
+  </div>
+</header>
+
+<main class="panel container">
+  <div class="seg subseg">
+    <a class="seg-btn" href="shop.html">Промокоды</a>
+    <a class="seg-btn" href="categories.html">Категории</a>
+    <a class="seg-btn active" href="brands.html">Бренды</a>
+    <a class="seg-btn" href="products.html">Товары</a>
+  </div>
+  <div class="toolbar">
+    <span class="muted" style="font-size:13px">Бренды витрины: мультибрендовый бутик — фильтр по брендам на главной</span>
+    <span class="spacer"></span>
+    <button class="btn" id="btn-refresh">Обновить</button>
+    <button class="btn primary" id="btn-new-brand">Новый бренд</button>
+  </div>
+  <div class="table-wrap">
+    <table class="orders" style="min-width:760px">
+      <thead>
+        <tr><th>Название</th><th>Страна</th><th>Товаров</th><th>Активен</th><th></th></tr>
+      </thead>
+      <tbody id="brand-body"></tbody>
+    </table>
+  </div>
+  <div class="empty" id="brand-empty" hidden>Брендов пока нет — создайте первый.</div>
+  <div class="err-box" id="brand-error" hidden></div>
+</main>
+
+<!-- ========== модалка бренда ========== -->
+<div class="modal-backdrop" id="brand-modal-backdrop">
+  <div class="modal" style="width:min(520px,100%);padding:36px 38px" role="dialog" aria-modal="true" aria-label="Бренд">
+    <button class="modal-close" id="brand-modal-close" aria-label="Закрыть">×</button>
+    <h2 id="bm-title" style="font-size:24px;margin-bottom:18px">Новый бренд</h2>
+    <form id="brand-form" novalidate>
+      <div class="field" style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="bm-name">Название *</label>
+        <input id="bm-name" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="Aurelle">
+        <div class="err" id="bm-name-err" style="color:var(--danger);font-size:12.5px;margin-top:5px" hidden></div>
+      </div>
+      <div class="field" style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="bm-country">Страна</label>
+        <input id="bm-country" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="Франция">
+      </div>
+      <div class="field" style="margin-bottom:18px;display:flex;align-items:center;gap:10px">
+        <input id="bm-active" type="checkbox" checked style="width:18px;height:18px;accent-color:var(--accent)">
+        <label for="bm-active" style="font-size:13px;color:var(--text)">Бренд активен (виден в фильтре витрины)</label>
+      </div>
+      <button class="btn primary" type="submit" id="bm-submit" style="width:100%">Сохранить</button>
+      <div class="err-box" id="bm-error" style="margin-top:12px" hidden></div>
+    </form>
+  </div>
+</div>
+
+<script src="assets/vendor/supabase.min.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/admintheme.js"></script>
+<script src="assets/js/mockauth.js"></script>
+<script src="assets/js/brands.js"></script>
+</body>
+</html>
