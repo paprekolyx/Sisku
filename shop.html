@@ -38,6 +38,10 @@
 </header>
 
 <main class="panel container">
+  <div class="seg" style="margin-bottom:20px">
+    <a class="seg-btn active" href="shop.html">Промокоды и категории</a>
+    <a class="seg-btn" href="products.html">Товары</a>
+  </div>
   <div class="toolbar">
     <span class="muted" style="font-size:13px">Промокоды: скидки применятся на сервере при оформлении заказа</span>
     <span class="spacer"></span>
@@ -58,7 +62,50 @@
   <div class="loading" id="promo-loading">Загружаем промокоды…</div>
   <div class="empty" id="promo-empty" hidden>Промокодов пока нет — создайте первый.</div>
   <div class="err-box" id="promo-error" hidden></div>
+
+  <!-- ======================= КАТЕГОРИИ ======================= -->
+  <div class="subhead" style="margin-top:44px">Категории каталога</div>
+  <div class="toolbar">
+    <span class="muted" style="font-size:13px">Категории витрины: влияют на фильтры и на структуру каталога</span>
+    <span class="spacer"></span>
+    <button class="btn primary" id="btn-new-cat">Новая категория</button>
+  </div>
+  <div class="table-wrap">
+    <table class="orders" style="min-width:760px">
+      <thead>
+        <tr><th>Название</th><th>Slug</th><th>Описание</th><th>Товаров</th><th></th></tr>
+      </thead>
+      <tbody id="cat-body"></tbody>
+    </table>
+  </div>
+  <div class="empty" id="cat-empty" hidden>Категорий пока нет.</div>
 </main>
+
+<!-- ========== модалка категории ========== -->
+<div class="modal-backdrop" id="cat-modal-backdrop">
+  <div class="modal" style="width:min(520px,100%);padding:36px 38px" role="dialog" aria-modal="true" aria-label="Категория">
+    <button class="modal-close" id="cat-modal-close" aria-label="Закрыть">×</button>
+    <h2 id="cm-title" style="font-size:24px;margin-bottom:18px">Новая категория</h2>
+    <form id="cat-form" novalidate>
+      <div class="field" style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="cm-name">Название *</label>
+        <input id="cm-name" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="Например, Верхняя одежда">
+        <div class="err" id="cm-name-err" style="color:var(--danger);font-size:12.5px;margin-top:5px" hidden></div>
+      </div>
+      <div class="field" style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="cm-slug">Slug (адрес) *</label>
+        <input id="cm-slug" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="verhnyaya-odezhda">
+        <div class="err" id="cm-slug-err" style="color:var(--danger);font-size:12.5px;margin-top:5px" hidden></div>
+      </div>
+      <div class="field" style="margin-bottom:18px">
+        <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="cm-desc">Описание</label>
+        <input id="cm-desc" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="Короткое описание для витрины">
+      </div>
+      <button class="btn primary" type="submit" id="cm-submit" style="width:100%">Сохранить</button>
+      <div class="err-box" id="cm-error" style="margin-top:12px" hidden></div>
+    </form>
+  </div>
+</div>
 
 <!-- ========== модалка промокода ========== -->
 <div class="modal-backdrop" id="promo-modal-backdrop">

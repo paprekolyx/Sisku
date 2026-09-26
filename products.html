@@ -1,0 +1,130 @@
+
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SISKU · Товары (черновик)</title>
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230D0D10'/%3E%3Ctext x='32' y='44' font-family='Georgia' font-size='36' fill='%23C9A96A' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<link rel="stylesheet" href="assets/css/ui.css">
+</head>
+<body>
+
+<div class="warnbar"><b>Черновик:</b> управление каталогом без авторизации. Загрузка фото — черновая: картинка сжимается в браузере и хранится прямо в записи товара; боевое хранилище изображений появится в версии для продажи.</div>
+
+<header class="topbar">
+  <div class="container topbar-in">
+    <a class="logo" href="index.html">SISKU<b>.</b></a>
+    <span class="muted" style="font-size:13px">админ-панель · макет</span>
+    <div class="tabs" role="tablist">
+      <a class="tab" href="admin.html">Заказы</a>
+      <a class="tab" href="admin.html#stats">Статистика</a>
+      <a class="tab" href="assembly.html">Сборка</a>
+      <a class="tab active" href="shop.html">Магазин</a>
+      <a class="tab" href="users.html">Пользователи</a>
+    </div>
+    <div class="topbar-actions">
+      <a class="btn" href="index.html" style="min-height:38px;padding:0 16px">На сайт</a>
+      <button class="btn" id="btn-logout" style="min-height:38px;padding:0 16px">Выйти</button>
+      <button class="icon-btn" id="admin-theme" title="Переключить тему" aria-label="Переключить тему">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <span class="ver">v<span id="ver"></span></span>
+    </div>
+  </div>
+</header>
+
+<main class="panel container">
+  <div class="seg" style="margin-bottom:20px">
+    <a class="seg-btn" href="shop.html">Промокоды и категории</a>
+    <a class="seg-btn active" href="products.html">Товары</a>
+  </div>
+  <div class="toolbar">
+    <input type="search" id="p-search" placeholder="Поиск: артикул или название" aria-label="Поиск товаров">
+    <select id="p-cat" aria-label="Фильтр по категории"><option value="">Все категории</option></select>
+    <span class="spacer"></span>
+    <button class="btn" id="btn-refresh">Обновить</button>
+    <button class="btn" id="btn-csv-template">Шаблон CSV</button>
+    <button class="btn" id="btn-csv-import">Загрузить CSV</button>
+    <input type="file" id="csv-file" accept=".csv,text/csv" hidden>
+    <button class="btn primary" id="btn-new-product">Новый товар</button>
+  </div>
+  <div class="err-box" id="import-report" hidden style="white-space:pre-line"></div>
+  <div class="table-wrap">
+    <table class="orders" style="min-width:1020px">
+      <thead>
+        <tr>
+          <th>Фото</th><th>Артикул</th><th>Название</th><th>Категория</th><th>Бренд</th>
+          <th>Цена</th><th>Остаток</th><th>Активен</th><th></th>
+        </tr>
+      </thead>
+      <tbody id="prod-body"></tbody>
+    </table>
+  </div>
+  <div class="loading" id="prod-loading">Загружаем товары…</div>
+  <div class="empty" id="prod-empty" hidden>Товаров пока нет — создайте карточку или загрузите CSV.</div>
+  <div class="err-box" id="prod-error" hidden></div>
+</main>
+
+<!-- ========== модалка товара: форма + предпросмотр ========== -->
+<div class="modal-backdrop" id="prod-modal-backdrop">
+  <div class="modal prod-modal" role="dialog" aria-modal="true" aria-label="Карточка товара">
+    <button class="modal-close" id="prod-modal-close" aria-label="Закрыть">×</button>
+    <h2 id="pm-title" style="font-size:24px;margin-bottom:18px">Новый товар</h2>
+    <div class="prod-form-grid">
+      <form id="prod-form" novalidate>
+        <div class="field-row2">
+          <div class="field"><label for="pf-article">Артикул *</label><input id="pf-article" placeholder="10005"><div class="err" id="pf-article-err" hidden></div></div>
+          <div class="field"><label for="pf-price">Цена, ₽ *</label><input id="pf-price" type="number" min="0" step="100" placeholder="24900"><div class="err" id="pf-price-err" hidden></div></div>
+        </div>
+        <div class="field"><label for="pf-name">Название *</label><input id="pf-name" placeholder="Пальто Nordline из шерсти и кашемира"><div class="err" id="pf-name-err" hidden></div></div>
+        <div class="field-row2">
+          <div class="field"><label for="pf-brand">Бренд</label><select id="pf-brand"><option value="">— без бренда —</option></select></div>
+          <div class="field"><label for="pf-cat">Категория *</label><select id="pf-cat"><option value="">— выберите —</option></select><div class="err" id="pf-cat-err" hidden></div></div>
+        </div>
+        <div class="field"><label for="pf-desc">Описание</label><textarea id="pf-desc" placeholder="Состав, крой, особенности — без запятых не обязательно, CSV-импорт сам экранирует"></textarea></div>
+        <div class="field">
+          <label for="pf-img-file">Фото (черновая загрузка)</label>
+          <div class="img-row">
+            <input type="file" id="pf-img-file" accept="image/*">
+            <input id="pf-img-url" placeholder="или ссылка/путь: assets/img/products/p009.jpg">
+          </div>
+          <div class="muted" style="font-size:12px;margin-top:6px">Файл сжимается в браузере до ~320px и хранится в записи товара (черновик). Ссылка/путь приоритетнее файла, если заполнить оба.</div>
+        </div>
+        <div class="field">
+          <label>Варианты (размеры / объёмы) и остатки</label>
+          <div id="pf-variants"></div>
+          <button type="button" class="btn ghost small" id="pf-var-add">+ вариант</button>
+        </div>
+        <div class="field" style="display:flex;align-items:center;gap:10px">
+          <input id="pf-active" type="checkbox" checked style="width:18px;height:18px;accent-color:var(--accent)">
+          <label for="pf-active" style="font-size:13px;color:var(--text)">Товар активен (виден на витрине)</label>
+        </div>
+        <button class="btn primary" type="submit" id="pf-submit" style="width:100%">Сохранить товар</button>
+        <div class="err-box" id="pf-error" style="margin-top:12px" hidden></div>
+      </form>
+      <aside class="prod-preview">
+        <div class="subhead-sm">Предпросмотр на витрине</div>
+        <div class="pv-card">
+          <div class="pv-media"><img id="pv-img" src="" alt="Предпросмотр товара"></div>
+          <div class="pv-brand" id="pv-brand"></div>
+          <div class="pv-name" id="pv-name">Название товара</div>
+          <div class="pv-price" id="pv-price">0 ₽</div>
+          <div class="pv-stock" id="pv-stock"></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<script src="assets/vendor/supabase.min.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/admintheme.js"></script>
+<script src="assets/js/mockauth.js"></script>
+<script src="assets/js/products.js"></script>
+</body>
+</html>
