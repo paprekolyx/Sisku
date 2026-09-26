@@ -52,7 +52,7 @@
         '<td class="tabular muted">' + (m.price_max ? money(m.price_max) : '—') + '</td>' +
         '<td><button class="btn" data-toggle="' + m.id + '" data-kind="delivery" style="min-height:32px;padding:0 12px">' +
           (m.is_active ? 'активен' : 'отключён') + '</button></td>' +
-        '<td><button class="btn" data-edit="' + m.id + '" data-kind="delivery" style="min-height:34px;padding:0 14px">Править</button></td>' +
+        '<td><button class="btn" data-del="' + m.id + '" data-kind="delivery" style="min-height:34px;padding:0 14px">Удалить</button></td>' +
       '</tr>';
     }).join('');
     $('pay-body').innerHTML = state.payments.map(function (m) {
@@ -61,7 +61,7 @@
         '<td class="muted" style="font-size:13px">' + esc(m.code) + '</td>' +
         '<td><button class="btn" data-toggle="' + m.id + '" data-kind="payment" style="min-height:32px;padding:0 12px">' +
           (m.is_active ? 'активен' : 'отключён') + '</button></td>' +
-        '<td><button class="btn" data-edit="' + m.id + '" data-kind="payment" style="min-height:34px;padding:0 14px">Править</button></td>' +
+        '<td><button class="btn" data-del="' + m.id + '" data-kind="payment" style="min-height:34px;padding:0 14px">Удалить</button></td>' +
       '</tr>';
     }).join('');
   }
@@ -151,6 +151,21 @@
           var table = kind === 'delivery' ? 'delivery_methods' : 'payment_methods';
           db.from(table).update({ is_active: !m.is_active }).eq('id', id).then(function (res) {
             if (res.error) { alert('Не удалось переключить: ' + res.error.message); tg.disabled = false; return; }
+            load();
+          });
+          return;
+        }
+        var del = e.target.closest('button[data-del]');
+        if (del) {
+          var kindD = del.getAttribute('data-kind');
+          var idD = Number(del.getAttribute('data-del'));
+          var listD = kindD === 'delivery' ? state.deliveries : state.payments;
+          var mD = listD.filter(function (x) { return x.id === idD; })[0];
+          var tableD = kindD === 'delivery' ? 'delivery_methods' : 'payment_methods';
+          if (!confirm('Удалить способ «' + (mD ? mD.name : '') + '»? Способ, который уже используется в заказах, база удалить не даст.')) return;
+          del.disabled = true;
+          db.from(tableD).delete().eq('id', idD).then(function (res) {
+            if (res.error) { alert('Не удалось удалить: ' + res.error.message); del.disabled = false; return; }
             load();
           });
           return;

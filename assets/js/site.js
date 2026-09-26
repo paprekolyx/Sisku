@@ -266,7 +266,7 @@
     var line = null;
     state.cart.forEach(function (l) { if (l.product_id === productId && l.variant_id === variantId) line = l; });
     if (line) {
-      if (line.qty >= v.stock) { toast('Больше нет: остаток ' + v.stock + ' шт.'); return; }
+      if (line.qty >= v.stock) { toast('На складе ' + v.stock + ' шт. этого размера — в корзине уже ' + line.qty + ', добавить больше нельзя'); return; }
       line.qty += 1;
     } else {
       state.cart.push({ product_id: productId, variant_id: variantId, qty: 1 });
@@ -560,7 +560,7 @@
       if (!line) return;
       var v = findVariant(line.product_id, line.variant_id);
       if (b.getAttribute('data-act') === 'plus') {
-        if (v && line.qty >= v.stock) { toast('Остаток: ' + v.stock + ' шт.'); return; }
+        if (v && line.qty >= v.stock) { toast('На складе только ' + v.stock + ' шт. этого размера — добавить больше нельзя'); return; }
         line.qty += 1;
       } else if (b.getAttribute('data-act') === 'minus') {
         line.qty -= 1;
