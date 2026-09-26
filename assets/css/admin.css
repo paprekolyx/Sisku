@@ -317,3 +317,38 @@ th.sortable.active .sort-ic { color: var(--accent); }
 /* пагинация таблицы заказов */
 .pager { display: flex; gap: 14px; align-items: center; justify-content: flex-end; margin-top: 14px; }
 .pager .btn[disabled] { opacity: .4; cursor: not-allowed; }
+
+/* ==========================================================================
+   v0.8.0-draft: управление товарами и категориями
+   ========================================================================== */
+a.seg-btn { text-decoration: none; }
+.thumb { width: 44px; height: 56px; object-fit: cover; border: 1px solid var(--line); display: block; }
+
+.prod-modal { width: min(1020px, 100%); padding: 36px 38px; }
+.prod-form-grid { display: grid; grid-template-columns: 1.25fr .75fr; gap: 28px; }
+@media (max-width: 860px) { .prod-form-grid { grid-template-columns: 1fr; } }
+.field-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.prod-modal .field { margin-bottom: 14px; }
+.prod-modal .field > label { display: block; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
+.prod-modal .field input, .prod-modal .field textarea {
+  width: 100%; min-height: 46px; padding: 10px 14px; background: var(--card); color: var(--text);
+  border: 1px solid var(--line); border-radius: 3px; font-family: var(--font-body); font-size: 14px;
+}
+.prod-modal .field textarea { min-height: 84px; resize: vertical; }
+.prod-modal .field input:focus, .prod-modal .field textarea:focus { border-color: var(--accent); outline: none; }
+.prod-modal .field .err { color: var(--danger); font-size: 12.5px; margin-top: 5px; }
+.img-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center; }
+.img-row input[type="file"] { border: 0; background: transparent; padding: 0; min-height: 0; font-size: 12.5px; color: var(--muted); }
+.var-row { display: grid; grid-template-columns: 1fr 120px 44px; gap: 8px; margin-bottom: 8px; }
+.var-row input { width: 100%; min-height: 42px; padding: 8px 12px; background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 3px; font-family: var(--font-body); font-size: 13.5px; }
+.var-row .var-del { min-height: 42px; padding: 0 10px; }
+
+.prod-preview { border: 1px solid var(--line); background: var(--bg); padding: 18px; align-self: start; position: sticky; top: 84px; }
+.pv-card { border: 1px solid var(--line); background: var(--surface); }
+.pv-media { aspect-ratio: 3/4; background: var(--card); }
+.pv-media img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.pv-brand { margin: 12px 14px 4px; font-size: 10.5px; letter-spacing: .2em; text-transform: uppercase; color: var(--muted); }
+.pv-name { margin: 0 14px 6px; font-size: 14px; font-weight: 600; color: var(--text); }
+.pv-price { margin: 0 14px 4px; font-size: 14px; font-weight: 700; color: var(--text); font-variant-numeric: tabular-nums; }
+.pv-stock { margin: 0 14px 14px; font-size: 12px; color: var(--muted); }
+.pv-stock.out { color: var(--danger); }
