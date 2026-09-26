@@ -13,9 +13,8 @@
     return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
   };
   window.initAdminTheme = function (onChange) {
-    var saved = null;
-    try { saved = localStorage.getItem(KEY); } catch (e) {}
-    apply(saved === 'light' ? 'light' : 'dark');
+    /* тему ставит инлайн-скрипт в <head> ДО первой отрисовки — моргания нет;
+       здесь только привязка переключателя */
     var btn = document.getElementById('admin-theme');
     if (btn) btn.addEventListener('click', function () {
       var cur = window.currentAdminTheme() === 'light' ? 'dark' : 'light';
