@@ -70,6 +70,63 @@
 
 </main>
 
+<!-- ========== модалка промокода ========== -->
+<div class="modal-backdrop" id="promo-modal-backdrop">
+  <div class="modal" style="width:min(600px,100%);padding:36px 38px" role="dialog" aria-modal="true" aria-label="Промокод">
+    <button class="modal-close" id="promo-modal-close" aria-label="Закрыть">×</button>
+    <h2 id="pm-title" style="font-size:24px;margin-bottom:18px">Новый промокод</h2>
+    <form id="promo-form" novalidate>
+      <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="field" style="margin-bottom:14px">
+          <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="pc-code">Код *</label>
+          <input id="pc-code" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px;text-transform:uppercase" placeholder="SISKU10">
+          <div class="err" id="pc-code-err" style="color:var(--danger);font-size:12.5px;margin-top:5px" hidden></div>
+        </div>
+        <div class="field" style="margin-bottom:14px">
+          <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="pc-type">Тип скидки *</label>
+          <select id="pc-type">
+            <option value="percent">Процент от суммы</option>
+            <option value="fixed">Фиксированная сумма</option>
+          </select>
+        </div>
+      </div>
+      <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="field" style="margin-bottom:14px">
+          <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="pc-value">Значение *</label>
+          <input id="pc-value" type="number" min="1" step="1" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="10 (% или ₽)">
+          <div class="err" id="pc-value-err" style="color:var(--danger);font-size:12.5px;margin-top:5px" hidden></div>
+        </div>
+        <div class="field" style="margin-bottom:14px">
+          <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="pc-min">Минимальная сумма заказа, ₽</label>
+          <input id="pc-min" type="number" min="0" step="100" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="0 — без ограничения">
+        </div>
+      </div>
+      <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="field" style="margin-bottom:14px">
+          <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="pc-from">Действует с</label>
+          <input id="pc-from" type="date" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px">
+        </div>
+        <div class="field" style="margin-bottom:14px">
+          <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="pc-until">Действует по</label>
+          <input id="pc-until" type="date" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px">
+        </div>
+      </div>
+      <div class="field-row" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="field" style="margin-bottom:14px">
+          <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="pc-limit">Лимит использований</label>
+          <input id="pc-limit" type="number" min="1" step="1" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="пусто — без лимита">
+        </div>
+        <div class="field" style="margin-bottom:14px;display:flex;align-items:center;gap:10px;padding-top:24px">
+          <input id="pc-active" type="checkbox" checked style="width:18px;height:18px;accent-color:var(--accent)">
+          <label for="pc-active" style="font-size:13px;color:var(--text)">Промокод активен</label>
+        </div>
+      </div>
+      <button class="btn primary" type="submit" id="pc-submit" style="width:100%">Сохранить</button>
+      <div class="err-box" id="pc-error" style="margin-top:12px" hidden></div>
+    </form>
+  </div>
+</div>
+
 <script src="assets/vendor/supabase.min.js"></script>
 <script src="assets/js/config.js"></script>
 <script src="assets/js/ui.js"></script>
