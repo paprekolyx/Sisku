@@ -146,7 +146,7 @@
     $('promo-modal-backdrop').addEventListener('click', function (e) { if (e.target === $('promo-modal-backdrop')) closeModal(); });
     $('promo-form').addEventListener('submit', save);
     $('promo-body').addEventListener('click', function (e) {
-      var ed = e.target.closest('button[data-edit]');
+      var ed = e.target.closest('[data-edit]');
       if (ed) { openModal(Number(ed.getAttribute('data-edit'))); return; }
       var tg = e.target.closest('button[data-toggle]');
       if (tg) {

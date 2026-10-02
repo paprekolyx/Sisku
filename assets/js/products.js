@@ -9,7 +9,7 @@
   'use strict';
 
   var state = {
-    products: [], variants: {}, brands: [], cats: [],
+    products: [], variants: {}, brands: [], cats: [], reserved: {},
     editingId: null, saving: false, imgData: null
   };
 
@@ -32,6 +32,9 @@
   function stockOf(productId) {
     return (state.variants[productId] || []).reduce(function (s, v) { return s + v.stock; }, 0);
   }
+  function reservedOf(productId) {
+    return (state.variants[productId] || []).reduce(function (s, v) { return s + (state.reserved[v.id] || 0); }, 0);
+  }
 
   /* ---------- список ---------- */
   function load() {
@@ -48,7 +51,8 @@
       db.from('products').select('*').order('article'),
       db.from('product_variants').select('*').order('sort_order'),
       db.from('brands').select('*').order('name'),
-      db.from('categories').select('*').order('id')
+      db.from('categories').select('*').order('id'),
+      db.rpc('draft_reserved_map')
     ]).then(function (res) {
       res.forEach(function (r) { if (r.error) throw r.error; });
       state.products = res[0].data || [];
@@ -58,6 +62,8 @@
       });
       state.brands = res[2].data || [];
       state.cats = res[3].data || [];
+      state.reserved = {};
+      (res[4].data || []).forEach(function (r) { state.reserved[r.variant_id] = Number(r.reserved) || 0; });
       $('p-cat').innerHTML = '<option value="">Все категории</option>' +
         state.cats.map(function (c) { return '<option value="' + c.id + '">' + esc(c.name) + '</option>'; }).join('');
       $('pf-brand').innerHTML = '<option value="">— без бренда —</option>' +
@@ -97,6 +103,7 @@
         '<td class="muted" style="font-size:13px">' + esc(brandName(p.brand_id)) + '</td>' +
         '<td class="tabular">' + money(p.price) + '</td>' +
         '<td class="tabular' + (stock < 3 ? ' low-stock' : '') + '">' + stock + '</td>' +
+        '<td class="tabular muted">' + reservedOf(p.id) + '</td>' +
         '<td><button class="btn" data-active="' + p.id + '" style="min-height:32px;padding:0 12px">' +
           (p.is_active ? 'активен' : 'скрыт') + '</button></td>' +
         '<td><button class="btn" data-edit="' + p.id + '" style="min-height:34px;padding:0 14px">Карточка</button></td>' +
