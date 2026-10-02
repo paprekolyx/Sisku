@@ -48,6 +48,7 @@ REQUIRED = [
     'categories.html', 'brands.html', 'manage.html', 'sitecontent.html', 'sitemap.html',
     'assets/js/categories.js', 'assets/js/brands.js', 'assets/js/manage.js', 'assets/js/sitecontent.js',
     'supabase/12_manage_policies.sql', 'docs/update-v090.md', 'docs/update-v091.md',
+    'looks.html', 'assets/js/looks.js', 'supabase/13_reserve_and_looks.sql', 'docs/update-v100.md',
     'docs/setup-repo-pages.md', 'docs/setup-supabase.md', 'docs/update-v040.md',
     'docs/feature-proposals.md', 'docs/code-review-v040.md',
 ] + ['assets/img/products/p00%d.jpg' % i for i in range(1, 9)]
