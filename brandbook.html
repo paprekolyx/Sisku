@@ -1,0 +1,230 @@
+
+<!DOCTYPE html>
+<html lang="ru" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SISKU · Брендбук (черновик)</title>
+<meta name="robots" content="noindex">
+<script>/* тема до отрисовки — без «моргания» (паттерн витрины) */
+(function(){try{var t=localStorage.getItem('sisku_admin_theme');document.documentElement.setAttribute('data-theme', t==='light'?'light':'dark');}catch(e){}})();
+</script>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230D0D10'/%3E%3Ctext x='32' y='44' font-family='Georgia' font-size='36' fill='%23C9A96A' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="assets/css/fonts.css">
+<link rel="stylesheet" href="assets/css/admin.css">
+<link rel="stylesheet" href="assets/css/ui.css">
+</head>
+<body>
+
+<div class="warnbar"><b>Как применяется:</b> витрина читает эти значения при загрузке и подставляет в CSS-переменные. Сохраните цвета → откройте сайт с <b>Ctrl + F5</b>. Шаблоны хранят полный набор обеих тем — переключение палитры к сезону в один клик. <b>Проверяйте контраст WCAG</b> перед сохранением: пары ниже 4.5:1 подсвечиваются красным.</div>
+
+<header class="topbar">
+  <div class="container topbar-in">
+    <a class="logo" href="index.html">SISKU<b>.</b></a>
+    <span class="muted" style="font-size:13px">админ-панель · макет</span>
+    <div class="tabs" role="tablist">
+      <a class="tab" href="admin.html">Заказы</a>
+      <a class="tab" href="admin.html#stats">Статистика</a>
+      <a class="tab" href="shop.html">Магазин</a>
+      <a class="tab active" href="manage.html">Управление</a>
+      <a class="tab" href="users.html">Пользователи</a>
+    </div>
+    <div class="topbar-actions">
+      <a class="btn" href="index.html" style="min-height:38px;padding:0 16px">На сайт</a>
+      <button class="btn" id="btn-logout" style="min-height:38px;padding:0 16px">Выйти</button>
+      <button class="icon-btn" id="admin-theme" title="Переключить тему" aria-label="Переключить тему">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
+      <span class="ver">v<span id="ver"></span></span>
+    </div>
+  </div>
+</header>
+
+<main class="panel container">
+  <div class="seg subseg">
+    <a class="seg-btn" href="manage.html">Оплата и доставка</a>
+    <a class="seg-btn" href="sitecontent.html">Сайт</a>
+    <a class="seg-btn" href="sitemap.html">Карта сайта</a>
+    <a class="seg-btn active" href="brandbook.html">Брендбук</a>
+  </div>
+
+  <div class="toolbar">
+    <span class="muted" id="bb-speed" style="font-size:13px">Замер скорости темы: —</span>
+    <span class="spacer"></span>
+    <button class="btn" id="bb-refresh">Обновить</button>
+    <button class="btn" id="bb-book">Брендбук (справка)</button>
+    <button class="btn" id="bb-preview">Предпросмотр</button>
+    <button class="btn primary" id="bb-save">Сохранить цвета</button>
+  </div>
+  <div class="err-box" id="bb-error" hidden></div>
+
+  <div class="bbe-themes">
+    <div>
+      <div class="bbe-theme-name">Ivoire — основная тема витрины</div>
+      <div class="bbe-swatches" id="bbe-light"></div>
+    </div>
+    <div>
+      <div class="bbe-theme-name">Noir &amp; Champagne — вторая тема</div>
+      <div class="bbe-swatches" id="bbe-dark"></div>
+    </div>
+  </div>
+
+  <div class="subhead-sm" style="margin-top:26px">Типографика (обе темы)</div>
+  <div class="bbe-typo">
+    <div class="field" style="margin-bottom:0">
+      <label for="bb-typo-base">Базовый размер текста, px</label>
+      <input id="bb-typo-base" type="number" min="13" max="20" step="1" style="width:180px;min-height:44px;padding:8px 12px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body)">
+    </div>
+    <div class="field" style="margin-bottom:0">
+      <label for="bb-typo-scale">Масштаб заголовков, %</label>
+      <input id="bb-typo-scale" type="number" min="80" max="130" step="5" style="width:180px;min-height:44px;padding:8px 12px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body)">
+    </div>
+  </div>
+
+  <div class="bbe-contrast">
+    <div>
+      <div class="subhead-sm">Контраст Ivoire (WCAG 2.1, норма 4.5:1)</div>
+      <div id="wcag-light"></div>
+    </div>
+    <div>
+      <div class="subhead-sm">Контраст Noir (WCAG 2.1, норма 4.5:1)</div>
+      <div id="wcag-dark"></div>
+    </div>
+  </div>
+
+  <div class="subhead-sm" style="margin-top:30px">Шаблоны палитры</div>
+  <div class="bbe-tpl-form">
+    <input id="bt-name" placeholder="Название шаблона, например «Весна 2027»" style="flex:2;min-height:44px;padding:8px 12px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body)">
+    <input id="bt-comment" placeholder="Комментарий: зачем эта палитра" style="flex:3;min-height:44px;padding:8px 12px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body)">
+    <button class="btn" id="bt-save">Сохранить текущие цвета как шаблон</button>
+  </div>
+  <div class="table-wrap" style="margin-top:14px">
+    <table class="orders" style="min-width:760px">
+      <thead><tr><th>Название</th><th>Комментарий</th><th>Создан</th><th></th></tr></thead>
+      <tbody id="bt-body"></tbody>
+    </table>
+  </div>
+  <div class="empty" id="bt-empty" hidden>Шаблонов пока нет — сохраните текущую палитру.</div>
+</main>
+
+<!-- ========== предпросмотр компонентов ========== -->
+<div class="modal-backdrop" id="pv-modal-backdrop">
+  <div class="modal" style="width:min(980px,100%);padding:36px 38px" role="dialog" aria-modal="true" aria-label="Предпросмотр палитры">
+    <button class="modal-close" data-close="pv-modal-backdrop" aria-label="Закрыть">×</button>
+    <h2 style="font-size:24px;margin-bottom:6px">Предпросмотр на реальных компонентах</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:20px">Значения из редактора (ещё не сохранены на сайте): карточка товара, кнопки, текст и поле ввода.</p>
+    <div class="pvf-wrap">
+      <div class="pvf-frame" id="pvf-light">
+        <div class="pvf-tag">Ivoire</div>
+        <div class="pvf-card">
+          <div class="pvf-media"><img src="assets/img/products/p001.jpg" alt=""></div>
+          <div class="pvf-brand">MAISON NORD</div>
+          <div class="pvf-name">Пальто Nordline из шерсти и кашемира</div>
+          <div class="pvf-price">48 900 ₽</div>
+        </div>
+        <div class="pvf-btns">
+          <button class="pvf-btn primary">В корзину</button>
+          <button class="pvf-btn accent">Купить образ</button>
+          <button class="pvf-btn ghost">Подробнее</button>
+        </div>
+        <h4 class="pvf-h">Заголовок раздела</h4>
+        <p class="pvf-p">Основной текст о товаре: плотный шерстяной костюмный материал, подкладка из вискозы.</p>
+        <p class="pvf-muted">Второстепенный текст: доставка, сроки, условия возврата.</p>
+        <input class="pvf-input" placeholder="Поле ввода на фоне темы">
+      </div>
+      <div class="pvf-frame" id="pvf-dark">
+        <div class="pvf-tag">Noir &amp; Champagne</div>
+        <div class="pvf-card">
+          <div class="pvf-media"><img src="assets/img/products/p006.jpg" alt=""></div>
+          <div class="pvf-brand">MAISON NORD</div>
+          <div class="pvf-name">Парфюм Maison Nord Bois eau de parfum</div>
+          <div class="pvf-price">19 500 ₽</div>
+        </div>
+        <div class="pvf-btns">
+          <button class="pvf-btn primary">В корзину</button>
+          <button class="pvf-btn accent">Купить образ</button>
+          <button class="pvf-btn ghost">Подробнее</button>
+        </div>
+        <h4 class="pvf-h">Заголовок раздела</h4>
+        <p class="pvf-p">Основной текст о товаре: древесный аромат с кедром, ветивером и серой амброй.</p>
+        <p class="pvf-muted">Второстепенный текст: доставка, сроки, условия возврата.</p>
+        <input class="pvf-input" placeholder="Поле ввода на фоне темы">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ========== брендбук-справка (идентичен окну на витрине) ========== -->
+<div class="modal-backdrop" id="brandbook-modal-backdrop">
+  <div class="modal bb-modal" role="dialog" aria-modal="true" aria-label="Брендбук Sisku">
+    <button class="modal-close" data-close="brandbook-modal-backdrop" aria-label="Закрыть">×</button>
+    <div class="bb">
+      <div class="eyebrow">Брендбук</div>
+      <h3>Sisku · мини-брендбук</h3>
+      <p class="muted" style="font-size:13.5px">Черновая версия дизайн-правил. Концепция — «тихая роскошь»: много воздуха, сдержанная палитра, один акцент.</p>
+      <div class="subhead">Палитра</div>
+      <div class="bb-themes">
+        <div>
+          <div class="bb-theme-name">Ivoire — основная тема витрины</div>
+          <div class="bb-swatches">
+            <div class="bb-swatch"><div class="color" style="background:#FAF7F2"></div><div class="meta"><b>Фон</b>#FAF7F2</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#FFFFFF"></div><div class="meta"><b>Карточки</b>#FFFFFF</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#1A1A1E"></div><div class="meta"><b>Текст</b>#1A1A1E</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#6F6A60"></div><div class="meta"><b>Второстепенный</b>#6F6A60</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#7A5C2E"></div><div class="meta"><b>Бронза (акцент)</b>#7A5C2E</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#E5E0D6"></div><div class="meta"><b>Линии</b>#E5E0D6</div></div>
+          </div>
+        </div>
+        <div>
+          <div class="bb-theme-name">Noir &amp; Champagne — вторая тема</div>
+          <div class="bb-swatches">
+            <div class="bb-swatch"><div class="color" style="background:#0D0D10"></div><div class="meta"><b>Фон</b>#0D0D10</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#1D1D24"></div><div class="meta"><b>Карточки</b>#1D1D24</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#F2EEE4"></div><div class="meta"><b>Текст</b>#F2EEE4</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#A79FB0"></div><div class="meta"><b>Второстепенный</b>#A79FB0</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#C9A96A"></div><div class="meta"><b>Шампань (акцент)</b>#C9A96A</div></div>
+            <div class="bb-swatch"><div class="color" style="background:#2A2A33"></div><div class="meta"><b>Линии</b>#2A2A33</div></div>
+          </div>
+        </div>
+      </div>
+      <p class="muted bb-note">Контраст всех пар соответствует WCAG 2.1 AA и выше. Акцент используется точечно: кнопки CTA, бейджи, тонкие разделители, hover. Цена всегда основным текстом, не акцентом.</p>
+      <div class="subhead">Типографика</div>
+      <div class="bb-type-grid">
+        <div class="bb-type-card">
+          <div class="tag">Заголовки</div>
+          <div class="sample prata">Prata</div>
+          <div class="note">Заголовки страниц и секций, названия товаров, логотип-вордмарк</div>
+          <div class="bb-size"><div class="val prata">H1 — 48–64px</div><div class="hint">Первый экран и крупные секции</div></div>
+          <div class="bb-size"><div class="val prata">H2 — 30–42px</div><div class="hint">Заголовки разделов: «Коллекция», «Условия заказа»</div></div>
+          <div class="bb-size"><div class="val prata">H3 — 20–28px</div><div class="hint">Карточки документов и модальных окон</div></div>
+        </div>
+        <div class="bb-type-card">
+          <div class="tag">Основной текст</div>
+          <div class="sample">Manrope</div>
+          <div class="note">Основной текст, описания, кнопки, цены (tabular-nums)</div>
+          <div class="bb-size"><div class="val">Body — 16px</div><div class="hint">Абзацы описаний и условий заказа</div></div>
+          <div class="bb-size"><div class="val">Caption — 14px</div><div class="hint">Подписи под заголовками, текст кнопок и ссылок</div></div>
+          <div class="bb-size"><div class="val">Small — 12px</div><div class="hint">Метки: категории, артикулы, пояснения</div></div>
+        </div>
+      </div>
+      <div class="subhead">Графика, фото, логотип</div>
+      <ul>
+        <li>Хайрлайны 1px вместо теней; радиус 3px (острые углы читаются «дороже»); никакого неона, свечений и градиентов.</li>
+        <li>Фото товаров: портрет 3:4, однотонный айвори-фон или съёмка на модели, оригинал от 2000px; для парфюмерии допустим квадрат 1:1; минимум 3 кадра на товар.</li>
+        <li>Логотип — вордмарк капсом с разрядкой .3em; монограмма «S» в квадрате — favicon и заглушки фото.</li>
+        <li>Бейджи: New — акцент, Exclusive — тёмный графит, Limited — контурный; не более одного бейджа на карточку.</li>
+        <li>Motion сдержанный: fade/slide при скролле, hover-зум фото 1.03 за 600ms; уважать prefers-reduced-motion.</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<script src="assets/vendor/supabase.min.js"></script>
+<script src="assets/js/config.js"></script>
+<script src="assets/js/ui.js"></script>
+<script src="assets/js/admintheme.js"></script>
+<script src="assets/js/mockauth.js"></script>
+<script src="assets/js/brandvars.js"></script>
+<script src="assets/js/brandbook.js"></script>
+</body>
+</html>

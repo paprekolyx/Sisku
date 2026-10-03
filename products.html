@@ -95,7 +95,11 @@
         <div class="field">
           <label for="pf-img-file">Фото (черновая загрузка)</label>
           <div class="img-row">
-            <input type="file" id="pf-img-file" accept="image/*">
+            <div class="file-btn-wrap" style="display:flex;align-items:center;gap:10px">
+              <input type="file" id="pf-img-file" accept="image/*" hidden>
+              <button type="button" class="btn ghost small" id="pf-img-btn">Выбрать фото</button>
+              <span class="muted" id="pf-img-name" style="font-size:12px">файл не выбран</span>
+            </div>
             <input id="pf-img-url" placeholder="или ссылка/путь: assets/img/products/p009.jpg">
           </div>
           <div class="muted" style="font-size:12px;margin-top:6px">Файл сжимается в браузере до ~320px и хранится в записи товара (черновик). Ссылка/путь приоритетнее файла, если заполнить оба.</div>

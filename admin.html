@@ -105,7 +105,12 @@
     </div>
     <div class="chart-box">
       <h3>Воронка статусов</h3>
-      <canvas id="chart-funnel" height="220"></canvas>
+      <div class="seg" id="funnel-seg" role="group" aria-label="Вид воронки">
+        <button class="seg-btn active" data-mode="chart">Диаграмма</button>
+        <button class="seg-btn" data-mode="table">Таблица</button>
+      </div>
+      <div id="funnel-chart"><canvas id="chart-funnel" height="220"></canvas></div>
+      <div id="funnel-table" hidden><table class="mini-table" id="table-funnel"></table></div>
       <div class="subhead-sm">Время между статусами</div>
       <ul class="metric-list" id="funnel-metrics"></ul>
     </div>
