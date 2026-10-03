@@ -71,17 +71,20 @@ assets/fonts/    prata-*.woff2 · manrope-*.woff2
 assets/img/      hero.jpg (светлая тема) · hero-dark.jpg (тёмная тема) · products/p001…p008.jpg
 data/            brands.csv · categories.csv · products.csv · variants.csv
 supabase/        01_schema → 14_brandbook (выполнять по порядку, все идемпотентны)
-docs/            setup-repo-pages.md · setup-supabase.md · feature-proposals.md ·
-                 code-review-v040.md · update-v040.md … update-v090.md (инструкции обновлений)
+docs/            tehpasport.md (технический паспорт проекта) · setup-repo-pages.md ·
+                 setup-supabase.md · feature-proposals.md · code-review-v040.md ·
+                 update-v040.md … update-v0120.md (инструкции обновлений)
 tests/           check-repo.py — автоматическая проверка целостности репозитория
 ```
 
 ## Инструкции
 
+- **`docs/tehpasport.md`** — технический паспорт проекта: архитектура, стек
+  и обоснование выборов, база данных, безопасность, тесты, план боевой версии.
 - **`docs/setup-repo-pages.md`** — репозиторий, загрузка файлов, включение Pages.
 - **`docs/setup-supabase.md`** — вторая база в том же аккаунте Supabase,
   скрипты 01–04, импорт CSV (или скрипт 05 вместо CSV), куда вставить ключи.
-- **`docs/update-v110.md`** — последняя инструкция обновления; далее каждое
+- **`docs/update-v0120.md`** — последняя инструкция обновления; далее каждое
   обновление получает свой файл `docs/update-v0XX.md` с чек-листом приёмки.
 - Скрипты базы: 05 — запасной посев каталога без CSV; 06 — статус «Оплачен»
   вынесен в признак; 07 — пользователи и защита отменённых; 08 — текстовые правки;
