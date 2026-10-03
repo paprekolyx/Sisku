@@ -19,6 +19,7 @@
     promo: null,            /* применённый промокод: {code, amount} */
     look: null,             /* применённый комплект: {id, title, percent} */
     looks: [], lookItems: {},
+    brandRows: [],
     lastOrderId: null       /* для кнопки «Отследить заказ» на экране успеха */
   };
 
@@ -87,6 +88,7 @@
       document.documentElement.setAttribute('data-theme', cur);
       try { localStorage.setItem('sisku_theme', cur); } catch (e) {}
       setHeroImage();
+      if (state.brandRows.length && window.brandApplyRows) brandApplyRows(state.brandRows);
     });
   }
 
@@ -141,6 +143,9 @@
         (state.variants[v.product_id] = state.variants[v.product_id] || []).push(v);
       });
       applyContent(res[4].data);
+      if (window.loadAndApplyBrand) {
+        loadAndApplyBrand(db).then(function (rows) { state.brandRows = rows; }).catch(function () {});
+      }
       state.payments = res[5].data;
       state.deliveries = res[6].data;
       state.looks = res[7].data || [];
@@ -251,17 +256,28 @@
       var first = findProduct(items[0].product_id);
       var sum = lookSum(l);
       var disc = Math.round(sum * Number(l.discount_percent || 0)) / 100;
-      var names = items.map(function (i) {
+      var rows = items.map(function (i, idx) {
         var p = findProduct(i.product_id);
-        var v = findVariant(i.product_id, i.variant_id);
-        return (p ? p.name : '—') + (v ? ' (' + v.label + ')' : '');
-      }).join(' + ');
-      return '<article class="look-card">' +
+        var v = i.variant_id ? findVariant(i.product_id, i.variant_id) : null;
+        var varCell;
+        if (v) {
+          varCell = '<span class="muted">' + esc(v.label) + '</span>';
+        } else {
+          var opts = (state.variants[i.product_id] || []).filter(function (x) { return x.stock > 0; });
+          varCell = '<select class="look-var-sel" data-look="' + l.id + '" data-idx="' + idx + '" aria-label="Размер: ' + esc(p ? p.name : '') + '">' +
+            '<option value="">Выберите размер…</option>' +
+            opts.map(function (x) { return '<option value="' + x.id + '">' + esc(x.label) + ' (' + x.stock + ' шт.)</option>'; }).join('') +
+            '</select>';
+        }
+        return '<tr><td class="lt-name">' + esc(p ? p.name : '—') + ' ' + varCell + '</td>' +
+          '<td class="lt-price">' + money(p ? p.price : 0) + '</td></tr>';
+      }).join('');
+      return '<article class="look-card" data-look-card="' + l.id + '">' +
         '<div class="look-media">' + imgTag(first ? first.image_url : '', l.title) + '</div>' +
         '<div class="look-body">' +
           '<div class="look-title">' + esc(l.title) + '</div>' +
           (l.description ? '<p class="look-desc muted">' + esc(l.description) + '</p>' : '') +
-          '<div class="look-items">' + esc(names) + '</div>' +
+          '<table class="look-table"><tbody>' + rows + '</tbody></table>' +
           '<div class="look-prices">' +
             (disc > 0 ? '<span class="look-old">' + money(sum) + '</span>' : '') +
             '<span class="look-new">' + money(sum - disc) + '</span>' +
@@ -270,31 +286,58 @@
           '<button class="btn accent small" data-look-add="' + l.id + '" style="margin-top:14px">В корзину целиком</button>' +
         '</div></article>';
     }).join('');
+    if (window.enhanceSelects) enhanceSelects($('looks-grid'));
   }
   function addLook(id) {
     var l = state.looks.filter(function (x) { return x.id === id; })[0];
     if (!l) return;
     var items = state.lookItems[id] || [];
-    /* предварительная проверка остатков по всему комплекту */
+    var card = document.querySelector('[data-look-card="' + id + '"]');
+    /* размеры для позиций «вся размерная сетка» выбирает покупатель */
+    var chosen = [];
     for (var i = 0; i < items.length; i++) {
-      var v = findVariant(items[i].product_id, items[i].variant_id);
-      if (!v || v.stock < 1) { toast('Комплект нельзя добавить: товара нет в наличии'); return; }
+      var it = items[i];
+      var vid = it.variant_id;
+      if (!vid && card) {
+        var sel = card.querySelector('select[data-idx="' + i + '"]');
+        vid = sel && sel.value ? Number(sel.value) : null;
+        if (!vid) { toast('Выберите размер для всех товаров комплекта'); return; }
+      }
+      chosen.push({ product_id: it.product_id, variant_id: vid });
     }
-    items.forEach(function (it) { addToCart(it.product_id, it.variant_id); });
-    state.look = { id: l.id, title: l.title, percent: Number(l.discount_percent || 0) };
-    validateLook();
-    renderOrderSummary();
-    toast('Комплект «' + l.title + '» в корзине' + (state.look ? ': скидка −' + l.percent + '%' : ''));
+    var available = [], missing = [];
+    chosen.forEach(function (c) {
+      var v = findVariant(c.product_id, c.variant_id);
+      var p = findProduct(c.product_id);
+      if (v && v.stock > 0) available.push(c);
+      else missing.push((p ? p.name : 'товар') + (v ? '' : ' (нет варианта)'));
+    });
+    if (!available.length) { toast('Комплект нельзя добавить: ничего нет в наличии'); return; }
+    var proceed = function () {
+      available.forEach(function (c) { addToCart(c.product_id, c.variant_id); });
+      state.look = { id: l.id, title: l.title, percent: Number(l.discount_percent || 0) };
+      validateLook();
+      renderOrderSummary();
+      var pct = Number(l.discount_percent || 0);
+      toast('Комплект «' + l.title + '» в корзине' + (pct > 0 ? ': скидка −' + pct + '%' : ''));
+    };
+    if (missing.length) {
+      if (confirm('Нет в наличии: ' + missing.join(', ') + '.\n\n' +
+          'Добавить в корзину товары в наличии (' + available.length + ' из ' + chosen.length + ') со скидкой комплекта?\n' +
+          '«Отмена» — отказаться от добавления.')) proceed();
+    } else {
+      proceed();
+    }
   }
   function validateLook() {
     if (!state.look) return;
     var items = state.lookItems[state.look.id] || [];
-    var okAll = items.every(function (i) {
-      return state.cart.some(function (l) { return l.product_id === i.product_id && l.variant_id === i.variant_id && l.qty >= 1; });
+    var any = items.some(function (i) {
+      return state.cart.some(function (l) { return l.product_id === i.product_id && l.qty >= 1; });
     });
-    if (!okAll) {
+    if (!any) {
       state.look = null;
-      toast('Комплект снят: состав корзины изменился');
+      toast('Комплект снят: в корзине не осталось его товаров');
       renderOrderSummary();
     }
   }
@@ -433,7 +476,10 @@
     if (state.look) {
       var lsum = (state.lookItems[state.look.id] || []).reduce(function (s, i) {
         var p = findProduct(i.product_id);
-        var inCart = state.cart.some(function (l) { return l.product_id === i.product_id && l.variant_id === i.variant_id; });
+        var inCart = state.cart.some(function (l) {
+          return l.product_id === i.product_id && l.qty >= 1 &&
+            (i.variant_id == null || l.variant_id === i.variant_id);
+        });
         return s + (p && inCart ? p.price : 0);
       }, 0);
       lookDisc = Math.round(lsum * state.look.percent) / 100;

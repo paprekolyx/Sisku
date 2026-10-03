@@ -15,6 +15,8 @@
     methodsMode: 'table',    /* «Таблица» по умолчанию, «Диаграмма» — по переключателю */
     sort: { field: 'created', dir: 'desc' },   /* сортировка таблицы заказов */
     page: 1,                                    /* пагинация таблицы заказов */
+    topSort: 'sum',                             /* топ товаров: sum | qty */
+    funnelMode: 'chart',                        /* воронка: chart | table */
     charts: {}
   };
 
@@ -68,8 +70,11 @@
       state.deliveries = d.deliveries;
       state.history = d.history;
 
+      var keepStatus = $('f-status').value;      /* фильтр не сбрасывается перезагрузкой */
       $('f-status').innerHTML = '<option value="">Все статусы</option>' +
         state.statuses.map(function (s) { return '<option value="' + s.id + '">' + esc(s.name) + '</option>'; }).join('');
+      $('f-status').value = keepStatus;
+      $('f-status').dispatchEvent(new Event('refresh'));   /* лейбл кастом-селекта в такт значению */
       if (window.enhanceSelects) enhanceSelects();
       renderOrders();
       renderStats();
@@ -357,6 +362,19 @@
     var counts = state.statuses.map(function (s) {
       return list.filter(function (o) { return o.status_id === s.id; }).length;
     });
+    if (state.funnelMode === 'table') {
+      $('funnel-chart').hidden = true;
+      $('funnel-table').hidden = false;
+      $('table-funnel').innerHTML =
+        '<thead><tr><th>Статус</th><th style="text-align:right">Заказов</th><th style="text-align:right">Доля</th></tr></thead><tbody>' +
+        state.statuses.map(function (s, i) {
+          return '<tr><td>' + esc(s.name) + '</td><td class="num">' + counts[i] + '</td>' +
+            '<td class="num">' + (list.length ? Math.round(counts[i] / list.length * 100) : 0) + '%</td></tr>';
+        }).join('') + '</tbody>';
+      return;
+    }
+    $('funnel-chart').hidden = false;
+    $('funnel-table').hidden = true;
     state.charts.funnel = new Chart($('chart-funnel'), {
       type: 'bar',
       data: {
@@ -381,9 +399,16 @@
       });
     });
     var top = Object.keys(ids).map(function (k) { return { k: k, v: ids[k] }; })
-      .sort(function (a, b) { return b.v.sum - a.v.sum; }).slice(0, 6);
+      .sort(function (a, b) {
+        return state.topSort === 'qty' ? (b.v.n - a.v.n) || (b.v.sum - a.v.sum) : (b.v.sum - a.v.sum) || (b.v.n - a.v.n);
+      }).slice(0, 6);
+    var ic = function (key) {
+      return '<span class="sort-ic">' + (state.topSort === key ? '▼' : '↕') + '</span>';
+    };
     $('top-products').innerHTML =
-      '<thead><tr><th>№</th><th>Товар</th><th style="text-align:right">Кол-во</th><th style="text-align:right">Сумма</th></tr></thead><tbody>' +
+      '<thead><tr><th>№</th><th>Товар</th>' +
+      '<th class="sortable" data-top="qty" style="text-align:right">Кол-во' + ic('qty') + '</th>' +
+      '<th class="sortable" data-top="sum" style="text-align:right">Сумма' + ic('sum') + '</th></tr></thead><tbody>' +
       (top.length
         ? top.map(function (t, i) {
             return '<tr><td>' + (i + 1) + '</td><td>' + esc(t.k) + '</td><td class="num">' + t.v.n + ' шт.</td><td class="num">' + money(t.v.sum) + '</td></tr>';
@@ -586,6 +611,23 @@
 
     /* выгрузка статистики в CSV */
     $('btn-stats-csv').addEventListener('click', exportStatsCsv);
+
+    /* сортировка топа товаров: кол-во / сумма */
+    $('top-products').addEventListener('click', function (e) {
+      var th = e.target.closest('th.sortable[data-top]');
+      if (!th) return;
+      state.topSort = th.getAttribute('data-top');
+      drawTop(periodOrders());
+    });
+
+    /* воронка статусов: диаграмма / таблица */
+    $('funnel-seg').addEventListener('click', function (e) {
+      var b = e.target.closest('.seg-btn');
+      if (!b) return;
+      state.funnelMode = b.getAttribute('data-mode') === 'table' ? 'table' : 'chart';
+      $('funnel-seg').querySelectorAll('.seg-btn').forEach(function (x) { x.classList.toggle('active', x === b); });
+      drawFunnel(periodOrders());
+    });
 
     /* сортировка таблицы заказов кликом по заголовку */
     document.querySelectorAll('th.sortable').forEach(function (th) {

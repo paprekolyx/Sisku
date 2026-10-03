@@ -88,7 +88,7 @@
     function fillVars(sel) {
       var pid = Number(row.querySelector('.look-prod').value || 0);
       var vs = state.variants[pid] || [];
-      row.querySelector('.look-var').innerHTML = '<option value="">— вариант —</option>' + vs.map(function (v) {
+      row.querySelector('.look-var').innerHTML = '<option value="">— вся размерная сетка —</option>' + vs.map(function (v) {
         return '<option value="' + v.id + '"' + (String(v.id) === String(sel) ? ' selected' : '') + '>' + esc(v.label) + ' (' + v.stock + ' шт.)</option>';
       }).join('');
       if (window.enhanceSelects) enhanceSelects(row);
@@ -132,9 +132,9 @@
     $('lk-items').querySelectorAll('.look-row').forEach(function (r) {
       var pid = Number(r.querySelector('.look-prod').value || 0);
       var vid = Number(r.querySelector('.look-var').value || 0);
-      if (pid && vid) rows.push({ product_id: pid, variant_id: vid });
+      if (pid) rows.push({ product_id: pid, variant_id: vid || null });
     });
-    if (!rows.length) { $('lk-items-err').textContent = 'Добавьте в комплект хотя бы один товар с вариантом'; $('lk-items-err').hidden = false; return; }
+    if (!rows.length) { $('lk-items-err').textContent = 'Добавьте в комплект хотя бы один товар'; $('lk-items-err').hidden = false; return; }
 
     state.saving = true;
     $('lk-submit').disabled = true;

@@ -174,6 +174,7 @@
     $('pf-desc').value = p ? (p.description || '') : '';
     $('pf-img-url').value = p && p.image_url && p.image_url.indexOf('data:') !== 0 ? p.image_url : '';
     $('pf-img-file').value = '';
+    $('pf-img-name').textContent = 'файл не выбран';
     state.imgData = p && p.image_url && p.image_url.indexOf('data:') === 0 ? p.image_url : null;
     $('pf-active').checked = p ? p.is_active : true;
     ['pf-article-err', 'pf-name-err', 'pf-price-err', 'pf-cat-err', 'pf-error'].forEach(function (x) { $(x).hidden = true; });
@@ -365,10 +366,16 @@
     $('prod-modal-backdrop').addEventListener('click', function (e) { if (e.target === $('prod-modal-backdrop')) closeModal(); });
     $('prod-form').addEventListener('submit', save);
     $('pf-var-add').addEventListener('click', function () { addVariantRow(null, '', 0); });
+    $('pf-img-btn').addEventListener('click', function () { $('pf-img-file').click(); });
     $('pf-img-file').addEventListener('change', function () {
       var f = this.files && this.files[0];
-      if (!f) { state.imgData = null; refreshPreview(); return; }
-      compressImage(f, function (dataUrl) { state.imgData = dataUrl; refreshPreview(); });
+      if (!f) { state.imgData = null; $('pf-img-name').textContent = 'файл не выбран'; refreshPreview(); return; }
+      $('pf-img-name').textContent = f.name + ' → сжатие…';
+      compressImage(f, function (dataUrl) {
+        state.imgData = dataUrl;
+        $('pf-img-name').textContent = f.name + ' (сжато до ~320px)';
+        refreshPreview();
+      });
     });
     ['pf-name', 'pf-price', 'pf-img-url'].forEach(function (id) {
       $(id).addEventListener('input', refreshPreview);
