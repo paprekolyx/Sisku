@@ -145,6 +145,10 @@
         $('bb-error').textContent = res.error.message;
         return;
       }
+      /* v0.13.0: кэш токенов обновляется сразу — витрина и админка подхватят
+         новую палитру до отрисовки, не дожидаясь запроса к базе */
+      if (window.brandCacheSave) brandCacheSave(editorRows());
+      if (window.applyBrandCached) applyBrandCached();
       if (cb) cb();
     }).catch(function (e) {
       state.saving = false;
@@ -207,7 +211,7 @@
     });
     buildEditors();
     refreshContrast();
-    saveColors(function () { load(); alert('Шаблон «' + t.name + '» применён и сохранён. Витрина обновится после Ctrl + F5.'); });
+    saveColors(function () { load(); alert('Шаблон «' + t.name + '» применён и сохранён. Витрина и админ-панель обновятся после Ctrl + F5.'); });
   }
 
   /* ---------- старт ---------- */
@@ -217,7 +221,7 @@
     $('btn-logout').addEventListener('click', function () { if (window.mockLogout) window.mockLogout(); });
     $('bb-refresh').addEventListener('click', load);
     $('bb-save').addEventListener('click', function () {
-      saveColors(function () { alert('Цвета сохранены. Откройте витрину с Ctrl + F5 — тема применится до отрисовки карточек.'); refreshSpeed(); });
+      saveColors(function () { alert('Цвета сохранены. Откройте витрину или любую страницу админки с Ctrl + F5 — тема применится до отрисовки.'); refreshSpeed(); });
     });
     $('bb-preview').addEventListener('click', openPreview);
     $('bb-book').addEventListener('click', function () { $('brandbook-modal-backdrop').classList.add('open'); });

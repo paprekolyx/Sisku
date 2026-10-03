@@ -11,6 +11,9 @@
   var state = {
     orders: [], items: [], statuses: [], transitions: [],
     payments: [], deliveries: [], history: [],
+    promos: [],              /* v0.13.0: промокоды — подвкладка статистики «Акции» */
+    statsTab: 'orders',      /* v0.13.0: активная подвкладка: orders | promos | admins | clients */
+    promoMode: 'chart',      /* v0.13.0: «по кодам» — диаграмма или таблица */
     revealed: {},            /* заказ, у которого раскрыты контакты */
     methodsMode: 'table',    /* «Таблица» по умолчанию, «Диаграмма» — по переключателю */
     sort: { field: 'created', dir: 'desc' },   /* сортировка таблицы заказов */
@@ -69,6 +72,7 @@
       state.payments = d.payments;
       state.deliveries = d.deliveries;
       state.history = d.history;
+      state.promos = d.promos || [];      /* v0.13.0: draft_admin_bundle v2 */
 
       var keepStatus = $('f-status').value;      /* фильтр не сбрасывается перезагрузкой */
       $('f-status').innerHTML = '<option value="">Все статусы</option>' +
@@ -77,7 +81,7 @@
       $('f-status').dispatchEvent(new Event('refresh'));   /* лейбл кастом-селекта в такт значению */
       if (window.enhanceSelects) enhanceSelects();
       renderOrders();
-      renderStats();
+      renderStatsActive();
     });
   }
 
@@ -278,12 +282,13 @@
   }
 
   /* ---------- статистика ---------- */
-  function periodOrders() {
-    var days = $('s-period').value;
+  function ordersInPeriod(sel) {
+    var days = sel.value;
     if (days === 'all') return state.orders.slice();
     var from = Date.now() - Number(days) * 864e5;
     return state.orders.filter(function (o) { return new Date(o.created_at).getTime() >= from; });
   }
+  function periodOrders() { return ordersInPeriod($('s-period')); }
 
   function renderStats() {
     var list = periodOrders();
@@ -580,6 +585,223 @@
     URL.revokeObjectURL(a.href);
   }
 
+  /* ---------- подвкладки статистики (v0.13.0) ---------- */
+  var STATS_TABS = ['orders', 'promos', 'admins', 'clients'];
+  function switchStatsTab(tab) {
+    if (STATS_TABS.indexOf(tab) === -1) tab = 'orders';
+    state.statsTab = tab;
+    $('stats-subseg').querySelectorAll('.seg-btn').forEach(function (b) {
+      var on = b.getAttribute('data-stab') === tab;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    STATS_TABS.forEach(function (t) { $('stab-' + t).hidden = t !== tab; });
+    renderStatsActive();
+  }
+  function renderStatsActive() {
+    if (state.statsTab === 'orders') renderStats();
+    else if (state.statsTab === 'promos') renderPromoStats();
+    /* admins и clients — заглушки, рендер не нужен */
+  }
+
+  /* ---------- подвкладка «Акции»: статистика промокодов (v0.13.0) ---------- */
+  function promoPeriodOrders() { return ordersInPeriod($('p-period')); }
+  function discountLabel(p) {
+    if (!p) return '—';
+    return p.discount_type === 'percent'
+      ? '−' + Number(p.discount_value) + '%'
+      : '−' + money(p.discount_value);
+  }
+  function promoStateOf(p) {
+    var now = new Date();
+    if (!p.is_active) return { t: 'отключён', c: 'cancelled' };
+    if (p.valid_until && new Date(p.valid_until + 'T23:59:59') < now) return { t: 'истёк', c: 'cancelled' };
+    if (p.usage_limit != null && Number(p.used_count) >= Number(p.usage_limit)) return { t: 'лимит исчерпан', c: 'returned' };
+    if (p.valid_from && new Date(p.valid_from + 'T00:00:00') > now) return { t: 'ещё не начался', c: 'new' };
+    return { t: 'активен', c: 'delivered' };
+  }
+  function promoAggregates(list) {
+    var withP = list.filter(function (o) { return o.promo_code_id != null; });
+    var without = list.filter(function (o) { return o.promo_code_id == null; });
+    function sum(arr, f) { return arr.reduce(function (s, o) { return s + f(o); }, 0); }
+    return {
+      all: list, withP: withP, without: without,
+      discSum: sum(withP, function (o) { return Number(o.promo_discount || 0); }),
+      sumWith: sum(withP, function (o) { return o.total + o.delivery_cost; }),
+      sumWithout: sum(without, function (o) { return o.total + o.delivery_cost; })
+    };
+  }
+  function renderPromoStats() {
+    var agg = promoAggregates(promoPeriodOrders());
+    var avgWith = agg.withP.length ? agg.sumWith / agg.withP.length : 0;
+    var avgWithout = agg.without.length ? agg.sumWithout / agg.without.length : 0;
+    $('kpi-promos').innerHTML =
+      kpi('Заказов с кодом', agg.withP.length, 'из ' + agg.all.length + ' за период') +
+      kpi('Доля кодов', agg.all.length ? Math.round(agg.withP.length / agg.all.length * 100) + '%' : '0%', 'заявок оформлено с промокодом') +
+      kpi('Сумма скидок', money(agg.discSum), 'фактические скидки промокодов') +
+      kpi('Средняя скидка', money(agg.withP.length ? agg.discSum / agg.withP.length : 0), 'на заказ с кодом') +
+      kpi('Средний чек с кодом', money(avgWith), 'без кода: ' + money(avgWithout));
+    drawPromoDays(agg.withP);
+    renderPromoCodes(agg.withP);
+    renderPromoSplit(agg, avgWith, avgWithout);
+  }
+  function drawPromoDays(withP) {
+    chartDefaults(); destroyChart('promoDays');
+    $('promo-days-empty').hidden = withP.length !== 0;
+    $('chart-promo-days').style.display = withP.length ? '' : 'none';
+    if (!withP.length) return;
+    var byDay = {};
+    withP.forEach(function (o) {
+      var k = dayKey(o.created_at);          /* локальная дата — без UTC-фантомов (фикс v0.7.0) */
+      byDay[k] = byDay[k] || { n: 0, disc: 0 };
+      byDay[k].n += 1;
+      byDay[k].disc += Number(o.promo_discount || 0);
+    });
+    var keys = Object.keys(byDay).sort();    /* хронология: старые слева */
+    var labels = keys.map(function (k) { var p = k.split('-'); return p[2] + '.' + p[1]; });
+    state.charts.promoDays = new Chart($('chart-promo-days'), {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          { label: 'Заказы с кодом', data: keys.map(function (k) { return byDay[k].n; }), borderColor: GOLD, backgroundColor: 'rgba(201,169,106,.15)', fill: true, tension: .35, yAxisID: 'y' },
+          { label: 'Скидки, ₽', data: keys.map(function (k) { return byDay[k].disc; }), borderColor: MUTED, borderDash: [5, 4], tension: .35, yAxisID: 'y1' }
+        ]
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          y: { ticks: { precision: 0 }, grid: { color: LINE } },
+          y1: { position: 'right', grid: { display: false }, ticks: { callback: function (v) { return new Intl.NumberFormat('ru-RU').format(v); } } }
+        },
+        plugins: { legend: { labels: { color: MUTED, boxWidth: 14 } } }
+      }
+    });
+  }
+  function metricRow(label, val) {
+    return '<li><span>' + label + '</span><span class="val">' + val + '</span></li>';
+  }
+  function promoCodeRows(withP) {
+    return state.promos.map(function (p) {
+      var used = withP.filter(function (o) { return o.promo_code_id === p.id; });
+      return {
+        p: p,
+        n: used.length,
+        disc: used.reduce(function (s, o) { return s + Number(o.promo_discount || 0); }, 0)
+      };
+    }).sort(function (a, b) { return (b.n - a.n) || (b.disc - a.disc); });
+  }
+  function renderPromoCodes(withP) {
+    var rows = promoCodeRows(withP);
+    var now = new Date();
+    var active = state.promos.filter(function (p) { return promoStateOf(p).t === 'активен'; }).length;
+    var expired = state.promos.filter(function (p) { return p.valid_until && new Date(p.valid_until + 'T23:59:59') < now; }).length;
+    var exhausted = state.promos.filter(function (p) { return p.usage_limit != null && Number(p.used_count) >= Number(p.usage_limit); }).length;
+    $('promo-metrics').innerHTML =
+      metricRow('Всего кодов', state.promos.length) +
+      metricRow('Действуют сейчас', active) +
+      metricRow('С истёкшим сроком', expired) +
+      metricRow('С исчерпанным лимитом', exhausted);
+
+    if (state.promoMode === 'table') {
+      destroyChart('promoCodes');
+      $('promocodes-chart').hidden = true;
+      $('promocodes-table').hidden = false;
+      $('table-promo-codes').innerHTML =
+        '<thead><tr><th>Код</th><th style="text-align:right">Скидка</th>' +
+        '<th style="text-align:right">Заказов за период</th><th style="text-align:right">Скидки за период</th>' +
+        '<th style="text-align:right">Использовано</th><th>Статус</th></tr></thead><tbody>' +
+        (rows.length
+          ? rows.map(function (r) {
+              var st = promoStateOf(r.p);
+              return '<tr><td><b>' + esc(r.p.code) + '</b></td>' +
+                '<td class="num">' + discountLabel(r.p) + '</td>' +
+                '<td class="num">' + r.n + '</td>' +
+                '<td class="num">' + money(r.disc) + '</td>' +
+                '<td class="num">' + r.p.used_count + (r.p.usage_limit != null ? ' из ' + r.p.usage_limit : '') + '</td>' +
+                '<td><span class="status-pill" data-code="' + st.c + '">' + st.t + '</span></td></tr>';
+            }).join('')
+          : '<tr><td colspan="6" class="muted">Промокодов пока нет — создайте в «Управление → Промокоды»</td></tr>') +
+        '</tbody>';
+      return;
+    }
+    $('promocodes-chart').hidden = false;
+    $('promocodes-table').hidden = true;
+    chartDefaults(); destroyChart('promoCodes');
+    if (!rows.length) return;
+    state.charts.promoCodes = new Chart($('chart-promo-codes'), {
+      type: 'bar',
+      data: {
+        labels: rows.map(function (r) { return r.p.code; }),
+        datasets: [{ data: rows.map(function (r) { return r.n; }), backgroundColor: GOLD, borderRadius: 2, barThickness: 12 }]
+      },
+      options: {
+        indexAxis: 'y', responsive: true,
+        scales: { x: { ticks: { precision: 0 }, grid: { color: LINE } }, y: { grid: { display: false } } },
+        plugins: { legend: { display: false } }
+      }
+    });
+  }
+  function renderPromoSplit(agg, avgWith, avgWithout) {
+    var n = agg.all.length;
+    function paidSum(arr) {
+      return arr.filter(function (o) { return o.is_paid; })
+        .reduce(function (s, o) { return s + o.total + o.delivery_cost; }, 0);
+    }
+    function row(label, withV, withoutV) {
+      return '<tr><td>' + label + '</td><td class="num">' + withV + '</td><td class="num">' + withoutV + '</td></tr>';
+    }
+    $('table-promo-split').innerHTML =
+      '<thead><tr><th>Показатель</th>' +
+      '<th style="text-align:right">Заказы с кодом (' + agg.withP.length + ')</th>' +
+      '<th style="text-align:right">Заказы без кода (' + agg.without.length + ')</th></tr></thead><tbody>' +
+      row('Доля заказов периода', n ? Math.round(agg.withP.length / n * 100) + '%' : '0%', n ? Math.round(agg.without.length / n * 100) + '%' : '0%') +
+      row('Сумма заявок', money(agg.sumWith), money(agg.sumWithout)) +
+      row('Средний чек', money(avgWith), money(avgWithout)) +
+      row('Оплачено', money(paidSum(agg.withP)), money(paidSum(agg.without))) +
+      '</tbody>';
+  }
+
+  /* ---------- выгрузка статистики акций в CSV (v0.13.0) ---------- */
+  function exportPromosCsv() {
+    var agg = promoAggregates(promoPeriodOrders());
+    var periodLabel = $('p-period').selectedOptions[0].textContent;
+    var R = [];
+    R.push(['Sisku — выгрузка статистики акций'], ['Период', periodLabel], ['Дата выгрузки', new Date().toLocaleString('ru-RU')], []);
+    R.push(['1. Ключевые показатели'], ['Метрика', 'Значение'],
+      ['Заказов за период', agg.all.length],
+      ['Заказов с промокодом', agg.withP.length],
+      ['Доля заказов с кодом, %', agg.all.length ? Math.round(agg.withP.length / agg.all.length * 100) : 0],
+      ['Сумма скидок, ₽', agg.discSum],
+      ['Средняя скидка, ₽', agg.withP.length ? Math.round(agg.discSum / agg.withP.length) : 0],
+      ['Средний чек с кодом, ₽', agg.withP.length ? Math.round(agg.sumWith / agg.withP.length) : 0],
+      ['Средний чек без кода, ₽', agg.without.length ? Math.round(agg.sumWithout / agg.without.length) : 0], []);
+    var byDay = {};
+    agg.withP.forEach(function (o) {
+      var k = dayKey(o.created_at);
+      byDay[k] = byDay[k] || { n: 0, disc: 0 };
+      byDay[k].n += 1; byDay[k].disc += Number(o.promo_discount || 0);
+    });
+    R.push(['2. Использование кодов по дням'], ['Дата', 'Заказов', 'Скидки, ₽']);
+    Object.keys(byDay).sort().forEach(function (k) { R.push([k, byDay[k].n, byDay[k].disc]); });
+    R.push([]);
+    R.push(['3. По кодам'], ['Код', 'Скидка', 'Заказов за период', 'Скидки за период, ₽', 'Использовано всего', 'Лимит', 'Статус']);
+    promoCodeRows(agg.withP).forEach(function (r) {
+      R.push([r.p.code, discountLabel(r.p), r.n, r.disc, r.p.used_count,
+        r.p.usage_limit == null ? 'нет' : r.p.usage_limit, promoStateOf(r.p).t]);
+    });
+    var csv = R.map(function (row) {
+      return row.map(function (c) { return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(';');
+    }).join('\r\n');
+    var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'sisku-promo-stats-' + $('p-period').value + '-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
   /* ---------- вкладки и события ---------- */
   function switchTab(which) {
     var orders = which === 'orders';
@@ -589,7 +811,7 @@
     $('tab-stats').setAttribute('aria-selected', !orders);
     $('panel-orders').hidden = !orders;
     $('panel-stats').hidden = orders;
-    if (!orders) renderStats();
+    if (!orders) renderStatsActive();
   }
 
   document.addEventListener('DOMContentLoaded', function () {
@@ -597,7 +819,22 @@
 
     /* тема админки: общий модуль admintheme.js (тёмная по умолчанию) */
     if (window.initAdminTheme) window.initAdminTheme(function () {
-      if (!$('panel-stats').hidden) renderStats();   /* перерисовать графики в цветах темы */
+      if (!$('panel-stats').hidden) renderStatsActive();   /* перерисовать графики в цветах темы */
+    });
+
+    /* v0.13.0: подвкладки статистики */
+    $('stats-subseg').addEventListener('click', function (e) {
+      var b = e.target.closest('.seg-btn');
+      if (b) switchStatsTab(b.getAttribute('data-stab'));
+    });
+    $('p-period').addEventListener('change', renderPromoStats);
+    $('btn-promos-csv').addEventListener('click', exportPromosCsv);
+    $('promocodes-seg').addEventListener('click', function (e) {
+      var b = e.target.closest('.seg-btn');
+      if (!b) return;
+      state.promoMode = b.getAttribute('data-mode') === 'table' ? 'table' : 'chart';
+      $('promocodes-seg').querySelectorAll('.seg-btn').forEach(function (x) { x.classList.toggle('active', x === b); });
+      renderPromoCodes(promoAggregates(promoPeriodOrders()).withP);
     });
 
     /* переключатель «Диаграмма / Таблица» в блоке доставки и оплаты */
@@ -644,8 +881,14 @@
       });
     });
 
-    /* ссылка admin.html#stats открывает сразу вкладку статистики */
-    if (location.hash === '#stats') switchTab('stats');
+    /* ссылка admin.html#stats открывает сразу вкладку статистики;
+       v0.13.0: #stats-promos и т.п. открывают конкретную подвкладку */
+    if (location.hash === '#stats') {
+      switchTab('stats');
+    } else if (location.hash.indexOf('#stats-') === 0) {
+      switchTab('stats');
+      switchStatsTab(location.hash.slice(7));
+    }
 
     /* выход из мок-сессии черновика */
     $('btn-logout').addEventListener('click', function () {

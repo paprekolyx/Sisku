@@ -8,6 +8,9 @@
   function apply(t) {
     document.documentElement.setAttribute('data-theme', t);
     try { localStorage.setItem(KEY, t); } catch (e) {}
+    /* v0.13.0: токены брендбука перечитываются под новую тему
+       (инлайн-переменные brandvars иначе остались бы от прошлой темы) */
+    if (window.applyBrandCached) window.applyBrandCached();
   }
   window.currentAdminTheme = function () {
     return document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';

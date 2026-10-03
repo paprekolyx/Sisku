@@ -88,7 +88,9 @@
       document.documentElement.setAttribute('data-theme', cur);
       try { localStorage.setItem('sisku_theme', cur); } catch (e) {}
       setHeroImage();
+      /* v0.13.0: токены брендбука под новую тему — из свежих строк или из кэша */
       if (state.brandRows.length && window.brandApplyRows) brandApplyRows(state.brandRows);
+      else if (window.applyBrandCached) applyBrandCached();
     });
   }
 
