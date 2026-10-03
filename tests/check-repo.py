@@ -51,6 +51,7 @@ REQUIRED = [
     'looks.html', 'assets/js/looks.js', 'supabase/13_reserve_and_looks.sql', 'docs/update-v100.md',
     'brandbook.html', 'clients.html', 'assets/js/brandbook.js', 'assets/js/clients.js',
     'assets/js/brandvars.js', 'supabase/14_brandbook.sql', 'docs/update-v110.md',
+    'supabase/README.md', 'docs/update-v111.md',
     'docs/setup-repo-pages.md', 'docs/setup-supabase.md', 'docs/update-v040.md',
     'docs/feature-proposals.md', 'docs/code-review-v040.md',
 ] + ['assets/img/products/p00%d.jpg' % i for i in range(1, 9)]
@@ -120,6 +121,17 @@ else:
         head = open(f, encoding='utf-8').read()[:600]
         if ver not in head:
             problems.append('%s: версия в шапке не совпадает с SITE_VERSION (%s)' % (f, ver))
+
+# ---------- 6.5. регламент SQL: policyname и парные доллар-квоты ----------
+for f in sorted(os.listdir('supabase')):
+    if not f.endswith('.sql'):
+        continue
+    src = open(os.path.join('supabase', f), encoding='utf-8').read()
+    if re.search(r'\bpolicy_name\b', src):
+        problems.append('supabase/%s: использовать pg_policies.policyname, а не policy_name' % f)
+    for n, line in enumerate(src.split('\n'), 1):
+        if re.search(r'(?<!\$)\$(?!\$)', line.split('--')[0]):
+            problems.append('supabase/%s: одиночный $ в строке %d (доллар-квоты только парные)' % (f, n))
 
 # ---------- 7. SQL (опционально) ----------
 try:
