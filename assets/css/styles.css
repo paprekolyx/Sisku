@@ -60,15 +60,15 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-body);
-  font-size: 16px;
+  font-size: var(--font-base, 16px);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
 }
 
 h1, h2, h3, .display { font-family: var(--font-display); font-weight: 400; line-height: 1.18; margin: 0 0 .5em; }
-h1 { font-size: clamp(38px, 5.4vw, 64px); letter-spacing: .01em; }
-h2 { font-size: clamp(30px, 3.4vw, 42px); }
-h3 { font-size: 22px; }
+h1 { font-size: calc(clamp(38px, 5.4vw, 64px) * var(--type-scale, 1)); letter-spacing: .01em; }
+h2 { font-size: calc(clamp(30px, 3.4vw, 42px) * var(--type-scale, 1)); }
+h3 { font-size: calc(22px * var(--type-scale, 1)); }
 p  { margin: 0 0 1em; }
 a  { color: inherit; }
 img { max-width: 100%; display: block; }
@@ -488,3 +488,12 @@ body::-webkit-scrollbar-thumb:hover, .modal::-webkit-scrollbar-thumb:hover,
 .look-old { color: var(--muted); text-decoration: line-through; font-size: 13px; font-variant-numeric: tabular-nums; }
 .look-new { font-weight: 700; font-size: 17px; font-variant-numeric: tabular-nums; }
 .look-disc { color: var(--accent); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; font-weight: 600; }
+
+/* v0.11.0: состав образа в карточке лука */
+.look-table { width: 100%; border-collapse: collapse; margin: 4px 0 14px; font-size: 13px; }
+.look-table td { padding: 8px 0; border-bottom: 1px solid var(--line); vertical-align: middle; }
+.look-table tr:last-child td { border-bottom: 0; }
+.look-table .lt-name { text-align: left; color: var(--text); }
+.look-table .lt-name .muted { font-size: 12px; }
+.look-table .lt-price { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
+.look-table select, .look-table .cselect-btn { min-height: 34px; font-size: 12.5px; margin-top: 6px; }
