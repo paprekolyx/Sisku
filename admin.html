@@ -10,6 +10,7 @@
 <script>/* тема до отрисовки — без «моргания» (паттерн витрины) */
 (function(){try{var t=localStorage.getItem('sisku_admin_theme');document.documentElement.setAttribute('data-theme', t==='light'?'light':'dark');}catch(e){}})();
 </script>
+<script src="assets/js/brandvars.js"></script>
 <link rel="stylesheet" href="assets/css/fonts.css">
 <link rel="stylesheet" href="assets/css/admin.css">
 <link rel="stylesheet" href="assets/css/ui.css">
@@ -25,7 +26,7 @@
     <div class="tabs" role="tablist">
       <button class="tab active" id="tab-orders" role="tab" aria-selected="true">Заказы</button>
       <button class="tab" id="tab-stats" role="tab" aria-selected="false">Статистика</button>
-      <a class="tab" href="shop.html">Магазин</a>
+      <a class="tab" href="categories.html">Магазин</a>
       <a class="tab" href="manage.html">Управление</a>
       <a class="tab" href="users.html">Пользователи</a>
     </div>
@@ -87,55 +88,160 @@
 
 <!-- ======================= СТАТИСТИКА ======================= -->
 <main class="panel container" id="panel-stats" hidden>
-  <div class="toolbar">
-    <select id="s-period" aria-label="Период статистики">
-      <option value="7">Последние 7 дней</option>
-      <option value="30">Последние 30 дней</option>
-      <option value="90">Последние 90 дней</option>
-      <option value="all" selected>Всё время</option>
-    </select>
-    <button class="btn" id="btn-stats-csv">Выгрузить CSV</button>
-    <span class="muted" style="font-size:13px">Суммы считаются по оформленным заявкам (сайт не видит фактические оплаты — они происходят вне сайта).</span>
+  <!-- v0.13.0: подвкладки статистики -->
+  <div class="seg subseg" id="stats-subseg" role="tablist" aria-label="Разделы статистики">
+    <button class="seg-btn active" data-stab="orders" role="tab" aria-selected="true">Заказы</button>
+    <button class="seg-btn" data-stab="promos" role="tab" aria-selected="false">Акции</button>
+    <button class="seg-btn" data-stab="admins" role="tab" aria-selected="false">Администраторы</button>
+    <button class="seg-btn" data-stab="clients" role="tab" aria-selected="false">Клиенты</button>
   </div>
-  <div class="kpi-grid" id="kpi-grid"></div>
-  <div class="charts-grid">
-    <div class="chart-box">
-      <h3>Заявки и суммы по дням</h3>
-      <canvas id="chart-days" height="220"></canvas>
+
+  <!-- ========== подвкладка «Заказы» (статистика v0.1–v0.12 без изменений) ========== -->
+  <div id="stab-orders">
+    <div class="toolbar">
+      <select id="s-period" aria-label="Период статистики">
+        <option value="7">Последние 7 дней</option>
+        <option value="30">Последние 30 дней</option>
+        <option value="90">Последние 90 дней</option>
+        <option value="all" selected>Всё время</option>
+      </select>
+      <button class="btn" id="btn-stats-csv">Выгрузить CSV</button>
+      <span class="muted" style="font-size:13px">Суммы считаются по оформленным заявкам (сайт не видит фактические оплаты — они происходят вне сайта).</span>
     </div>
-    <div class="chart-box">
-      <h3>Воронка статусов</h3>
-      <div class="seg" id="funnel-seg" role="group" aria-label="Вид воронки">
-        <button class="seg-btn active" data-mode="chart">Диаграмма</button>
-        <button class="seg-btn" data-mode="table">Таблица</button>
+    <div class="kpi-grid" id="kpi-grid"></div>
+    <div class="charts-grid">
+      <div class="chart-box">
+        <h3>Заявки и суммы по дням</h3>
+        <canvas id="chart-days" height="220"></canvas>
       </div>
-      <div id="funnel-chart"><canvas id="chart-funnel" height="220"></canvas></div>
-      <div id="funnel-table" hidden><table class="mini-table" id="table-funnel"></table></div>
-      <div class="subhead-sm">Время между статусами</div>
-      <ul class="metric-list" id="funnel-metrics"></ul>
+      <div class="chart-box">
+        <h3>Воронка статусов</h3>
+        <div class="seg" id="funnel-seg" role="group" aria-label="Вид воронки">
+          <button class="seg-btn active" data-mode="chart">Диаграмма</button>
+          <button class="seg-btn" data-mode="table">Таблица</button>
+        </div>
+        <div id="funnel-chart"><canvas id="chart-funnel" height="220"></canvas></div>
+        <div id="funnel-table" hidden><table class="mini-table" id="table-funnel"></table></div>
+        <div class="subhead-sm">Время между статусами</div>
+        <ul class="metric-list" id="funnel-metrics"></ul>
+      </div>
+      <div class="chart-box">
+        <h3>Топ товаров периода</h3>
+        <table class="mini-table" id="top-products"></table>
+      </div>
+      <div class="chart-box">
+        <h3>Доставка и оплата</h3>
+        <div class="seg" id="methods-seg" role="group" aria-label="Вид представления">
+          <button class="seg-btn" data-mode="chart">Диаграмма</button>
+          <button class="seg-btn active" data-mode="table">Таблица</button>
+        </div>
+        <div id="methods-charts" class="methods-view" hidden>
+          <div class="subhead-sm">Способы доставки</div>
+          <canvas id="chart-delivery" height="150"></canvas>
+          <div class="subhead-sm">Способы оплаты</div>
+          <canvas id="chart-payment" height="150"></canvas>
+        </div>
+        <div id="methods-tables" class="methods-view">
+          <div class="subhead-sm">Способы доставки</div>
+          <table class="mini-table" id="table-delivery"></table>
+          <div class="subhead-sm">Способы оплаты</div>
+          <table class="mini-table" id="table-payment"></table>
+        </div>
+      </div>
     </div>
-    <div class="chart-box">
-      <h3>Топ товаров периода</h3>
-      <table class="mini-table" id="top-products"></table>
+  </div>
+
+  <!-- ========== подвкладка «Акции»: статистика промокодов (v0.13.0) ========== -->
+  <div id="stab-promos" hidden>
+    <div class="toolbar">
+      <select id="p-period" aria-label="Период статистики акций">
+        <option value="7">Последние 7 дней</option>
+        <option value="30">Последние 30 дней</option>
+        <option value="90">Последние 90 дней</option>
+        <option value="all" selected>Всё время</option>
+      </select>
+      <button class="btn" id="btn-promos-csv">Выгрузить CSV</button>
+      <span class="muted" style="font-size:13px">Учитываются промокоды, применённые к оформленным заявкам периода. Суммы скидок — фактические, из заказов (promo_discount).</span>
     </div>
-    <div class="chart-box">
-      <h3>Доставка и оплата</h3>
-      <div class="seg" id="methods-seg" role="group" aria-label="Вид представления">
-        <button class="seg-btn" data-mode="chart">Диаграмма</button>
-        <button class="seg-btn active" data-mode="table">Таблица</button>
+    <div class="kpi-grid" id="kpi-promos"></div>
+    <div class="charts-grid">
+      <div class="chart-box">
+        <h3>Использование кодов по дням</h3>
+        <canvas id="chart-promo-days" height="220"></canvas>
+        <div class="empty" id="promo-days-empty" hidden>За выбранный период нет заказов с промокодами.</div>
       </div>
-      <div id="methods-charts" class="methods-view" hidden>
-        <div class="subhead-sm">Способы доставки</div>
-        <canvas id="chart-delivery" height="150"></canvas>
-        <div class="subhead-sm">Способы оплаты</div>
-        <canvas id="chart-payment" height="150"></canvas>
+      <div class="chart-box">
+        <h3>Статистика по кодам</h3>
+        <div class="seg" id="promocodes-seg" role="group" aria-label="Вид представления">
+          <button class="seg-btn active" data-mode="chart">Диаграмма</button>
+          <button class="seg-btn" data-mode="table">Таблица</button>
+        </div>
+        <div id="promocodes-chart"><canvas id="chart-promo-codes" height="220"></canvas></div>
+        <div id="promocodes-table" hidden><table class="mini-table" id="table-promo-codes"></table></div>
+        <div class="subhead-sm">Сводка по кодам</div>
+        <ul class="metric-list" id="promo-metrics"></ul>
       </div>
-      <div id="methods-tables" class="methods-view">
-        <div class="subhead-sm">Способы доставки</div>
-        <table class="mini-table" id="table-delivery"></table>
-        <div class="subhead-sm">Способы оплаты</div>
-        <table class="mini-table" id="table-payment"></table>
-      </div>
+    </div>
+    <div class="chart-box" style="margin-top:14px">
+      <h3>С кодом и без кода</h3>
+      <table class="mini-table" id="table-promo-split"></table>
+    </div>
+  </div>
+
+  <!-- ========== подвкладка «Администраторы»: заглушка (v0.13.0) ========== -->
+  <div id="stab-admins" hidden>
+    <div class="stub-card">
+      <div class="stub-badge">Заглушка · планируется</div>
+      <h3>Статистика по администраторам</h3>
+      <p class="muted" style="font-size:14px">Управленческий отчёт по сотрудникам админ-панели
+      (docs/feature-proposals.md, пункт 10 «Отчёты по менеджерам» + новые идеи v0.13.0).
+      Данные будут считаться по журналу <code>order_status_history.changed_by</code>
+      и журналу изменений <code>audit_log</code> (появится в боевой версии).</p>
+      <div class="subhead-sm">Что здесь появится</div>
+      <ul class="stub-list">
+        <li><b>Активность администраторов:</b> сколько заказов каждый взял в работу,
+          сменил статусов, оставил комментариев — по дням и за период.</li>
+        <li><b>Результаты продаж:</b> сумма подтверждённых и завершённых заказов,
+          средний чек и доля оплат по каждому сотруднику.</li>
+        <li><b>Скорость работы:</b> среднее время реакции на заявку
+          («Новый → Подтверждён»), время сборки, доля заказов с просроченной реакцией.</li>
+        <li><b>Лучшие администраторы:</b> рейтинг за период (скорость + объём + минимум
+          отмен) — прозрачная основа для мотивации.</li>
+        <li><b>Внесённые изменения:</b> кто, что и когда менял в каталоге (товары, цены,
+          остатки), промокодах и текстах сайта — нужен журнал audit_log.</li>
+        <li><b>Фильтр «сотрудник»:</b> применится ко всем блокам статистики заказов —
+          метрики времени между статусами уже считаются, останется разложить их по людям.</li>
+      </ul>
+      <p class="muted stub-note">Почему заглушка: в черновике все действия идут от одной
+      мок-сессии (вход по паролю 123456), поэтому персонализировать операции пока
+      технически нечем. Отчёт поедет в боевой версии вместе с настоящей авторизацией
+      и ролями (migration-plan.md, волна M2).</p>
+    </div>
+  </div>
+
+  <!-- ========== подвкладка «Клиенты»: заглушка (v0.13.0) ========== -->
+  <div id="stab-clients" hidden>
+    <div class="stub-card">
+      <div class="stub-badge">Заглушка · планируется</div>
+      <h3>Статистика по клиентам</h3>
+      <p class="muted" style="font-size:14px">Аналитика клиентской базы
+      (docs/feature-proposals.md, пункт 7 «Клиентская база и сегменты (CRM-light)»).
+      Сам список реальных клиентов уже работает: «Пользователи → Клиенты» (v0.13.0).</p>
+      <div class="subhead-sm">Что здесь появится</div>
+      <ul class="stub-list">
+        <li><b>Повторные продажи:</b> доля клиентов со вторым и последующими заказами,
+          динамика по месяцам, средний промежуток между покупками.</li>
+        <li><b>VIP-сегмент:</b> клиенты с суммой заказов выше порога (порог задаёт владелец)
+          и их доля в выручке.</li>
+        <li><b>«Уснувшие» клиенты:</b> не заказывали 90+ дней — список для точечной
+          коммуникации (возвращающий промокод, персональное предложение).</li>
+        <li><b>Сегменты-фильтры:</b> новый / повторный / VIP / уснул — переключатели
+          поверх всех блоков этой подвкладки.</li>
+        <li><b>LTV и средний чек по сегментам</b> + выгрузка сегмента в CSV для рассылок.</li>
+      </ul>
+      <p class="muted stub-note">Данные для отчёта уже собираются: таблица <code>clients</code>
+      связана с заказами через <code>orders.client_id</code> (скрипт 15) — останутся
+      агрегаты, пороги сегментов и графики.</p>
     </div>
   </div>
 </main>

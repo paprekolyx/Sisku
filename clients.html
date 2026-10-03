@@ -10,13 +10,14 @@
 (function(){try{var t=localStorage.getItem('sisku_admin_theme');document.documentElement.setAttribute('data-theme', t==='light'?'light':'dark');}catch(e){}})();
 </script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230D0D10'/%3E%3Ctext x='32' y='44' font-family='Georgia' font-size='36' fill='%23C9A96A' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<script src="assets/js/brandvars.js"></script>
 <link rel="stylesheet" href="assets/css/fonts.css">
 <link rel="stylesheet" href="assets/css/admin.css">
 <link rel="stylesheet" href="assets/css/ui.css">
 </head>
 <body>
 
-<div class="warnbar"><b>Черновик страницы:</b> функционал пока отрисован без базы — данные демонстрационные (мок), сохранения живут до перезагрузки страницы. Реальная клиентская база с историей заказов описана в docs/feature-proposals.md и приедет в боевой версии.</div>
+<div class="warnbar"><b>Черновик:</b> клиентская база — реальные строки из таблицы clients (скрипт 15): клиенты выделяются из заказов автоматически, дедупликация по телефону и e-mail. База Supabase находится вне РФ — вводите <b>только тестовые данные</b>. История заказов в карточке клиента — следующая волна (docs/feature-proposals.md, пункт 1).</div>
 
 <header class="topbar">
   <div class="container topbar-in">
@@ -25,7 +26,7 @@
     <div class="tabs" role="tablist">
       <a class="tab" href="admin.html">Заказы</a>
       <a class="tab" href="admin.html#stats">Статистика</a>
-      <a class="tab" href="shop.html">Магазин</a>
+      <a class="tab" href="categories.html">Магазин</a>
       <a class="tab" href="manage.html">Управление</a>
       <a class="tab active" href="users.html">Пользователи</a>
     </div>
@@ -49,19 +50,32 @@
     <input type="search" id="cl-search" placeholder="Поиск: ФИО, телефон, e-mail" aria-label="Поиск клиентов">
     <span class="spacer"></span>
     <button class="btn" id="btn-refresh">Обновить</button>
+    <button class="btn" id="btn-cl-csv">Выгрузить CSV</button>
   </div>
   <div class="table-wrap">
     <table class="orders" style="min-width:1080px">
       <thead>
         <tr>
-          <th>ФИО</th><th>Телефон</th><th>E-mail</th><th>Первый заказ</th>
-          <th>Последний заказ</th><th>Сумма заказов</th><th>Кол-во заказов</th>
+          <th class="sortable" data-sort="name">ФИО<span class="sort-ic">↕</span></th>
+          <th>Телефон</th>
+          <th>E-mail</th>
+          <th class="sortable" data-sort="first">Первый заказ<span class="sort-ic">↕</span></th>
+          <th class="sortable" data-sort="last">Последний заказ<span class="sort-ic">↕</span></th>
+          <th class="sortable" data-sort="sum">Сумма заказов<span class="sort-ic">↕</span></th>
+          <th class="sortable" data-sort="count">Кол-во заказов<span class="sort-ic">↕</span></th>
         </tr>
       </thead>
       <tbody id="cl-body"></tbody>
     </table>
   </div>
-  <div class="empty" id="cl-empty" hidden>Клиентов пока нет.</div>
+  <div class="pager" id="cl-pager" hidden>
+    <button class="btn" id="cl-pg-prev" style="min-height:36px;padding:0 16px">← Ранее</button>
+    <span class="muted" id="cl-pg-info" style="font-size:13px"></span>
+    <button class="btn" id="cl-pg-next" style="min-height:36px;padding:0 16px">Далее →</button>
+  </div>
+  <div class="loading" id="cl-loading">Загружаем клиентов…</div>
+  <div class="empty" id="cl-empty" hidden>Клиентов пока нет. Оформите тестовый заказ на витрине — клиент появится здесь автоматически.</div>
+  <div class="err-box" id="cl-error" hidden></div>
 </main>
 
 <!-- ========== карточка клиента ========== -->
@@ -89,11 +103,13 @@
         <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="clm-comment">Комментарий к клиенту</label>
         <textarea id="clm-comment" style="width:100%;min-height:90px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px;resize:vertical" placeholder="Предпочтения по размерам, любимые ароматы, особенности доставки"></textarea>
       </div>
-      <button class="btn primary" type="submit" style="width:100%">Сохранить</button>
+      <div class="err-box" id="clm-error" hidden style="margin-bottom:14px"></div>
+      <button class="btn primary" type="submit" id="clm-save" style="width:100%">Сохранить</button>
     </form>
   </div>
 </div>
 
+<script src="assets/vendor/supabase.min.js"></script>
 <script src="assets/js/config.js"></script>
 <script src="assets/js/ui.js"></script>
 <script src="assets/js/admintheme.js"></script>

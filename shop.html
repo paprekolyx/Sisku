@@ -10,13 +10,14 @@
 <script>/* тема до отрисовки — без «моргания» (паттерн витрины) */
 (function(){try{var t=localStorage.getItem('sisku_admin_theme');document.documentElement.setAttribute('data-theme', t==='light'?'light':'dark');}catch(e){}})();
 </script>
+<script src="assets/js/brandvars.js"></script>
 <link rel="stylesheet" href="assets/css/fonts.css">
 <link rel="stylesheet" href="assets/css/admin.css">
 <link rel="stylesheet" href="assets/css/ui.css">
 </head>
 <body>
 
-<div class="warnbar"><b>Черновик:</b> раздел «Магазин» начинается с промокодов; далее сюда переедут акции, комплекты и справочники. Проверка и применение кодов — только на сервере.</div>
+<div class="warnbar"><b>Черновик:</b> раздел «Управление → Промокоды» (перенесён из «Магазина» в v0.13.0). Проверка и применение кодов — только на сервере; статистика использования — в «Статистика → Акции».</div>
 
 <header class="topbar">
   <div class="container topbar-in">
@@ -25,8 +26,8 @@
     <div class="tabs" role="tablist">
       <a class="tab" href="admin.html">Заказы</a>
       <a class="tab" href="admin.html#stats">Статистика</a>
-      <a class="tab active" href="shop.html">Магазин</a>
-      <a class="tab" href="manage.html">Управление</a>
+      <a class="tab" href="categories.html">Магазин</a>
+      <a class="tab active" href="manage.html">Управление</a>
       <a class="tab" href="users.html">Пользователи</a>
     </div>
     <div class="topbar-actions">
@@ -42,11 +43,11 @@
 
 <main class="panel container">
   <div class="seg subseg">
+    <a class="seg-btn" href="manage.html">Оплата и доставка</a>
     <a class="seg-btn active" href="shop.html">Промокоды</a>
-    <a class="seg-btn" href="categories.html">Категории</a>
-    <a class="seg-btn" href="brands.html">Бренды</a>
-    <a class="seg-btn" href="products.html">Товары</a>
-    <a class="seg-btn" href="looks.html">Комплекты</a>
+    <a class="seg-btn" href="sitecontent.html">Сайт</a>
+    <a class="seg-btn" href="sitemap.html">Карта сайта</a>
+    <a class="seg-btn" href="brandbook.html">Брендбук</a>
   </div>
   <div class="toolbar">
     <span class="muted" style="font-size:13px">Промокоды: скидки применятся на сервере при оформлении заказа</span>

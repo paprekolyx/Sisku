@@ -10,13 +10,14 @@
 (function(){try{var t=localStorage.getItem('sisku_admin_theme');document.documentElement.setAttribute('data-theme', t==='light'?'light':'dark');}catch(e){}})();
 </script>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%230D0D10'/%3E%3Ctext x='32' y='44' font-family='Georgia' font-size='36' fill='%23C9A96A' text-anchor='middle'%3ES%3C/text%3E%3C/svg%3E">
+<script src="assets/js/brandvars.js"></script>
 <link rel="stylesheet" href="assets/css/fonts.css">
 <link rel="stylesheet" href="assets/css/admin.css">
 <link rel="stylesheet" href="assets/css/ui.css">
 </head>
 <body>
 
-<div class="warnbar"><b>Как применяется:</b> витрина читает эти значения при загрузке и подставляет в CSS-переменные. Сохраните цвета → откройте сайт с <b>Ctrl + F5</b>. Шаблоны хранят полный набор обеих тем — переключение палитры к сезону в один клик. <b>Проверяйте контраст WCAG</b> перед сохранением: пары ниже 4.5:1 подсвечиваются красным.</div>
+<div class="warnbar"><b>Как применяется:</b> витрина И админ-панель читают эти значения при загрузке и подставляют в CSS-переменные (v0.13.0). Сохраните цвета → откройте сайт или админку с <b>Ctrl + F5</b>. Шаблоны хранят полный набор обеих тем — переключение палитры к сезону в один клик. <b>Проверяйте контраст WCAG</b> перед сохранением: пары ниже 4.5:1 подсвечиваются красным.</div>
 
 <header class="topbar">
   <div class="container topbar-in">
@@ -25,7 +26,7 @@
     <div class="tabs" role="tablist">
       <a class="tab" href="admin.html">Заказы</a>
       <a class="tab" href="admin.html#stats">Статистика</a>
-      <a class="tab" href="shop.html">Магазин</a>
+      <a class="tab" href="categories.html">Магазин</a>
       <a class="tab active" href="manage.html">Управление</a>
       <a class="tab" href="users.html">Пользователи</a>
     </div>
@@ -43,6 +44,7 @@
 <main class="panel container">
   <div class="seg subseg">
     <a class="seg-btn" href="manage.html">Оплата и доставка</a>
+    <a class="seg-btn" href="shop.html">Промокоды</a>
     <a class="seg-btn" href="sitecontent.html">Сайт</a>
     <a class="seg-btn" href="sitemap.html">Карта сайта</a>
     <a class="seg-btn active" href="brandbook.html">Брендбук</a>
@@ -224,7 +226,6 @@
 <script src="assets/js/ui.js"></script>
 <script src="assets/js/admintheme.js"></script>
 <script src="assets/js/mockauth.js"></script>
-<script src="assets/js/brandvars.js"></script>
 <script src="assets/js/brandbook.js"></script>
 </body>
 </html>
