@@ -70,4 +70,4 @@ create policy draft_anon_update_site_content on public.site_content
 select count(*) as write_policies
 from pg_policies
 where tablename in ('brands', 'delivery_methods', 'payment_methods', 'site_content')
-  and policy_name like 'draft_anon_%';
+  and policyname like 'draft_anon_%';

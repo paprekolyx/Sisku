@@ -11,6 +11,19 @@
 --  Идемпотентен.
 -- ============================================================================
 
+-- ----------------------------------------------------------------------------
+-- 0. Префлайт: убеждаемся, что мы в проекте черновика Sisku, а не в учебном.
+--    В учебном проекте нет таблицы product_variants — без этой проверки
+--    скрипт падает ошибкой 42P01 и успевает создать часть политик не там.
+-- ----------------------------------------------------------------------------
+do $$
+begin
+    if to_regclass('public.product_variants') is null
+       or to_regclass('public.admin_users') is null then
+        raise exception 'Sisku draft: не найдены таблицы черновика (product_variants / admin_users). Проверьте переключатель проектов Supabase слева вверху: нужен проект sisku-draft, а не учебный.';
+    end if;
+end $$;
+
 drop policy if exists draft_anon_insert_products on public.products;
 create policy draft_anon_insert_products on public.products
     for insert to anon, authenticated with check (true);
@@ -47,4 +60,4 @@ create policy draft_anon_delete_variants on public.product_variants
 select count(*) as write_policies
 from pg_policies
 where tablename in ('products', 'categories', 'product_variants')
-  and policy_name like 'draft_anon_%';   -- ожидаем 8
+  and policyname like 'draft_anon_%';   -- ожидаем 8

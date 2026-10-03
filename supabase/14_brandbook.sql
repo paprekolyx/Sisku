@@ -293,4 +293,4 @@ select
     (select count(*) from public.brand_colors) as color_rows,          -- ожидаем 20
     (select count(*) from pg_policies
       where tablename in ('brand_colors', 'brand_templates')
-        and policy_name like 'draft_anon_%') as brand_policies;        -- ожидаем 8
+        and policyname like 'draft_anon_%') as brand_policies;        -- ожидаем 8

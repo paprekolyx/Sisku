@@ -342,6 +342,6 @@ $$;
 -- 5. Самопроверка
 -- ----------------------------------------------------------------------------
 select
-    (select count(*) from pg_policies where tablename in ('looks', 'look_items') and policy_name like 'draft_anon_%') as look_policies,
+    (select count(*) from pg_policies where tablename in ('looks', 'look_items') and policyname like 'draft_anon_%') as look_policies,
     (select column_name from information_schema.columns
       where table_name = 'orders' and column_name = 'look_id') as look_column_ok;
