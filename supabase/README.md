@@ -21,6 +21,7 @@ SQL-скрипты проекта Supabase `sisku-draft`. Выполняются
 | `12_manage_policies.sql` | anon-запись брендов, способов оплаты/доставки, site_content |
 | `13_reserve_and_looks.sql` | резервирование (возврат остатков), `draft_reserved_map`, комплекты, create_order v3 |
 | `14_brandbook.sql` | `brand_colors`, `brand_templates`, create_order v4 (частичный комплект) |
+| `15_clients_and_promo_stats.sql` | клиентская база `clients` + `orders.client_id` (миграция из заказов, дедупликация по телефону/e-mail), фактические скидки `promo_discount`/`look_discount`, create_order v5, `draft_admin_bundle` v2 (блок promos), `draft_clients_bundle()` v2 (двухступенчатая агрегация, hotfix 42803) |
 
 ## Правила написания скриптов (регламент проекта)
 
@@ -40,3 +41,9 @@ SQL-скрипты проекта Supabase `sisku-draft`. Выполняются
    черновика и падают с понятным текстом (см. скрипты 11, 12).
 7. **Комментарий в шапке:** что делает, зачем, безопасно ли; в конце — самопроверка
    select-ом ожидаемых значений.
+8. **Агрегаты не вкладываются:** `count/sum/min/max/jsonb_agg/string_agg` нельзя
+   ставить аргументом другой агрегатной функции на одном уровне запроса —
+   Postgres отклоняет ошибкой 42803 «aggregate function calls cannot be nested».
+   Нужен массив/объект из агрегатов — сначала `group by` в подзапросе или CE,
+   затем `jsonb_agg` по его строкам (см. `draft_clients_bundle()` v2 в скрипте 15).
+   Ошибка семантическая: pglast и check-repo её не ловят, только прогон на Postgres.
