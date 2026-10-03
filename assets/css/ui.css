@@ -122,3 +122,50 @@ input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
 .dp-foot { display: flex; justify-content: space-between; margin-top: 8px; }
 .dp-foot button { background: none; border: 0; color: var(--muted, #6f6a60); font-size: 12px; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
 .dp-foot button:hover { color: var(--accent, #7a5c2e); }
+
+/* ==========================================================================
+   v0.12.0-draft: модальное окно брендбука — общее для витрины и админ-панели.
+   Перенесено из styles.css: справка «Брендбук» открывается и на витрине
+   (index.html), и в «Управление → Брендбук» (brandbook.html), а admin.css
+   витринные файлы не подключает — без общего файла окно приезжало
+   нестилизованной простынёй текста.
+   ========================================================================== */
+.bb .eyebrow {
+  font-size: 12px; letter-spacing: .22em; text-transform: uppercase;
+  color: var(--accent, #7a5c2e); font-weight: 600; margin-bottom: 14px;
+}
+.bb-modal { width: min(760px, 100%); padding: 44px 46px; }
+.bb h3 { font-size: 26px; margin-bottom: 6px; }
+.bb .subhead { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--accent, #7a5c2e); margin: 26px 0 12px; font-weight: 600; }
+.bb-themes { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+@media (max-width: 640px) { .bb-themes { grid-template-columns: 1fr; } }
+.bb-theme-name { font-size: 13px; font-weight: 700; letter-spacing: .06em; margin-bottom: 10px; }
+.bb-swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; grid-auto-rows: 1fr; }
+.bb-swatch { border: 1px solid var(--line, #e5e0d6); display: flex; flex-direction: column; height: 100%; }
+.bb-swatch .color { height: 56px; flex: none; }
+.bb-swatch .meta { font-size: 10.5px; color: var(--muted, #6f6a60); padding: 6px 8px; line-height: 1.35; flex: 1; min-height: 58px; }
+.bb-swatch .meta b { display: block; color: var(--text, #1a1a1e); font-size: 11px; }
+.bb-note { font-size: 13px; margin-top: 14px; }
+.bb-type .sample-prata { font-family: var(--font-display, serif); font-size: 34px; line-height: 1.2; }
+.bb-type .sample-manrope { font-size: 16px; margin: 8px 0 4px; }
+.bb-type .scale { font-size: 12.5px; color: var(--muted, #6f6a60); font-variant-numeric: tabular-nums; }
+.bb ul { margin: 0; padding-left: 18px; font-size: 14px; color: var(--muted, #6f6a60); }
+.bb ul li { margin-bottom: 6px; }
+.bb-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+@media (max-width: 640px) { .bb-type-grid { grid-template-columns: 1fr; } }
+.bb-type-card { border: 1px solid var(--line, #e5e0d6); background: var(--surface, #fff); padding: 26px 24px; }
+.bb-type-card .tag { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--accent, #7a5c2e); font-weight: 700; margin-bottom: 14px; }
+.bb-type-card .sample { font-size: 30px; line-height: 1.2; margin-bottom: 8px; }
+.bb-type-card .sample.prata { font-family: var(--font-display, serif); }
+.bb-type-card .note { font-size: 13px; color: var(--muted, #6f6a60); margin-bottom: 16px; }
+.bb-size { margin-bottom: 12px; }
+.bb-size:last-child { margin-bottom: 0; }
+.bb-size .val { font-size: 19px; }
+.bb-size .val.prata { font-family: var(--font-display, serif); }
+.bb-size .hint { font-size: 12px; color: var(--muted, #6f6a60); }
+
+/* v0.12.0: все плашки палитры брендбука — одного фиксированного размера (было v0.7.0 в styles.css) */
+.bb-swatches { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 118px; }
+.bb-swatch { height: 118px; }
+.bb-swatch .color { height: 66px; flex: none; }
+.bb-swatch .meta { height: 52px; min-height: 52px; flex: none; font-size: 10.5px; line-height: 1.35; overflow: hidden; }

@@ -359,24 +359,7 @@ img { max-width: 100%; display: block; }
 .reveal { opacity: 0; transform: translateY(22px); transition: opacity .7s ease, transform .7s ease; }
 .reveal.in { opacity: 1; transform: none; }
 
-/* ---------- v0.2.0: брендбук (модальное окно) ---------- */
-.bb-modal { width: min(760px, 100%); padding: 44px 46px; }
-.bb h3 { font-size: 26px; margin-bottom: 6px; }
-.bb .subhead { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); margin: 26px 0 12px; font-weight: 600; }
-.bb-themes { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
-@media (max-width: 640px) { .bb-themes { grid-template-columns: 1fr; } }
-.bb-theme-name { font-size: 13px; font-weight: 700; letter-spacing: .06em; margin-bottom: 10px; }
-.bb-swatches { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-.bb-swatch { border: 1px solid var(--line); }
-.bb-swatch .color { height: 46px; }
-.bb-swatch .meta { font-size: 10.5px; color: var(--muted); padding: 6px 8px; line-height: 1.35; }
-.bb-swatch .meta b { display: block; color: var(--text); font-size: 11px; }
-.bb-note { font-size: 13px; margin-top: 14px; }
-.bb-type .sample-prata { font-family: var(--font-display); font-size: 34px; line-height: 1.2; }
-.bb-type .sample-manrope { font-size: 16px; margin: 8px 0 4px; }
-.bb-type .scale { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
-.bb ul { margin: 0; padding-left: 18px; font-size: 14px; color: var(--muted); }
-.bb ul li { margin-bottom: 6px; }
+/* v0.12.0: стили окна брендбука перенесены в ui.css — окно общее для витрины и админ-панели */
 
 /* ---------- v0.2.0: кнопка «Очистить» в корзине ---------- */
 .drawer-head { gap: 10px; }
@@ -418,25 +401,7 @@ body::-webkit-scrollbar-thumb:hover, .modal::-webkit-scrollbar-thumb:hover,
 .form-modal .cselect, .form-modal .cselect-btn { width: 100%; }
 .form-modal .cselect-btn { white-space: normal; }
 
-/* 5) брендбук: плашки палитры одинаковой высоты */
-.bb-swatches { grid-auto-rows: 1fr; }
-.bb-swatch { display: flex; flex-direction: column; height: 100%; }
-.bb-swatch .color { height: 56px; flex: none; }
-.bb-swatch .meta { flex: 1; min-height: 58px; }
-
-/* 6) брендбук: типографика карточками (референс учебного проекта) */
-.bb-type-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-@media (max-width: 640px) { .bb-type-grid { grid-template-columns: 1fr; } }
-.bb-type-card { border: 1px solid var(--line); background: var(--surface); padding: 26px 24px; }
-.bb-type-card .tag { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin-bottom: 14px; }
-.bb-type-card .sample { font-size: 30px; line-height: 1.2; margin-bottom: 8px; }
-.bb-type-card .sample.prata { font-family: var(--font-display); }
-.bb-type-card .note { font-size: 13px; color: var(--muted); margin-bottom: 16px; }
-.bb-size { margin-bottom: 12px; }
-.bb-size:last-child { margin-bottom: 0; }
-.bb-size .val { font-size: 19px; }
-.bb-size .val.prata { font-family: var(--font-display); }
-.bb-size .hint { font-size: 12px; color: var(--muted); }
+/* 5) и 6) брендбук: плашки и карточки типографики перенесены в ui.css (v0.12.0) */
 
 /* ==========================================================================
    v0.6.0-draft: таблица размеров, отслеживание заказа
@@ -464,11 +429,7 @@ body::-webkit-scrollbar-thumb:hover, .modal::-webkit-scrollbar-thumb:hover,
 .track-list .dt { color: var(--muted); font-size: 13px; margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .track-list .cm { color: var(--muted); font-size: 12.5px; width: 100%; }
 
-/* v0.7.0: все плашки палитры брендбука — одного фиксированного размера */
-.bb-swatches { grid-template-columns: repeat(3, 1fr); grid-auto-rows: 118px; }
-.bb-swatch { height: 118px; }
-.bb-swatch .color { height: 66px; flex: none; }
-.bb-swatch .meta { height: 52px; min-height: 52px; flex: none; font-size: 10.5px; line-height: 1.35; overflow: hidden; }
+/* v0.7.0: фикс-размер плашек брендбука перенесён в ui.css (v0.12.0) */
 
 /* ==========================================================================
    v0.10.0: карточки готовых образов
@@ -497,3 +458,39 @@ body::-webkit-scrollbar-thumb:hover, .modal::-webkit-scrollbar-thumb:hover,
 .look-table .lt-name .muted { font-size: 12px; }
 .look-table .lt-price { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
 .look-table select, .look-table .cselect-btn { min-height: 34px; font-size: 12.5px; margin-top: 6px; }
+
+/* ==========================================================================
+   v0.12.0-draft: юридические документы (политика ПДн, публичная оферта).
+   Страницы-шаблоны: неизвестные реквизиты помечены .ph «[указать: …]».
+   ========================================================================== */
+.legal { max-width: 900px; margin: 0 auto; padding: 60px 24px 8px; }
+@media (max-width: 720px) { .legal { padding-top: 36px; } }
+.legal h1 { font-size: calc(34px * var(--type-scale, 1)); line-height: 1.15; margin-bottom: 10px; }
+.legal-meta { font-size: 13px; color: var(--muted); margin-bottom: 28px; letter-spacing: .02em; }
+.legal-note {
+  border: 1px solid var(--line); background: var(--accent-soft);
+  padding: 18px 22px; font-size: 13.5px; line-height: 1.65; margin-bottom: 32px;
+}
+.legal-note b { color: var(--accent); }
+.legal-note p { margin-bottom: .5em; }
+.legal-note p:last-child { margin-bottom: 0; }
+.legal h2 { font-size: calc(19px * var(--type-scale, 1)); line-height: 1.3; margin: 34px 0 12px; }
+.legal p, .legal li { font-size: 14.5px; line-height: 1.75; margin-bottom: .6em; }
+.legal ol, .legal ul { padding-left: 22px; margin-bottom: 1em; }
+.legal .num { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 6px; }
+.legal-toc { border: 1px solid var(--line); background: var(--surface); padding: 20px 24px; margin-bottom: 34px; }
+.legal-toc .toc-title { font-size: 12px; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); font-weight: 600; margin-bottom: 12px; }
+.legal-toc ol { margin: 0; padding-left: 20px; columns: 2; column-gap: 34px; }
+@media (max-width: 720px) { .legal-toc ol { columns: 1; } }
+.legal-toc li { margin-bottom: 6px; font-size: 13.5px; break-inside: avoid; }
+.legal-toc a { color: var(--muted); text-decoration: none; }
+.legal-toc a:hover { color: var(--accent); }
+/* плейсхолдер неизвестных реквизитов */
+.ph {
+  background: var(--accent-soft); color: var(--accent);
+  border-bottom: 1px dashed var(--accent);
+  padding: 0 4px; font-weight: 600;
+}
+/* реквизиты-блок в конце оферты */
+.legal-req { border: 1px solid var(--line); background: var(--surface); padding: 22px 26px; font-size: 14px; line-height: 1.8; }
+.legal-req .ph { display: inline; }
