@@ -361,10 +361,11 @@
     });
     if (!available.length) { toast('Комплект нельзя добавить: ничего нет в наличии'); return; }
     var proceed = function () {
-      available.forEach(function (c) { addToCart(c.product_id, c.variant_id); });
+      available.forEach(function (c) { addToCart(c.product_id, c.variant_id, true); });
       state.look = { id: l.id, title: l.title, percent: Number(l.discount_percent || 0) };
       validateLook();
       renderOrderSummary();
+      revalidatePromo();   /* ревью N2 (v0.14.1): один раз на весь комплект */
       var pct = Number(l.discount_percent || 0);
       toast('Комплект «' + l.title + '» в корзине' + (pct > 0 ? ': скидка −' + pct + '%' : ''));
     };
@@ -427,7 +428,9 @@
   }
 
   /* ---------- корзина ---------- */
-  function addToCart(productId, variantId) {
+  /* skipPromo — для массового добавления комплекта (addLook): там
+     revalidatePromo() вызывается один раз в proceed(), а не на каждую позицию */
+  function addToCart(productId, variantId, skipPromo) {
     var v = findVariant(productId, variantId);
     if (!v || !v.stock) { toast('Нет в наличии'); return; }
     var line = null;
@@ -439,6 +442,10 @@
       state.cart.push({ product_id: productId, variant_id: variantId, qty: 1 });
     }
     saveCart(); renderCart();
+    /* ревью N2 (v0.14.1): промокод перевалидируется и при ДОБАВлении —
+       иначе сумма скидки в сводке устаревает, пока покупатель не тронет
+       количество в drawer'е (без промокода вызов ничего не делает) */
+    if (!skipPromo) revalidatePromo();
     toast('Добавлено в корзину');
   }
   function renderCart() {

@@ -8,7 +8,9 @@
    • esc(s)            — экранирование HTML (текст и атрибуты);
    • safeUrl(u)        — whitelist схем для href: http/https/mailto/tel и
                          относительные пути; javascript: и protocol-relative
-                         отбрасываются (фикс F05);
+                         отбрасываются (фикс F05); строка предварительно
+                         очищается от управляющих символов и пробелов
+                         (v0.14.1, ревью N1 — обход «java\tscript:»);
    • money(n)          — «12 345 ₽» (ru-RU, без копеек);
    • fmtDate(iso)      — короткая локальная дата «дд.мм.гггг»;
    • fmtDateTime(iso)  — локальные дата и время «дд.мм.гг чч:мм»;
@@ -37,9 +39,13 @@
   }
 
   /* whitelist схем href (фикс F05): http(s)/mailto/tel и относительные пути.
-     Всё прочее (javascript:, data:, //host) — пустая строка. */
+     Всё прочее (javascript:, data:, //host) — пустая строка.
+     v0.14.1 (ревью N1): строка сначала очищается от управляющих символов
+     и пробелов — браузеры при резолве URL вырезают TAB/LF/CR, поэтому
+     'java\tscript:…' без очистки прошёл бы как «относительный путь»
+     и в href попал бы исполняемый javascript: */
   function safeUrl(u) {
-    var s = String(u == null ? '' : u).trim();
+    var s = String(u == null ? '' : u).replace(/[\u0000-\u0020]/g, '');
     if (!s) return '';
     if (/^(https?:|mailto:|tel:)/i.test(s)) return s;
     if (/^(\/\/|\/\\)/.test(s)) return '';                 /* protocol-relative */
