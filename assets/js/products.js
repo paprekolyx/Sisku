@@ -14,12 +14,8 @@
   };
 
   function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
-  function money(n) { return new Intl.NumberFormat('ru-RU').format(Math.round(Number(n || 0))) + ' ₽'; }
+  /* общие утилиты — assets/js/util.js (v0.14.0, фикс F32: одна копия на проект) */
+  var esc = SiskuUtil.esc, money = SiskuUtil.money;
   function stubSrc() {
     var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400">' +
       '<rect width="300" height="400" fill="#1D1D24"/>' +

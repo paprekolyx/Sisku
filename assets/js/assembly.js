@@ -9,11 +9,8 @@
   'use strict';
 
   function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
+  /* общие утилиты — assets/js/util.js (v0.14.0, фикс F32: одна копия на проект) */
+  var esc = SiskuUtil.esc;
   function showEmpty() { $('asm-loading').hidden = true; $('asm-empty').hidden = false; }
   function showError(msg) {
     $('asm-loading').hidden = true;
@@ -92,6 +89,23 @@
     $('btn-logout').addEventListener('click', function () { if (window.mockLogout) window.mockLogout(); });
     $('btn-refresh').addEventListener('click', load);
 
+    /* подсветка всей группы строк заказа при наведении (rowspan-таблица).
+       фикс F10 (v0.14.0): блок был случайно вклеен ВНУТРЬ .then() колбэка
+       RPC «→ Отправлен» — подсветка не работала до первой успешной отгрузки,
+       а каждая отгрузка добавляла ещё пару слушателей. Теперь вешается
+       один раз при открытии страницы (пункт чек-листа волны: hover работает
+       сразу). */
+    var asmBody = $('asm-body');
+    function setGroup(gid) {
+      asmBody.querySelectorAll('tr.group-hover').forEach(function (r) { r.classList.remove('group-hover'); });
+      if (gid) asmBody.querySelectorAll('tr[data-order="' + gid + '"]').forEach(function (r) { r.classList.add('group-hover'); });
+    }
+    asmBody.addEventListener('mouseover', function (e) {
+      var tr = e.target.closest('tr[data-order]');
+      setGroup(tr ? tr.getAttribute('data-order') : null);
+    });
+    asmBody.addEventListener('mouseleave', function () { setGroup(null); });
+
     /* перевод заказа из «Сборка» в следующий статус модели («Отправлен») */
     $('asm-body').addEventListener('click', function (e) {
       var b = e.target.closest('button[data-ship]');
@@ -102,19 +116,7 @@
       db.rpc('admin_set_status', { p_order_id: id, p_status_code: 'shipped', p_changed_by: 'assembly' })
         .then(function (res) {
           if (res.error) { alert('Не удалось перевести статус: ' + res.error.message); b.disabled = false; b.textContent = '→ Отправлен'; return; }
-          /* подсветка всей группы строк заказа при наведении (rowspan-таблица) */
-    var asmBody = $('asm-body');
-    function setGroup(id) {
-      asmBody.querySelectorAll('tr.group-hover').forEach(function (r) { r.classList.remove('group-hover'); });
-      if (id) asmBody.querySelectorAll('tr[data-order="' + id + '"]').forEach(function (r) { r.classList.add('group-hover'); });
-    }
-    asmBody.addEventListener('mouseover', function (e) {
-      var tr = e.target.closest('tr[data-order]');
-      setGroup(tr ? tr.getAttribute('data-order') : null);
-    });
-    asmBody.addEventListener('mouseleave', function () { setGroup(null); });
-
-    load();
+          load();   /* список и остатки обновляются после отгрузки */
         })
         .catch(function (err) {
           alert('Ошибка сети: ' + err.message);

@@ -14,11 +14,8 @@
   };
 
   function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
+  /* общие утилиты — assets/js/util.js (v0.14.0, фикс F32: одна копия на проект) */
+  var esc = SiskuUtil.esc;
   function productName(id) { var p = state.products.filter(function (x) { return x.id === id; })[0]; return p ? p.name : '—'; }
   function variantLabel(pid, vid) {
     var list = state.variants[pid] || [];

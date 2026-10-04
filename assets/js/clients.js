@@ -21,40 +21,15 @@
   };
 
   function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
-  function money(n) { return new Intl.NumberFormat('ru-RU').format(Math.round(Number(n || 0))) + ' ₽'; }
-  function fmtDate(iso) { return iso ? new Date(iso).toLocaleDateString('ru-RU') : '—'; }
-
-  /* маскирование контактов (паттерн учебного проекта / admin.js) */
-  function maskPhone(p) {
-    if (!p) return '—';
-    if (p.replace(/\D/g, '').length < 5) return p;
-    return p.slice(0, Math.max(0, p.length - 9)) + ' ••• •• ' + p.slice(-2);
-  }
-  function maskEmail(e) {
-    if (!e) return '—';
-    var at = e.indexOf('@');
-    if (at < 1) return e;
-    return e[0] + '•••' + e.slice(at);
-  }
-
-  /* ключи дедупликации — зеркало draft_phone_key / draft_email_key (скрипт 15) */
-  function phoneKey(v) {
-    var d = String(v || '').replace(/\D/g, '');
-    if (!d) return null;
-    if (d.length === 11 && d[0] === '8') d = '7' + d.slice(1);
-    return d;
-  }
-  function emailKey(v) {
-    var e = String(v || '').trim().toLowerCase();
-    return e || null;
-  }
-  function phoneOk(v) { return /^(\+7|8)\d{10}$/.test(v.replace(/[\s()-]/g, '')); }
-  function emailOk(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(v); }
+  /* общие утилиты — assets/js/util.js (v0.14.0, фикс F32: одна копия на проект) */
+  var esc = SiskuUtil.esc, money = SiskuUtil.money, fmtDate = SiskuUtil.fmtDate,
+      dayKey = SiskuUtil.dayKey,
+      maskPhone = SiskuUtil.maskPhone, maskEmail = SiskuUtil.maskEmail,
+      phoneOk = SiskuUtil.phoneOk, emailOk = SiskuUtil.emailOk;
+  /* ключи дедупликации — ЗЕРКАЛО серверных draft_phone_key / draft_email_key
+     (скрипт 15); истина — сервер (фикс F32: упрощённая emailOk clients.js
+     унифицирована со строгой маской site.js/users.js) */
+  var phoneKey = SiskuUtil.phoneKey, emailKey = SiskuUtil.emailKey;
 
   /* ---------- загрузка ---------- */
   function load() {
@@ -120,7 +95,15 @@
     if (state.page > pages) state.page = pages;
     if (state.page < 1) state.page = 1;
     var visible = list.slice((state.page - 1) * PAGESIZE, state.page * PAGESIZE);
-    $('cl-empty').hidden = state.clients.length !== 0;
+    /* фикс F28 (v0.14.0): признак «пусто» — по отфильтрованному списку */
+    if (list.length === 0) {
+      $('cl-empty').hidden = false;
+      $('cl-empty').textContent = state.clients.length
+        ? 'Ничего не найдено по этому поиску — измените или очистите запрос.'
+        : 'Клиентов пока нет. Оформите тестовый заказ на витрине — клиент появится здесь автоматически.';
+    } else {
+      $('cl-empty').hidden = true;
+    }
     $('cl-body').innerHTML = visible.map(function (c) {
       var revealed = state.revealed[c.id];
       return '<tr>' +
@@ -160,12 +143,12 @@
         fmtDate(c.first), fmtDate(c.last), c.orders, Math.round(c.sum), Math.round(c.paidSum),
         (c.note || '').replace(/;/g, ',').replace(/\n/g, ' ')
       ];
-      lines.push(row.map(function (v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; }).join(';'));
+      lines.push(row.map(SiskuUtil.csvCell).join(';'));   /* фикс F06 (v0.14.0): анти-формульный префикс против CSV-инъекции */
     });
     var blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'sisku-clients-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.download = 'sisku-clients-' + dayKey(new Date()) + '.csv';   /* фикс F29: локальная дата, без UTC-фантома */
     a.click();
     URL.revokeObjectURL(a.href);
   }

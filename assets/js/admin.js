@@ -24,34 +24,15 @@
   };
 
   function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
-  function money(n) { return new Intl.NumberFormat('ru-RU').format(Math.round(Number(n || 0))) + ' ₽'; }
-  function fmtDate(iso) {
-    var d = new Date(iso);
-    return d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: '2-digit' }) +
-      ' ' + d.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
-  }
+  /* общие утилиты — assets/js/util.js (v0.14.0, фикс F32: одна копия на проект) */
+  var esc = SiskuUtil.esc, money = SiskuUtil.money, fmtDate = SiskuUtil.fmtDateTime,
+      maskPhone = SiskuUtil.maskPhone, maskEmail = SiskuUtil.maskEmail,
+      dayKey = SiskuUtil.dayKey;
   function statusByid(id) { return state.statuses.filter(function (s) { return s.id === id; })[0] || {}; }
   function paymentByid(id) { return state.payments.filter(function (m) { return m.id === id; })[0] || {}; }
   function deliveryByid(id) { return state.deliveries.filter(function (m) { return m.id === id; })[0] || {}; }
   function itemsOf(orderId) { return state.items.filter(function (i) { return i.order_id === orderId; }); }
 
-  /* маскирование контактов (паттерн учебного проекта) */
-  function maskPhone(p) {
-    if (!p) return '—';
-    if (p.replace(/\D/g, '').length < 5) return p;
-    return p.slice(0, Math.max(0, p.length - 9)) + ' ••• •• ' + p.slice(-2);
-  }
-  function maskEmail(e) {
-    if (!e) return '—';
-    var at = e.indexOf('@');
-    if (at < 1) return e;
-    return e[0] + '•••' + e.slice(at);
-  }
 
   /* ---------- загрузка ---------- */
   function loadAll() {
@@ -125,7 +106,16 @@
     if (state.page < 1) state.page = 1;
     var visible = list.slice((state.page - 1) * PAGESIZE, state.page * PAGESIZE);
     $('orders-loading').hidden = true;
-    $('orders-empty').hidden = state.orders.length !== 0;
+    /* фикс F28 (v0.14.0): признак «пусто» — по ОТФИЛЬТРОВАННОМУ списку;
+       при нулевом результате фильтра больше не молчаливая пустая таблица */
+    if (list.length === 0) {
+      $('orders-empty').hidden = false;
+      $('orders-empty').textContent = state.orders.length
+        ? 'Ничего не найдено по фильтрам — измените статус/оплату или очистите поиск.'
+        : 'Заказов пока нет. Оформите тестовый заказ на витрине — он появится здесь.';
+    } else {
+      $('orders-empty').hidden = true;
+    }
     $('orders-error').hidden = true;
     $('orders-body').innerHTML = visible.map(function (o) {
       var st = statusByid(o.status_id);
@@ -171,11 +161,11 @@
     var o = state.orders.filter(function (x) { return x.id === id; })[0];
     if (!o) return;
     var items = itemsOf(id);
-    var history = [];
-    /* история подгружается отдельно (лёгкий запрос) */
-    db.from('order_status_history').select('*').eq('order_id', id).order('changed_at').then(function (h) {
-      history = (h.data || []);
-      var st = statusByid(o.status_id);
+    /* фикс F26 (v0.14.0): история уже есть в state.history из draft_admin_bundle —
+       отдельный запрос убран (очередь соединений бесплатного тарифа — грабля №6) */
+    var history = state.history.filter(function (h) { return h.order_id === id; })
+      .slice().sort(function (a, b) { return new Date(a.changed_at) - new Date(b.changed_at); });
+    var st = statusByid(o.status_id);
       var allowed = state.transitions
         .filter(function (t) { return t.from_status_id === o.status_id; })
         .map(function (t) { return statusByid(t.to_status_id); })
@@ -228,33 +218,37 @@
       $('oc-apply').addEventListener('click', function () {
         var code = $('oc-status').value;
         if (!code) return;
-        this.disabled = true;
+        var self = this;
+        self.disabled = true;
         db.rpc('admin_set_status', { p_order_id: o.id, p_status_code: code, p_changed_by: 'draft-admin' })
           .then(function (res) {
-            if (res.error) { $('oc-error').textContent = res.error.message; $('oc-error').hidden = false; this.disabled = false; return; }
-            loadAll().then(function () { openOrder(o.id); });
-          }.bind(this))
-          .catch(function (e) {
-            $('oc-error').textContent = 'Ошибка сети: ' + e.message;
-            $('oc-error').hidden = false;
-          });
-      });
-      $('oc-paid').addEventListener('click', function () {
-        this.disabled = true;
-        db.rpc('admin_set_paid', { p_order_id: o.id, p_is_paid: !o.is_paid })
-          .then(function (res) {
-            if (res && res.error) { $('oc-error').textContent = res.error.message; $('oc-error').hidden = false; return; }
+            if (res.error) { $('oc-error').textContent = res.error.message; $('oc-error').hidden = false; self.disabled = false; return; }
             loadAll().then(function () { openOrder(o.id); });
           })
           .catch(function (e) {
             $('oc-error').textContent = 'Ошибка сети: ' + e.message;
             $('oc-error').hidden = false;
+            self.disabled = false;   /* фикс F11 (v0.14.0): кнопка не залипает */
+          });
+      });
+      $('oc-paid').addEventListener('click', function () {
+        var self = this;   /* фикс F11 (v0.14.0): при ошибке RPC кнопка возвращалась
+                              в disabled навсегда — карточка «залипала» до переоткрытия */
+        self.disabled = true;
+        db.rpc('admin_set_paid', { p_order_id: o.id, p_is_paid: !o.is_paid })
+          .then(function (res) {
+            if (res && res.error) { $('oc-error').textContent = res.error.message; $('oc-error').hidden = false; self.disabled = false; return; }
+            loadAll().then(function () { openOrder(o.id); });
+          })
+          .catch(function (e) {
+            $('oc-error').textContent = 'Ошибка сети: ' + e.message;
+            $('oc-error').hidden = false;
+            self.disabled = false;
           });
       });
 
-      $('order-modal-backdrop').classList.add('open');
-      if (window.enhanceSelects) enhanceSelects($('order-modal-body'));
-    });
+    $('order-modal-backdrop').classList.add('open');
+    if (window.enhanceSelects) enhanceSelects($('order-modal-body'));
   }
   function metaRow(k, v) { return '<div class="row"><dt>' + k + '</dt><dd>' + v + '</dd></div>'; }
 
@@ -271,12 +265,12 @@
         paymentByid(o.payment_method_id).name, deliveryByid(o.delivery_method_id).name,
         (o.comment || '').replace(/;/g, ',').replace(/\n/g, ' ')
       ];
-      lines.push(row.map(function (c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(';'));
+      lines.push(row.map(SiskuUtil.csvCell).join(';'));   /* фикс F06 (v0.14.0): анти-формульный префикс против CSV-инъекции */
     });
     var blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'sisku-orders-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.download = 'sisku-orders-' + dayKey(new Date()) + '.csv';   /* фикс F29: локальная дата, без UTC-фантома */
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -317,20 +311,26 @@
 
   var GOLD = '#C9A96A', MUTED = '#A79FB0', LINE = '#2A2A33', TEXT = '#F2EEE4';
   function chartDefaults() {
+    /* фикс F34 (v0.14.0): токены брендбука (кэш brand_colors) приоритетнее
+       захардкоженной палитры тем — графики следуют цветам владельца;
+       дефолты ниже синхронны со скриптом 14 (brand_colors) */
     var light = document.documentElement.getAttribute('data-theme') === 'light';
-    if (light) { GOLD = '#7A5C2E'; MUTED = '#6F6A60'; LINE = '#E5E0D6'; TEXT = '#1A1A1E'; }
-    else       { GOLD = '#C9A96A'; MUTED = '#A79FB0'; LINE = '#2A2A33'; TEXT = '#F2EEE4'; }
+    var tok = null;
+    if (window.brandCachedRows) {
+      var theme = light ? 'light' : 'dark';
+      tok = {};
+      (brandCachedRows() || []).forEach(function (r) { if (r.theme === theme) tok[r.key] = r.value; });
+      if (!tok.accent || !tok.muted || !tok.line || !tok.text) tok = null;
+    }
+    if (tok)       { GOLD = tok.accent; MUTED = tok.muted; LINE = tok.line; TEXT = tok.text; }
+    else if (light) { GOLD = '#7A5C2E'; MUTED = '#6F6A60'; LINE = '#E5E0D6'; TEXT = '#1A1A1E'; }
+    else           { GOLD = '#C9A96A'; MUTED = '#A79FB0'; LINE = '#2A2A33'; TEXT = '#F2EEE4'; }
     Chart.defaults.color = MUTED;
     Chart.defaults.borderColor = LINE;
     Chart.defaults.font.family = "'Manrope', sans-serif";
   }
   function destroyChart(key) { if (state.charts[key]) { state.charts[key].destroy(); state.charts[key] = null; } }
 
-  /* локальный ключ даты (без UTC-сдвига, который давал «лишние» дни) */
-  function dayKey(iso) {
-    var d = new Date(iso);
-    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-  }
   function drawDaysChart(list) {
     chartDefaults(); destroyChart('days');
     var byDay = {};
@@ -346,7 +346,7 @@
       data: {
         labels: labels,
         datasets: [
-          { label: 'Заявки', data: keys.map(function (k) { return byDay[k].n; }), borderColor: GOLD, backgroundColor: 'rgba(201,169,106,.15)', fill: true, tension: .35, yAxisID: 'y' },
+          { label: 'Заявки', data: keys.map(function (k) { return byDay[k].n; }), borderColor: GOLD, backgroundColor: SiskuUtil.hexToRgba(GOLD, .15), fill: true, tension: .35, yAxisID: 'y' },
           { label: 'Сумма, ₽', data: keys.map(function (k) { return byDay[k].sum; }), borderColor: MUTED, borderDash: [5, 4], tension: .35, yAxisID: 'y1' }
         ]
       },
@@ -575,12 +575,12 @@
     R.push(['7. Время между статусами'], ['Метрика', 'Среднее', 'Кол-во']);
     computeTiming(list).forEach(function (m) { R.push([m.label, m.st.v, m.st.n]); });
     var csv = R.map(function (row) {
-      return row.map(function (c) { return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(';');
+      return row.map(SiskuUtil.csvCell).join(';');   /* фикс F06: анти-формульный префикс */
     }).join('\r\n');
     var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'sisku-stats-' + $('s-period').value + '-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.download = 'sisku-stats-' + $('s-period').value + '-' + dayKey(new Date()) + '.csv';   /* фикс F29 */
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -664,7 +664,7 @@
       data: {
         labels: labels,
         datasets: [
-          { label: 'Заказы с кодом', data: keys.map(function (k) { return byDay[k].n; }), borderColor: GOLD, backgroundColor: 'rgba(201,169,106,.15)', fill: true, tension: .35, yAxisID: 'y' },
+          { label: 'Заказы с кодом', data: keys.map(function (k) { return byDay[k].n; }), borderColor: GOLD, backgroundColor: SiskuUtil.hexToRgba(GOLD, .15), fill: true, tension: .35, yAxisID: 'y' },
           { label: 'Скидки, ₽', data: keys.map(function (k) { return byDay[k].disc; }), borderColor: MUTED, borderDash: [5, 4], tension: .35, yAxisID: 'y1' }
         ]
       },
@@ -792,12 +792,12 @@
         r.p.usage_limit == null ? 'нет' : r.p.usage_limit, promoStateOf(r.p).t]);
     });
     var csv = R.map(function (row) {
-      return row.map(function (c) { return '"' + String(c == null ? '' : c).replace(/"/g, '""') + '"'; }).join(';');
+      return row.map(SiskuUtil.csvCell).join(';');   /* фикс F06: анти-формульный префикс */
     }).join('\r\n');
     var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = 'sisku-promo-stats-' + $('p-period').value + '-' + new Date().toISOString().slice(0, 10) + '.csv';
+    a.download = 'sisku-promo-stats-' + $('p-period').value + '-' + dayKey(new Date()) + '.csv';   /* фикс F29 */
     a.click();
     URL.revokeObjectURL(a.href);
   }

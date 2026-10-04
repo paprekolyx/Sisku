@@ -9,12 +9,17 @@
   var state = { cats: [], catCounts: {}, editingCatId: null };
 
   function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
+  /* общие утилиты — assets/js/util.js (v0.14.0, фикс F32: одна копия на проект) */
+  var esc = SiskuUtil.esc;
   function loadCats() {
+    /* фикс F31 (v0.14.0): guard неподключённой БД — общий паттерн плашки
+       вместо непойманного TypeError (единственный модуль без guard'а) */
+    if (!db) {
+      $('cat-empty').hidden = true;
+      $('cat-body').innerHTML = '<tr><td colspan="5" class="muted">База не подключена: ' +
+        esc(dbError || 'заполните assets/js/config.js') + '</td></tr>';
+      return;
+    }
     Promise.all([
       db.from('categories').select('*').order('id'),
       db.from('products').select('category_id')

@@ -67,6 +67,7 @@
     } catch (e) { return null; }
   }
   window.brandCacheSave = cacheSave;
+  window.brandCachedRows = cacheLoad;   /* v0.14.0 (фикс F34): чтение кэша токенов — палитра Chart.js в админке */
   window.applyBrandCached = function () {
     var rows = cacheLoad();
     if (rows && rows.length) applyVars(rows);

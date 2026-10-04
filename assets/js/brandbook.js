@@ -27,11 +27,8 @@
   var state = { values: { light: {}, dark: {}, global: {} }, templates: [], saving: false };
 
   function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
+  /* общие утилиты — assets/js/util.js (v0.14.0, фикс F32: одна копия на проект) */
+  var esc = SiskuUtil.esc;
 
   /* ---------- загрузка ---------- */
   function load() {
@@ -48,7 +45,16 @@
       if (res[0].error) throw res[0].error;
       (res[0].data || []).forEach(function (r) {
         state.values[r.theme] = state.values[r.theme] || {};
-        state.values[r.theme][r.key] = r.value;
+        /* фикс F05 (v0.14.0): значения из БД валидируются до попадания
+           в редактор: цвета — строго #rrggbb, типографика — число;
+           всё прочее заменяется безопасным дефолтом (stored-XSS закрыт) */
+        var v = r.value;
+        if (r.theme !== 'global') {
+          if (!/^#[0-9a-fA-F]{6}$/.test(String(v || ''))) v = '#888888';
+        } else if (!/^\d+(\.\d+)?$/.test(String(v || ''))) {
+          v = r.key === 'typo_base' ? '16' : '100';
+        }
+        state.values[r.theme][r.key] = v;
       });
       state.templates = res[1].data || [];
       buildEditors();
@@ -66,11 +72,14 @@
     ['light', 'dark'].forEach(function (theme) {
       var host = $('bbe-' + theme);
       host.innerHTML = TOKENS.map(function (t) {
-        var val = state.values[theme][t.key] || '#888888';
+        /* фикс F05 (v0.14.0): hex-валидация + esc() — значение из БД
+           больше не вставляется в атрибут value="…" сырым */
+        var raw = state.values[theme][t.key];
+        var val = /^#[0-9a-fA-F]{6}$/.test(String(raw || '')) ? raw : '#888888';
         return '<div class="bbe-swatch">' +
-          '<input type="color" class="bbe-color" data-theme="' + theme + '" data-key="' + t.key + '" value="' + val + '" aria-label="' + t.name + '">' +
-          '<input type="text" class="bbe-hex" data-theme="' + theme + '" data-key="' + t.key + '" value="' + val + '" maxlength="7" aria-label="' + t.name + ' hex">' +
-          '<div class="bbe-name">' + t.name + ' · ' + t.key + '</div>' +
+          '<input type="color" class="bbe-color" data-theme="' + theme + '" data-key="' + t.key + '" value="' + esc(val) + '" aria-label="' + esc(t.name) + '">' +
+          '<input type="text" class="bbe-hex" data-theme="' + theme + '" data-key="' + t.key + '" value="' + esc(val) + '" maxlength="7" aria-label="' + esc(t.name) + ' hex">' +
+          '<div class="bbe-name">' + esc(t.name) + ' · ' + esc(t.key) + '</div>' +
         '</div>';
       }).join('');
     });

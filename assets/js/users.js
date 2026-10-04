@@ -18,14 +18,8 @@
   var state = { users: [], editingId: null };
 
   function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
-  function emailOk(v) {
-    return /^[a-zа-яё0-9._%+-]+@[a-zа-яё0-9-]+(\.[a-zа-яё0-9-]+)*\.[a-zа-яё]{2,}$/i.test(v);
-  }
+  /* общие утилиты — assets/js/util.js (v0.14.0, фикс F32: одна копия на проект) */
+  var esc = SiskuUtil.esc, emailOk = SiskuUtil.emailOk;
   function sha256hex(text) {
     var buf = new TextEncoder().encode(text);
     return crypto.subtle.digest('SHA-256', buf).then(function (d) {
@@ -60,7 +54,11 @@
           '<td class="user-fio" data-edit="' + u.id + '" title="Открыть редактирование">' + esc(u.fio) +
             (u.is_active ? '' : ' <span class="muted">(отключён)</span>') + '</td>' +
           '<td class="muted">' + esc(u.email) + '</td>' +
-          '<td>' + (u.messenger_url ? '<a href="' + esc(u.messenger_url) + '" target="_blank" rel="noopener">ссылка</a>' : '<span class="muted">—</span>') + '</td>' +
+          '<td>' + (function () {
+            /* фикс F05 (v0.14.0): whitelist схем — javascript: в messenger_url больше не исполняется */
+            var mu = SiskuUtil.safeUrl(u.messenger_url);
+            return mu ? '<a href="' + esc(mu) + '" target="_blank" rel="noopener">ссылка</a>' : '<span class="muted">—</span>';
+          })() + '</td>' +
           '<td><span class="role-pill" data-role="' + esc(u.role) + '">' + esc(ROLES[u.role] || u.role) + '</span></td>' +
           '<td class="tabular muted">' + new Date(u.created_at).toLocaleDateString('ru-RU') + '</td>' +
           '<td><button class="btn" data-del="' + u.id + '" style="min-height:34px;padding:0 14px">Удалить</button></td>' +

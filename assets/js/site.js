@@ -25,14 +25,8 @@
 
   /* ---------- утилиты ---------- */
   function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
-  function money(n) {
-    return new Intl.NumberFormat('ru-RU').format(Math.round(Number(n || 0))) + ' ₽';
-  }
+  /* общие утилиты — assets/js/util.js (v0.14.0, фикс F32: одна копия на проект) */
+  var esc = SiskuUtil.esc, money = SiskuUtil.money;
   function toast(msg) {
     var t = $('toast');
     t.textContent = msg;
@@ -106,7 +100,10 @@
       var key = el.getAttribute('data-content-href');
       var v = map[key];
       if (key === 'contacts.email.href') v = map['contacts.email'] ? 'mailto:' + map['contacts.email'] : null;
-      if (v) el.setAttribute('href', v);
+      /* фикс F05 (v0.14.0): whitelist схем href — javascript:/data:/protocol-relative
+         значения из site_content больше не попадают на витрину */
+      var safe = SiskuUtil.safeUrl(v);
+      if (safe) el.setAttribute('href', safe);
     });
   }
 
@@ -125,6 +122,54 @@
       return Promise.reject(new Error(dbError || 'нет БД'));
     }
     skeletonGrid();
+    /* фикс F27 (v0.14.0): витрина грузится ОДНИМ RPC draft_storefront_bundle()
+       (скрипт 16) вместо 9 параллельных запросов — то же лекарство, что бандлы
+       админки (грабля №6: очередь соединений бесплатного тарифа). В бою —
+       прототип агрегирующего GET /api/storefront. Если функция в базе ещё не
+       создана (скрипт 16 не выполнен, код ошибки 42883) — откат на прежние
+       отдельные запросы (loadAllLegacy). */
+    return db.rpc('draft_storefront_bundle').then(function (res) {
+      if (res.error) {
+        if (res.error.code === '42883') return loadAllLegacy();
+        throw res.error;
+      }
+      applyStorefront(res.data || {});
+    });
+  }
+  function applyStorefront(d) {
+    state.brands = d.brands || [];
+    state.categories = d.categories || [];
+    state.products = d.products || [];
+    state.variants = {};
+    (d.variants || []).forEach(function (v) {
+      (state.variants[v.product_id] = state.variants[v.product_id] || []).push(v);
+    });
+    applyContent(d.content || []);
+    if (window.brandApplyRows && d.brand && d.brand.length) {
+      /* токены брендбука пришли в том же бандле: применяем, кешируем,
+         замеряем скорость применения (метрика sisku_theme_apply_ms) */
+      var t0 = (window.performance && performance.now) ? performance.now() : Date.now();
+      brandApplyRows(d.brand);
+      var t1 = (window.performance && performance.now) ? performance.now() : Date.now();
+      try { localStorage.setItem('sisku_theme_apply_ms', String(Math.round((t1 - t0) * 100) / 100)); } catch (e) {}
+      if (window.brandCacheSave) brandCacheSave(d.brand);
+      state.brandRows = d.brand;
+    }
+    state.payments = d.payments || [];
+    state.deliveries = d.deliveries || [];
+    state.looks = d.looks || [];
+    state.lookItems = {};
+    (d.look_items || []).forEach(function (i) {
+      (state.lookItems[i.look_id] = state.lookItems[i.look_id] || []).push(i);
+    });
+    buildFilters();
+    buildOrderSelects();
+    if (window.enhanceSelects) enhanceSelects();   /* кастомные селекты поверх нативных */
+    renderCatalog();
+    renderLooks();
+    renderCart();
+  }
+  function loadAllLegacy() {
     return Promise.all([
       db.from('brands').select('*').eq('is_active', true).order('name'),
       db.from('categories').select('*').order('id'),
@@ -430,6 +475,30 @@
       return s + (p ? p.price * l.qty : 0);
     }, 0);
   }
+  /* фикс F30 (v0.14.0): при изменении корзины промокод перевалидируется
+     на сервере — скидка в сводке больше не расходится с серверным расчётом
+     (например, когда сумма опустилась ниже min_order_amount) */
+  function revalidatePromo() {
+    if (!state.promo || !db) return;
+    var code = state.promo.code;
+    var msg = $('of-promo-msg');
+    db.rpc('check_promo', { p_code: code, p_total: cartTotal() }).then(function (res) {
+      if (res.error) return;
+      var d = res.data;
+      if (d && d.ok) {
+        state.promo = { code: d.code, amount: Number(d.discount_amount) };
+      } else if (state.promo && state.promo.code === code) {
+        state.promo = null;
+        if (msg) {
+          msg.hidden = false;
+          msg.textContent = 'Промокод ' + code + ' снят' + (d && d.error ? ': ' + d.error : '');
+          msg.style.color = 'var(--danger)';
+        }
+        toast('Промокод ' + code + ' больше не действует для этой корзины');
+      }
+      renderOrderSummary();
+    });
+  }
 
   /* ---------- модалки / drawer ---------- */
   function openModal(id) { $(id).classList.add('open'); document.body.style.overflow = 'hidden'; }
@@ -494,17 +563,9 @@
       '<div class="row total"><span>Итого</span><span>' + money(total - disc - lookDisc + deliv) + '</span></div>';
   }
 
-  /* ---------- валидация контактов (российские форматы) ----------
-     Телефон: +7 (999) 123-45-67 или 8 999 123-45-67 — после очистки
-     от пробелов, скобок и дефисов остаётся код страны + 10 цифр.
-     E-mail: локальная часть @ домен с точкой и TLD от 2 символов,
-     допускаются кириллические домены (.рф). */
-  function phoneOk(v) {
-    return /^(\+7|8)\d{10}$/.test(v.replace(/[\s()-]/g, ''));
-  }
-  function emailOk(v) {
-    return /^[a-zа-яё0-9._%+-]+@[a-zа-яё0-9-]+(\.[a-zа-яё0-9-]+)*\.[a-zа-яё]{2,}$/i.test(v);
-  }
+  /* валидация контактов (российские форматы) — общая маска из util.js:
+     телефон +7/8 и 10 цифр; e-mail с кириллическими доменами (.рф) */
+  var phoneOk = SiskuUtil.phoneOk, emailOk = SiskuUtil.emailOk;
 
   function setFieldError(inputId, msg) {
     var box = $(inputId).parentElement.querySelector('.err');
@@ -555,7 +616,7 @@
     } }).then(function (res) {
       btn.disabled = false;
       btn.textContent = 'Отправить заказ';
-      if (res.error) { errBox.textContent = res.error.message; errBox.hidden = false; return; }
+      if (res.error) { errBox.textContent = SiskuUtil.friendlyDbError(res.error); errBox.hidden = false; return; }
       $('os-number').textContent = '№ ' + res.data.order_id;
       state.lastOrderId = res.data.order_id;
       $('order-form-view').hidden = true;
@@ -599,7 +660,7 @@
       if (!state.cart.length) return;
       state.cart = [];
       state.look = null;
-      saveCart(); renderCart(); renderOrderSummary();
+      saveCart(); renderCart(); renderOrderSummary(); revalidatePromo();   /* фикс F30 */
       toast('Корзина очищена');
     });
     /* универсальное открытие модалок кнопками (брендбук и пр.) */
@@ -710,7 +771,7 @@
       } else if (b.getAttribute('data-act') === 'rm') {
         state.cart.splice(i, 1);
       }
-      saveCart(); renderCart(); validateLook();
+      saveCart(); renderCart(); validateLook(); revalidatePromo();   /* фикс F30 */
     });
     $('checkout-btn').addEventListener('click', function () {
       if (!state.cart.length) return;

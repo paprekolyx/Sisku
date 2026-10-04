@@ -2,7 +2,9 @@
    SISKU · manage.js — подраздел «Оплата и доставка» вкладки «Управление»
    (v0.9.0-draft). Список и редактирование delivery_methods / payment_methods:
    название, код, цены (вилка), активность. История заказов не страдает:
-   способы не удаляются из формы, а отключаются (is_active).
+   способы отключаются (is_active), а удаление (с v0.14.0 — настоящие
+   DELETE-политики скрипта 16, фикс F09) блокирует FK, если способ уже
+   использован в заказах.
    ========================================================================== */
 (function () {
   'use strict';
@@ -14,12 +16,8 @@
   };
 
   function $(id) { return document.getElementById(id); }
-  function esc(s) {
-    return String(s == null ? '' : s)
-      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-      .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-  }
-  function money(n) { return new Intl.NumberFormat('ru-RU').format(Math.round(Number(n || 0))) + ' ₽'; }
+  /* общие утилиты — assets/js/util.js (v0.14.0, фикс F32: одна копия на проект) */
+  var esc = SiskuUtil.esc, money = SiskuUtil.money;
 
   function load() {
     $('mng-error').hidden = true;
@@ -164,10 +162,23 @@
           var tableD = kindD === 'delivery' ? 'delivery_methods' : 'payment_methods';
           if (!confirm('Удалить способ «' + (mD ? mD.name : '') + '»? Способ, который уже используется в заказах, база удалить не даст.')) return;
           del.disabled = true;
-          db.from(tableD).delete().eq('id', idD).then(function (res) {
-            if (res.error) { alert('Не удалось удалить: ' + res.error.message); del.disabled = false; return; }
+          /* фикс F09 (v0.14.0): DELETE-политики добавлены скриптом 16 —
+             удаление настоящее. .select() возвращает удалённые строки:
+             пустой массив = строка не удалена (редкая гонка), FK (23503) =
+             способ использован в заказах → предлагаем отключить */
+          db.from(tableD).delete().eq('id', idD).select('id').then(function (res) {
+            if (res.error) {
+              alert(res.error.code === '23503'
+                ? 'Способ «' + (mD ? mD.name : '') + '» используется в заказах — удалить нельзя. Отключите его кнопкой активности.'
+                : 'Не удалось удалить: ' + res.error.message);
+              del.disabled = false;
+              return;
+            }
+            if (!res.data || !res.data.length) {
+              alert('Способ не удалён: строка уже отсутствует в базе. Список обновлён.');
+            }
             load();
-          });
+          }).catch(function (err) { alert('Ошибка сети: ' + err.message); del.disabled = false; });
           return;
         }
         var ed = e.target.closest('[data-edit]');
