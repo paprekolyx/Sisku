@@ -118,7 +118,7 @@
 
   function loadAll() {
     if (!db) {
-      $('product-grid').innerHTML = '<div class="cart-empty" style="grid-column:1/-1">База данных не подключена.<br>Заполните ключи в <code>assets/js/config.js</code> (инструкция: docs/setup-supabase.md).</div>';
+      $('product-grid').innerHTML = '<div class="cart-empty" style="grid-column:1/-1">База данных не подключена.<br>Заполните ключи в <code>assets/js/config.js</code> (инструкция: docs/setup/setup-supabase.md).</div>';
       return Promise.reject(new Error(dbError || 'нет БД'));
     }
     skeletonGrid();
