@@ -4,7 +4,10 @@
 --  ПУБЛИЧНОЕ ЧТЕНИЕ (роль anon, то есть любой посетитель сайта):
 --    brands, categories, products, product_variants, site_content,
 --    order_statuses            — всё;
---    payment_methods, delivery_methods — только активные (is_active = true).
+--    payment_methods, delivery_methods — ВСЕ строки (с v0.14.1, фикс F09 /
+--    ревью v0.14.0 п.V4): админке нужно управлять и отключёнными способами;
+--    граница «в заказе и на витрине только активные» обеспечивается сервером
+--    (create_order() проверяет is_active, витрина фильтрует активные строки).
 --
 --  СОЗНАТЕЛЬНОЕ УПРОЩЕНИЕ ЧЕРНОВИКА (перенесено из «недостатков» учебного
 --  проекта по решению заказчика): заказы читаются анонимно, потому что
@@ -70,13 +73,19 @@ drop policy if exists anon_read_transitions on public.status_transitions;
 create policy anon_read_transitions on public.status_transitions
     for select to anon, authenticated using (true);
 
+-- v0.14.0, фикс F09; с v0.14.1 истина живёт ЗДЕСЬ (ревью v0.14.0, п.V4):
+-- админка «Управление → Оплата и доставка» работает под anon и должна видеть
+-- отключённые способы, чтобы включить их обратно или удалить (иначе UPDATE 0 /
+-- DELETE 0 — «фейковый успех»). Граница: create_order() и витрина используют
+-- только активные способы (проверяется на сервере). Повторный прогон этого
+-- скрипта после скрипта 16 больше не откатывает расширение (регрессия V4).
 drop policy if exists anon_read_payment_methods on public.payment_methods;
 create policy anon_read_payment_methods on public.payment_methods
-    for select to anon, authenticated using (is_active = true);
+    for select to anon, authenticated using (true);
 
 drop policy if exists anon_read_delivery_methods on public.delivery_methods;
 create policy anon_read_delivery_methods on public.delivery_methods
-    for select to anon, authenticated using (is_active = true);
+    for select to anon, authenticated using (true);
 
 -- ----------------------------------------------------------------------------
 -- 2. Черновик: заказы читаются анонимно (админка без пароля, доступ по ссылке)

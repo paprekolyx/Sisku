@@ -532,6 +532,9 @@ comment on constraint orders_total_nonneg on public.orders is
 --  «в заказе только активные способы» обеспечивается сервером: create_order
 --  проверяет is_active (скрипт 16, блок 3), витрина и draft_storefront_bundle
 --  запрашивают только активные строки. Состав способов не секретен.
+--  С v0.14.1 (ревью v0.14.0, п.V4) политики чтения using(true) создаёт и
+--  скрипт 02 — истина в одном месте; блок оставлен как есть (drop/create
+--  идемпотентны) и лишь сводит состояние баз, где 02 выполнялся до правки.
 drop policy if exists anon_read_delivery_methods on public.delivery_methods;
 create policy anon_read_delivery_methods on public.delivery_methods
     for select to anon, authenticated using (true);
