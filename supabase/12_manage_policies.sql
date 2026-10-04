@@ -65,9 +65,16 @@ create policy draft_anon_update_site_content on public.site_content
     for update to anon, authenticated using (true) with check (true);
 
 -- ----------------------------------------------------------------------------
--- 4. Самопроверка: ожидаем 9 политик записи
+-- 4. Самопроверка: ожидаем 8 политик записи — ровно те, что создаёт
+--    этот скрипт (фикс F19: комментарий обещал 9, а список draft_anon_* на этих
+--    таблицах с v0.14.0 вообще равен 10 — скрипт 16 добавляет DELETE для
+--    delivery_methods/payment_methods; поэтому считаем явный список).
 -- ----------------------------------------------------------------------------
 select count(*) as write_policies
 from pg_policies
-where tablename in ('brands', 'delivery_methods', 'payment_methods', 'site_content')
-  and policyname like 'draft_anon_%';
+where policyname in (
+    'draft_anon_insert_brands', 'draft_anon_update_brands', 'draft_anon_delete_brands',
+    'draft_anon_insert_delivery_methods', 'draft_anon_update_delivery_methods',
+    'draft_anon_insert_payment_methods', 'draft_anon_update_payment_methods',
+    'draft_anon_update_site_content'
+);
