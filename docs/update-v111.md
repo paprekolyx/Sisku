@@ -28,7 +28,7 @@
 ## 4. Финальная проверка
 
 Локально: `python3 tests/check-repo.py` (выход 0). Зеркало:
-`cd "$ARENA_WORKSPACE" && cp sisku-draft/*.html sisku-draft/README.md sisku-draft/LICENSE.md sisku-draft/SECURITY.md sisku-pages/`.
+из рабочего каталога аналитика `cp sisku-draft/*.html sisku-draft/README.md sisku-draft/LICENSE.md sisku-draft/SECURITY.md sisku-pages/`.
 Архив: `sisku-draft.zip`.
 
 ## Что зафиксировано регламентом (supabase/README.md, правила 4–6)

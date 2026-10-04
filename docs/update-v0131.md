@@ -92,8 +92,8 @@ LINE 471: 'orders', count(*), ^
 
 ## 6. Финальная проверка
 
-Локально: `python3 tests/check-repo.py` (выход 0). Зеркало:
-`cd "$ARENA_WORKSPACE" && cp sisku-draft/*.html sisku-draft/README.md sisku-draft/LICENSE.md sisku-draft/SECURITY.md sisku-pages/`.
+Локально: `python3 tests/check-repo.py` (выход 0). Зеркало: из рабочего
+каталога аналитика `cp sisku-draft/*.html sisku-draft/README.md sisku-draft/LICENSE.md sisku-draft/SECURITY.md sisku-pages/`.
 Архив: пересобрать `sisku-draft.zip` (файлы в корне архива).
 
 ## 7. Урок для регламента
