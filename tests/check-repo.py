@@ -7,6 +7,9 @@ v2 (v0.14.0, по независимому ревью F14/F20): все 17 стр
 реестр supabase/README.md как источник REQUIRED (двусторонняя сверка),
 контроль упоминания последнего SQL-скрипта в документации, эвристика
 префлайта (скрипт с create policy обязан содержать to_regclass).
+v2.1 (v0.14.1): в REQUIRED добавлены docs/plan/ (migration-plan, otchet,
+voprosy-vladeltsu — плановые документы теперь в репозитории, F37),
+docs/review-v0140.md и docs/update-v0141.md.
 
 Запуск из корня репозитория:  python3 tests/check-repo.py
 Проверяет (без сети и без базы):
@@ -95,6 +98,10 @@ REQUIRED = [
     'docs/tehpasport.md', 'tests/check-repo.py',
     # v0.14.0 — волна по независимому ревью (docs/review-v0131.md — отчёт ревьюера)
     'supabase/16_race_and_integrity_fixes.sql', 'docs/update-v0140.md', 'docs/review-v0131.md',
+    # v0.14.1 — патч по ревью волны v0.14.0 (docs/review-v0140.md); плановые
+    # документы в репозитории (docs/plan/ — пункт ревью F37 закрыт)
+    'docs/update-v0141.md', 'docs/review-v0140.md',
+    'docs/plan/migration-plan.md', 'docs/plan/otchet.md', 'docs/plan/voprosy-vladeltsu.md',
 ] + ['assets/img/products/p00%d.jpg' % i for i in range(1, 9)]
 
 # ---------- 1. обязательные файлы + реестр supabase/README.md ----------
