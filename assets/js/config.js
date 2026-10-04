@@ -2,7 +2,7 @@
    SISKU · config.js — ЕДИНСТВЕННОЕ МЕСТО, КУДА ВСТАВЛЯЮТСЯ КЛЮЧИ ОТ БАЗЫ
    Черновик v0.1.0-draft
 
-   КАК ПОДКЛЮЧИТЬ СВОЮ БАЗУ (инструкция: docs/setup-supabase.md):
+   КАК ПОДКЛЮЧИТЬ СВОЮ БАЗУ (инструкция: docs/setup/setup-supabase.md):
    1. Supabase Dashboard → ваш новый проект → Settings → API
       (в новом интерфейсе: Connect → API keys).
    2. Скопируйте "Project URL" и "anon public" ключ.
@@ -14,7 +14,7 @@
 const SUPABASE_URL = 'https://pvycejsqrkkmueyzijsp.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_LOV49t7eyUZbGP-dZMoGJw_rdGjLF14';
 
-const SITE_VERSION = '0.14.1-draft';
+const SITE_VERSION = '0.15.0-draft';
 
 /* Клиент БД. Если ключи не заполнены или библиотека не загрузилась —
    страницы покажут понятную плашку вместо бесконечного скелетона. */
