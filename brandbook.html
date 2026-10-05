@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
@@ -48,6 +49,7 @@
     <a class="seg-btn" href="sitecontent.html">Сайт</a>
     <a class="seg-btn" href="sitemap.html">Карта сайта</a>
     <a class="seg-btn active" href="brandbook.html">Брендбук</a>
+    <a class="seg-btn" href="manage.html#audit" title="Заглушка: планируется (M1/M2)">Журнал действий</a>
   </div>
 
   <div class="toolbar">
@@ -55,6 +57,7 @@
     <span class="spacer"></span>
     <button class="btn" id="bb-refresh">Обновить</button>
     <button class="btn" id="bb-book">Брендбук (справка)</button>
+    <button class="btn" id="bb-compare" title="Сохранённая палитра против значений редактора">Сравнение</button>
     <button class="btn" id="bb-preview">Предпросмотр</button>
     <button class="btn primary" id="bb-save">Сохранить цвета</button>
   </div>
@@ -62,14 +65,35 @@
 
   <div class="bbe-themes">
     <div>
-      <div class="bbe-theme-name">Ivoire — основная тема витрины</div>
+      <div class="bbe-theme-name" id="bbe-name-light">Ivoire — основная тема витрины</div>
       <div class="bbe-swatches" id="bbe-light"></div>
     </div>
     <div>
-      <div class="bbe-theme-name">Noir &amp; Champagne — вторая тема</div>
+      <div class="bbe-theme-name" id="bbe-name-dark">Noir &amp; Champagne — вторая тема</div>
       <div class="bbe-swatches" id="bbe-dark"></div>
     </div>
   </div>
+
+  <div class="subhead-sm" style="margin-top:26px">Названия тем (правка 2.17 — видны в справке, предпросмотре и на витрине)</div>
+  <div class="bb-names">
+    <div>
+      <label for="bb-tn-light">Название светлой темы</label>
+      <input id="bb-tn-light" maxlength="40" placeholder="Ivoire">
+      <label for="bb-tr-light" style="margin-top:10px">Подпись светлой темы</label>
+      <input id="bb-tr-light" maxlength="60" placeholder="основная тема витрины">
+    </div>
+    <div>
+      <label for="bb-tn-dark">Название тёмной темы</label>
+      <input id="bb-tn-dark" maxlength="40" placeholder="Noir &amp; Champagne">
+      <label for="bb-tr-dark" style="margin-top:10px">Подпись тёмной темы</label>
+      <input id="bb-tr-dark" maxlength="60" placeholder="вторая тема">
+    </div>
+  </div>
+  <div style="margin-top:12px;display:flex;align-items:center;gap:14px">
+    <button class="btn" id="bb-names-save">Сохранить названия</button>
+    <span class="muted" id="bb-names-msg" style="font-size:12.5px"></span>
+  </div>
+  <p class="muted" style="font-size:12px;margin-top:8px">Названия хранятся в <code>site_content</code> (ключи theme.light.name / theme.light.role / theme.dark.name / theme.dark.role, скрипт 20) — витрина подхватит их при следующем открытии с Ctrl + F5.</p>
 
   <div class="subhead-sm" style="margin-top:26px">Типографика (обе темы)</div>
   <div class="bbe-typo">
@@ -117,7 +141,7 @@
     <p class="muted" style="font-size:13px;margin-bottom:20px">Значения из редактора (ещё не сохранены на сайте): карточка товара, кнопки, текст и поле ввода.</p>
     <div class="pvf-wrap">
       <div class="pvf-frame" id="pvf-light">
-        <div class="pvf-tag">Ivoire</div>
+        <div class="pvf-tag" id="pvf-tag-light">Ivoire</div>
         <div class="pvf-card">
           <div class="pvf-media"><img src="assets/img/products/p001.jpg" alt=""></div>
           <div class="pvf-brand">MAISON NORD</div>
@@ -135,7 +159,7 @@
         <input class="pvf-input" placeholder="Поле ввода на фоне темы">
       </div>
       <div class="pvf-frame" id="pvf-dark">
-        <div class="pvf-tag">Noir &amp; Champagne</div>
+        <div class="pvf-tag" id="pvf-tag-dark">Noir &amp; Champagne</div>
         <div class="pvf-card">
           <div class="pvf-media"><img src="assets/img/products/p006.jpg" alt=""></div>
           <div class="pvf-brand">MAISON NORD</div>
@@ -156,7 +180,17 @@
   </div>
 </div>
 
-<!-- ========== брендбук-справка (идентичен окну на витрине) ========== -->
+<!-- ========== сравнение палитр: сохранённая vs редактор (правка 2.18) ========== -->
+<div class="modal-backdrop" id="bb-compare-backdrop">
+  <div class="modal" style="width:min(980px,100%);padding:36px 38px" role="dialog" aria-modal="true" aria-label="Сравнение палитр">
+    <button class="modal-close" data-close="bb-compare-backdrop" aria-label="Закрыть">×</button>
+    <h2 style="font-size:24px;margin-bottom:6px">Сравнение палитр</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:20px">Слева — текущая сохранённая палитра (что видит сайт), справа — значения редактора (несохранённые или переключённые шаблоном). Отличия подсвечены.</p>
+    <div class="bbc-themes" id="bb-compare-body"></div>
+  </div>
+</div>
+
+<!-- ========== брендбук-справка (идентичен окну на витрине; с v0.15.0 палитры живые — правка 2.18) ========== -->
 <div class="modal-backdrop" id="brandbook-modal-backdrop">
   <div class="modal bb-modal" role="dialog" aria-modal="true" aria-label="Брендбук Sisku">
     <button class="modal-close" data-close="brandbook-modal-backdrop" aria-label="Закрыть">×</button>
@@ -167,8 +201,8 @@
       <div class="subhead">Палитра</div>
       <div class="bb-themes">
         <div>
-          <div class="bb-theme-name">Ivoire — основная тема витрины</div>
-          <div class="bb-swatches">
+          <div class="bb-theme-name" id="bbhelp-name-light">Ivoire — основная тема витрины</div>
+          <div class="bb-swatches" id="bbhelp-swatches-light">
             <div class="bb-swatch"><div class="color" style="background:#FAF7F2"></div><div class="meta"><b>Фон</b>#FAF7F2</div></div>
             <div class="bb-swatch"><div class="color" style="background:#FFFFFF"></div><div class="meta"><b>Карточки</b>#FFFFFF</div></div>
             <div class="bb-swatch"><div class="color" style="background:#1A1A1E"></div><div class="meta"><b>Текст</b>#1A1A1E</div></div>
@@ -178,8 +212,8 @@
           </div>
         </div>
         <div>
-          <div class="bb-theme-name">Noir &amp; Champagne — вторая тема</div>
-          <div class="bb-swatches">
+          <div class="bb-theme-name" id="bbhelp-name-dark">Noir &amp; Champagne — вторая тема</div>
+          <div class="bb-swatches" id="bbhelp-swatches-dark">
             <div class="bb-swatch"><div class="color" style="background:#0D0D10"></div><div class="meta"><b>Фон</b>#0D0D10</div></div>
             <div class="bb-swatch"><div class="color" style="background:#1D1D24"></div><div class="meta"><b>Карточки</b>#1D1D24</div></div>
             <div class="bb-swatch"><div class="color" style="background:#F2EEE4"></div><div class="meta"><b>Текст</b>#F2EEE4</div></div>

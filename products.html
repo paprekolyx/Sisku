@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
@@ -41,12 +42,13 @@
   </div>
 </header>
 
-<main class="panel container">
+<main class="panel container" id="panel-products">
   <div class="seg subseg">
     <a class="seg-btn" href="categories.html">Категории</a>
     <a class="seg-btn" href="brands.html">Бренды</a>
     <a class="seg-btn active" href="products.html">Товары</a>
     <a class="seg-btn" href="looks.html">Комплекты</a>
+    <a class="seg-btn" href="products.html#inventory" title="Заглушка: планируется (M5)">Инвентаризация</a>
   </div>
   <div class="toolbar">
     <input type="search" id="p-search" placeholder="Поиск: артикул или название" aria-label="Поиск товаров">
@@ -73,6 +75,46 @@
   <div class="loading" id="prod-loading">Загружаем товары…</div>
   <div class="empty" id="prod-empty" hidden>Товаров пока нет — создайте карточку или загрузите CSV.</div>
   <div class="err-box" id="prod-error" hidden></div>
+</main>
+
+<!-- ========== «Магазин → Инвентаризация»: заглушка (v0.15.0, правка 2.11; П30/№9 — M5) ========== -->
+<main class="panel container" id="panel-inventory" hidden>
+  <div class="seg subseg">
+    <a class="seg-btn" href="categories.html">Категории</a>
+    <a class="seg-btn" href="brands.html">Бренды</a>
+    <a class="seg-btn" href="products.html">Товары</a>
+    <a class="seg-btn" href="looks.html">Комплекты</a>
+    <a class="seg-btn active" href="products.html#inventory">Инвентаризация</a>
+  </div>
+  <div class="stub-card">
+    <div class="stub-badge">Заглушка · планируется</div>
+    <h3>Инвентаризация и закупки</h3>
+    <p class="muted" style="font-size:14px">Сверка фактических остатков с системными и планирование закупок
+    (docs/feature-proposals.md, пункт 9 «Инвентаризация и списания»;
+    docs/plan/matrica-dostupa.md, строка «ПЛАН: Закупки, инвентаризация» —
+    доступ сборщика «± только изменение кол-ва товаров»; план —
+    docs/priemka/priemka-v014.md, П30; боевая волна M5).</p>
+    <div class="subhead-sm">Что здесь появится</div>
+    <ul class="stub-list">
+      <li><b>Лист инвентаризации:</b> таблица «товар — остаток в системе —
+        ввели факт», расхождения списком, применение одной кнопкой
+        (корректировки без заказа — с журналом).</li>
+      <li><b>Товар без варианта, но в наличии</b> (П30, записка 30): позиция
+        с единственным размером/объёмом хранит остаток на товаре —
+        связано с инвентаризацией общей схемой остатков.</li>
+      <li><b>Списания:</b> брак, повреждение при доставке, возвраты
+        «требует осмотра» (карантин returned-товаров, фикс F51) —
+        отдельные от продаваемых остатков.</li>
+      <li><b>Закупки:</b> минимальные остатки и список «что заказать»
+        (ответ владельца 2.3: остатки минимальные, закупки под заказ).</li>
+      <li><b>Хранилище фото:</b> загрузка изображений в файловое хранилище
+        вместо dataURL в записи товара — готова схема, появится в M5
+        (сообщение о подключении хранилища — отдельным письмом).</li>
+    </ul>
+    <p class="muted stub-note">Почему заглушка: черновик работает на тестовых остатках, а инвентаризация
+    имеет смысл на реальном складе — волна M5 боевого переноса
+    (docs/plan/migration-plan.md).</p>
+  </div>
 </main>
 
 <!-- ========== модалка товара: форма + предпросмотр ========== -->
@@ -125,8 +167,19 @@
           <div class="pv-price" id="pv-price">0 ₽</div>
           <div class="pv-stock" id="pv-stock"></div>
         </div>
+        <button type="button" class="btn" id="pv-full" style="margin-top:12px;width:100%;justify-content:center" title="Модалка карточки товара как на витрине">Полный предпросмотр</button>
       </aside>
     </div>
+  </div>
+</div>
+
+<!-- ========== полный предпросмотр карточки витрины (правка 2.15) ========== -->
+<div class="modal-backdrop" id="pvfull-modal-backdrop">
+  <div class="modal" style="width:min(1020px,100%);padding:36px 38px" role="dialog" aria-modal="true" aria-label="Полный предпросмотр карточки товара">
+    <button class="modal-close" id="pvfull-modal-close" aria-label="Закрыть">×</button>
+    <h2 style="font-size:22px;margin-bottom:6px">Полный предпросмотр: карточка товара витрины</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:18px">Модалка товара глазами покупателя: разметка и стили витрины переиспользуются (iframe со styles.css), данные — из текущей формы, включая несохранённые правки.</p>
+    <iframe class="pvfull-frame" id="pvfull-frame" title="Предпросмотр карточки товара на витрине"></iframe>
   </div>
 </div>
 

@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
@@ -44,8 +45,9 @@
 <!-- ======================= ЗАКАЗЫ ======================= -->
 <main class="panel container" id="panel-orders">
   <div class="seg subseg">
-    <a class="seg-btn active" href="admin.html">Список заказов</a>
+    <a class="seg-btn active" href="admin.html" id="seg-orders-list">Список заказов</a>
     <a class="seg-btn" href="assembly.html">Сборка</a>
+    <button class="seg-btn" type="button" id="seg-returns" title="Заглушка: планируется в боевой версии (M4)">Возвраты</button>
   </div>
   <div class="toolbar">
     <input type="search" id="f-search" placeholder="Поиск: №, имя, телефон, e-mail" aria-label="Поиск заказов">
@@ -60,7 +62,7 @@
     <button class="btn" id="btn-csv">Выгрузить CSV</button>
   </div>
   <div class="table-wrap">
-    <table class="orders">
+    <table class="orders zebra">
       <thead>
         <tr>
           <th class="sortable" data-sort="id">№<span class="sort-ic">↕</span></th>
@@ -117,11 +119,11 @@
       <div class="chart-box">
         <h3>Воронка статусов</h3>
         <div class="seg" id="funnel-seg" role="group" aria-label="Вид воронки">
-          <button class="seg-btn active" data-mode="chart">Диаграмма</button>
-          <button class="seg-btn" data-mode="table">Таблица</button>
+          <button class="seg-btn" data-mode="chart">Диаграмма</button>
+          <button class="seg-btn active" data-mode="table">Таблица</button>
         </div>
-        <div id="funnel-chart"><canvas id="chart-funnel" height="220"></canvas></div>
-        <div id="funnel-table" hidden><table class="mini-table" id="table-funnel"></table></div>
+        <div id="funnel-chart" hidden><canvas id="chart-funnel" height="220"></canvas></div>
+        <div id="funnel-table"><table class="mini-table" id="table-funnel"></table></div>
         <div class="subhead-sm">Время между статусами</div>
         <ul class="metric-list" id="funnel-metrics"></ul>
       </div>
@@ -243,6 +245,43 @@
       связана с заказами через <code>orders.client_id</code> (скрипт 15) — останутся
       агрегаты, пороги сегментов и графики.</p>
     </div>
+  </div>
+</main>
+
+<!-- ========== «Заказы → Возвраты»: заглушка (v0.15.0, правка 2.11; П21 — M4) ========== -->
+<main class="panel container" id="panel-returns" hidden>
+  <div class="seg subseg">
+    <a class="seg-btn" href="admin.html">Список заказов</a>
+    <a class="seg-btn" href="assembly.html">Сборка</a>
+    <button class="seg-btn active" type="button" id="seg-returns-active">Возвраты</button>
+  </div>
+  <div class="stub-card">
+    <div class="stub-badge">Заглушка · планируется</div>
+    <h3>Возвраты</h3>
+    <p class="muted" style="font-size:14px">Раздел «Заказы → Возвраты»: отдельная страница заявок и статусная
+    модель возвратов (docs/feature-proposals.md, пункт 3; план —
+    docs/priemka/priemka-v014.md, П21; боевая волна M4). Статус «Возврат»
+    уже есть в статусной модели заказов — здесь появится работа с заявками.</p>
+    <div class="subhead-sm">Что здесь появится</div>
+    <ul class="stub-list">
+      <li><b>Заявки на возврат:</b> список и карточки заявок со своей статусной
+        моделью — «Заявка → Товар на складе → Проверен, возврат оформлен»
+        (цепочка на согласовании с владельцем, опросник 6.6).</li>
+      <li><b>Флаг «деньги возвращены»:</b> отдельно от статуса заказа — связан
+        с признаком оплаты (правка 2.2 этой волны: оплату можно снимать
+        и у отменённых заказов).</li>
+      <li><b>Чек возврата:</b> печать/выгрузка чека — требование 54-ФЗ
+        при возврате денег (юридический контур M4).</li>
+      <li><b>Причины возврата:</b> справочник или свободный текст — решается
+        с владельцем (опросник 6.6).</li>
+      <li><b>Карантин returned-товаров:</b> вернувшаяся позиция попадает
+        в «требует осмотра» до решения о возврате на склад (фикс F51
+        ревью v0.13.1, чек-лист M1).</li>
+    </ul>
+    <p class="muted stub-note">Почему заглушка: возвраты — юридически значимый контур (чеки, сроки,
+    парфюмерия — вопрос ЮР-03), он осознанно отнесён в боевую волну M4
+    (docs/plan/migration-plan.md). В черновике статус «Возврат» доступен
+    в карточке заказа — этого достаточно для оценки воронки.</p>
   </div>
 </main>
 

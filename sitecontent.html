@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
@@ -48,6 +49,7 @@
     <a class="seg-btn active" href="sitecontent.html">Сайт</a>
     <a class="seg-btn" href="sitemap.html">Карта сайта</a>
     <a class="seg-btn" href="brandbook.html">Брендбук</a>
+    <a class="seg-btn" href="manage.html#audit" title="Заглушка: планируется (M1/M2)">Журнал действий</a>
   </div>
   <div class="toolbar">
     <input type="search" id="sc-search" placeholder="Поиск по ключу или тексту" aria-label="Поиск ключей">
@@ -55,14 +57,9 @@
     <button class="btn" id="btn-refresh">Обновить</button>
     <a class="btn" href="index.html" target="_blank" rel="noopener">Открыть витрину ↗</a>
   </div>
-  <div class="table-wrap">
-    <table class="orders" style="min-width:960px">
-      <thead>
-        <tr><th>Ключ</th><th>Значение</th><th>Где используется</th><th>Обновлён</th></tr>
-      </thead>
-      <tbody id="sc-body"></tbody>
-    </table>
-  </div>
+  <!-- правка 2.16 (v0.15.0): ключи сгруппированы по префиксу (раскрываемые
+       секции), значение шире, «Обновлён» — только дата (время в тултипе) -->
+  <div id="sc-list"></div>
   <div class="loading" id="sc-loading">Загружаем тексты сайта…</div>
   <div class="err-box" id="sc-error" hidden></div>
 </main>

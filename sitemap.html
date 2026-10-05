@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
@@ -48,6 +49,7 @@
     <a class="seg-btn" href="sitecontent.html">Сайт</a>
     <a class="seg-btn active" href="sitemap.html">Карта сайта</a>
     <a class="seg-btn" href="brandbook.html">Брендбук</a>
+    <a class="seg-btn" href="manage.html#audit" title="Заглушка: планируется (M1/M2)">Журнал действий</a>
   </div>
 
   <div class="map">
@@ -78,6 +80,7 @@
       <h3>Заказы и производство</h3>
       <a class="map-node" href="admin.html">Список заказов<span class="map-sub">фильтры, сортировка, пагинация, карточка заказа, статусы, CSV</span></a>
       <a class="map-node" href="assembly.html">Сборка<span class="map-sub">обезличенные заказы в сборке, остатки склада, перевод в «Отправлен»</span></a>
+      <a class="map-node" href="admin.html#returns">Возвраты<span class="map-sub">заглушка (v0.15.0): заявки на возврат, статусная модель, чек возврата — боевая волна M4</span></a>
       <a class="map-node" href="admin.html#stats">Статистика<span class="map-sub">подвкладка «Заказы»: KPI, дни, воронка и время статусов, топ товаров, доставка/оплата, CSV; подвкладка «Акции»: статистика промокодов</span></a>
     </div>
 
@@ -86,7 +89,8 @@
       <a class="map-node" href="categories.html">Категории<span class="map-sub">фильтры витрины, авто-slug, счётчик товаров</span></a>
       <a class="map-node" href="brands.html">Бренды<span class="map-sub">мультибрендовость бутика, фильтр по брендам</span></a>
       <a class="map-node" href="products.html">Товары<span class="map-sub">карточки, активация, фото, варианты, CSV</span></a>
-      <a class="map-node" href="looks.html">Комплекты<span class="map-sub">луки: состав из товаров с вариантами, скидка комплекта, активность</span></a>
+      <a class="map-node" href="looks.html">Комплекты<span class="map-sub">луки: состав из товаров с вариантами, скидка комплекта, активность; сохранение — одна транзакция (v0.15.0)</span></a>
+      <a class="map-node" href="products.html#inventory">Инвентаризация<span class="map-sub">заглушка (v0.15.0): лист инвентаризации, списания, закупки — боевая волна M5</span></a>
     </div>
 
     <div class="map-group">
@@ -96,7 +100,9 @@
       <a class="map-node" href="sitecontent.html">Сайт<span class="map-sub">тексты site_content: hero, о магазине, условия, контакты, футер</span></a>
       <span class="map-node static">Карта сайта<span class="map-sub">эта страница</span></span>
       <a class="map-node" href="brandbook.html">Брендбук<span class="map-sub">цвета и типографика обеих тем, контрасты WCAG, шаблоны палитр; применяются к витрине и админ-панели</span></a>
-      <a class="map-node" href="users.html">Пользователи<span class="map-sub">Администраторы: роли и учётные записи · Клиенты: реальная клиентская база (v0.13.0)</span></a>
+      <a class="map-node" href="manage.html#audit">Журнал действий<span class="map-sub">заглушка (v0.15.0): audit_log, отмена последнего действия, soft-delete — боевые волны M1/M2</span></a>
+      <a class="map-node" href="users.html">Пользователи<span class="map-sub">Администраторы: роли и учётные записи (с v0.15.0 — телефон и валидация мессенджера) · Клиенты: реальная клиентская база (v0.13.0)</span></a>
+      <a class="map-node" href="users.html#roles">Ролевая модель<span class="map-sub">заглушка (v0.15.0): матрица доступа (согласована с владельцем) и журнал по ролям — боевая волна M2</span></a>
     </div>
   </div>
 

@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
@@ -17,7 +18,7 @@
 </head>
 <body>
 
-<div class="warnbar"><b>Черновик:</b> комплекты (луки) собираются здесь и показываются на витрине в разделе «Готовые образы». Скидка комплекта применяется на сервере, только если все его позиции лежат в корзине.</div>
+<div class="warnbar"><b>Черновик:</b> комплекты (луки) собираются здесь и показываются на витрине в разделе «Комплекты» (переименован в v0.15.0 — правка 2.7). Скидка комплекта применяется на сервере, только если все его позиции лежат в корзине. Сохранение комплекта и состава — одна транзакция (RPC draft_save_look, скрипт 17).</div>
 
 <header class="topbar">
   <div class="container topbar-in">
@@ -47,6 +48,7 @@
     <a class="seg-btn" href="brands.html">Бренды</a>
     <a class="seg-btn" href="products.html">Товары</a>
     <a class="seg-btn active" href="looks.html">Комплекты</a>
+    <a class="seg-btn" href="products.html#inventory">Инвентаризация</a>
   </div>
   <div class="toolbar">
     <span class="muted" style="font-size:13px">Лук = набор конкретных товаров с вариантами; скидка комплекта мотивирует покупать образ целиком</span>

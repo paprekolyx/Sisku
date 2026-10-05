@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
@@ -41,10 +42,11 @@
   </div>
 </header>
 
-<main class="panel container">
+<main class="panel container" id="panel-users">
   <div class="seg subseg">
     <a class="seg-btn active" href="users.html">Администраторы</a>
     <a class="seg-btn" href="clients.html">Клиенты</a>
+    <a class="seg-btn" href="users.html#roles" title="Заглушка: планируется в боевой версии (M2)">Ролевая модель</a>
   </div>
   <div class="toolbar">
     <span class="muted" style="font-size:13px">Администраторы панели: учётные записи и роли</span>
@@ -56,7 +58,7 @@
     <table class="orders" style="min-width:860px">
       <thead>
         <tr>
-          <th>ФИО</th><th>E-mail</th><th>Мессенджер</th><th>Роль</th><th>Создан</th><th></th>
+          <th>ФИО</th><th>E-mail</th><th>Мессенджер</th><th>Телефон</th><th>Роль</th><th>Создан</th><th></th>
         </tr>
       </thead>
       <tbody id="users-body"></tbody>
@@ -65,6 +67,45 @@
   <div class="loading" id="users-loading">Загружаем пользователей…</div>
   <div class="empty" id="users-empty" hidden>Пользователей пока нет — создайте первого.</div>
   <div class="err-box" id="users-error" hidden></div>
+</main>
+
+<!-- ========== «Пользователи → Ролевая модель»: заглушка (v0.15.0, правка 2.11; П38 — M2) ========== -->
+<main class="panel container" id="panel-roles" hidden>
+  <div class="seg subseg">
+    <a class="seg-btn" href="users.html">Администраторы</a>
+    <a class="seg-btn" href="clients.html">Клиенты</a>
+    <a class="seg-btn active" href="users.html#roles">Ролевая модель</a>
+  </div>
+  <div class="stub-card">
+    <div class="stub-badge">Заглушка · планируется</div>
+    <h3>Ролевая модель (матрица доступа)</h3>
+    <p class="muted" style="font-size:14px">Страница матрицы доступа по ролям — администратор, менеджер, сборщик,
+    бизнес-партнёр (docs/feature-proposals.md, пункт 16; план —
+    docs/priemka/priemka-v014.md, П38; боевая волна M2 — настоящая
+    авторизация). <b>Матрица уже согласована с владельцем 05.10.2026</b> —
+    <code>docs/plan/matrica-dostupa.md</code> v1.0: состав ролей, доступы
+    к разделам и действиям, отметки доступа к персональным данным.</p>
+    <div class="subhead-sm">Что здесь появится</div>
+    <ul class="stub-list">
+      <li><b>Матрица «роль × раздел»:</b> сводная таблица доступов
+        (2 администратора — владелец и ведущий аналитик, 3 менеджера,
+        2 сборщика, 2 партнёра — согласованный состав).</li>
+      <li><b>Только чтение:</b> страница матрицы read-only для всех ролей —
+        редактирование только владельцем (решение матрицы v1.0).</li>
+      <li><b>Отметки ПДн:</b> кто видит персональные данные покупателей
+        (доступ партнёра к ПДн — осознанное решение владельца,
+        с оговоркой 152-ФЗ в матрице).</li>
+      <li><b>Привязка к волнам:</b> возвраты (M4), статистика клиентов
+        и админов (M3), бейджи (M5), закупки (№9), шаблоны уведомлений
+        (M1/M4), история клиента и действия v1.x — по строке «ПЛАН» матрицы.</li>
+      <li><b>Журнал действий (audit_log):</b> кто, что и когда менял —
+        появится вместе с настоящей авторизацией (M2; см. также заглушку
+        «Управление → Журнал действий»).</li>
+    </ul>
+    <p class="muted stub-note">Почему заглушка: в черновике все действия идут от одной мок-сессии
+    (вход по паролю 123456) — ролевые ограничения технически не применяются.
+    Серверные проверки ролей — боевая волна M2 (docs/plan/migration-plan.md).</p>
+  </div>
 </main>
 
 <!-- ========== модалка создания / редактирования ========== -->
@@ -84,8 +125,15 @@
         <div class="err" id="um-email-err" style="color:var(--danger);font-size:12.5px;margin-top:5px" hidden></div>
       </div>
       <div class="field" style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="um-phone">Телефон</label>
+        <input id="um-phone" type="tel" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="+7 (999) 123-45-67">
+        <div class="err" id="um-phone-err" style="color:var(--danger);font-size:12.5px;margin-top:5px" hidden></div>
+      </div>
+      <div class="field" style="margin-bottom:14px">
         <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="um-mess">Ссылка на мессенджер</label>
-        <input id="um-mess" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="https://t.me/username">
+        <input id="um-mess" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="https://t.me/username или tel:+79991234567">
+        <div class="err" id="um-mess-err" style="color:var(--danger);font-size:12.5px;margin-top:5px" hidden></div>
+        <div class="muted" style="font-size:12px;margin-top:6px">Только ссылка https:// на мессенджер (t.me, wa.me, vk.me, max.ru, ok.ru, whatsapp.com, telegram.me, vk.com) или номер tel:. Обычный текст («нет», «позвонить») не принимается — оставьте поле пустым, и в таблице будет «нет».</div>
       </div>
       <div class="field" style="margin-bottom:14px">
         <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="um-role">Роль *</label>

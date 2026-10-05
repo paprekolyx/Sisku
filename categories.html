@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
@@ -47,6 +48,7 @@
     <a class="seg-btn" href="brands.html">Бренды</a>
     <a class="seg-btn" href="products.html">Товары</a>
     <a class="seg-btn" href="looks.html">Комплекты</a>
+    <a class="seg-btn" href="products.html#inventory" title="Заглушка: планируется (M5)">Инвентаризация</a>
   </div>
   <div class="toolbar">
     <span class="muted" style="font-size:13px">Категории витрины: влияют на фильтры и структуру каталога</span>
@@ -66,6 +68,23 @@
   <div class="empty" id="cat-empty" hidden>Категорий пока нет.</div>
   <div class="err-box" id="cat-error" hidden></div>
 </main>
+
+<!-- ========== товары категории (правка 2.14, v0.15.0) ========== -->
+<div class="modal-backdrop" id="catprods-modal-backdrop">
+  <div class="modal" style="width:min(860px,100%);padding:36px 38px" role="dialog" aria-modal="true" aria-label="Товары категории">
+    <button class="modal-close" id="cp-modal-close" aria-label="Закрыть">×</button>
+    <h2 id="cp-title" style="font-size:22px;margin-bottom:6px">Товары категории</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:14px">Связанные товары — именно они не дают удалить категорию (FK-защита). Полная карточка — в «Магазин → Товары».</p>
+    <input type="search" id="cp-filter" placeholder="Фильтр: название или артикул" aria-label="Фильтр товаров категории" style="width:100%;min-height:42px;padding:8px 12px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px;margin-bottom:14px">
+    <div class="table-wrap">
+      <table class="orders" style="min-width:640px">
+        <thead><tr><th>Товар</th><th>Варианты</th><th style="text-align:right">Цена</th><th style="text-align:right">Остаток</th><th>Активен</th></tr></thead>
+        <tbody id="cp-body"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="cp-empty" hidden>В этой категории товаров нет.</div>
+  </div>
+</div>
 
 <!-- ========== модалка категории ========== -->
 <div class="modal-backdrop" id="cat-modal-backdrop">

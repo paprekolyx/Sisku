@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
@@ -41,13 +42,14 @@
   </div>
 </header>
 
-<main class="panel container">
+<main class="panel container" id="panel-manage">
   <div class="seg subseg">
     <a class="seg-btn active" href="manage.html">Оплата и доставка</a>
     <a class="seg-btn" href="shop.html">Промокоды</a>
     <a class="seg-btn" href="sitecontent.html">Сайт</a>
     <a class="seg-btn" href="sitemap.html">Карта сайта</a>
     <a class="seg-btn" href="brandbook.html">Брендбук</a>
+    <a class="seg-btn" href="manage.html#audit" title="Заглушка: планируется (M1/M2)">Журнал действий</a>
   </div>
 
   <!-- ================== ДОСТАВКА ================== -->
@@ -81,6 +83,45 @@
     </table>
   </div>
   <div class="err-box" id="mng-error" hidden></div>
+</main>
+
+<!-- ========== «Управление → Журнал действий»: заглушка (v0.15.0, правка 2.11; П31 — M1/M2) ========== -->
+<main class="panel container" id="panel-audit" hidden>
+  <div class="seg subseg">
+    <a class="seg-btn" href="manage.html">Оплата и доставка</a>
+    <a class="seg-btn" href="shop.html">Промокоды</a>
+    <a class="seg-btn" href="sitecontent.html">Сайт</a>
+    <a class="seg-btn" href="sitemap.html">Карта сайта</a>
+    <a class="seg-btn" href="brandbook.html">Брендбук</a>
+    <a class="seg-btn active" href="manage.html#audit">Журнал действий</a>
+  </div>
+  <div class="stub-card">
+    <div class="stub-badge">Заглушка · планируется</div>
+    <h3>Журнал действий и отмена</h3>
+    <p class="muted" style="font-size:14px">Кто, что и когда менял в админ-панели — и возможность отменить
+    последнее действие (docs/priemka/priemka-v014.md, П31; строка «ПЛАН»
+    docs/plan/matrica-dostupa.md — журнал действий M2; soft-delete —
+    чек-лист M1, docs/plan/migration-plan.md §5.1).</p>
+    <div class="subhead-sm">Что здесь появится</div>
+    <ul class="stub-list">
+      <li><b>Журнал audit_log:</b> все изменения каталога, цен, остатков,
+        промокодов, текстов сайта и справочников — автор, время, что было
+        и что стало (нужна настоящая авторизация: в черновике все действия
+        идут от одной мок-сессии).</li>
+      <li><b>Отмена последнего действия:</b> « Ctrl+Z» для операций админки —
+        откат изменения по записи журнала (с подтверждением).</li>
+      <li><b>Soft-delete всех сущностей:</b> вместо физического удаления —
+        флаги <code>is_active</code>/<code>deleted_at</code>: товары уже
+        работают так (удаление запрещено by design, ревью F49), схема
+        распространится на категории, бренды, промокоды, комплекты.</li>
+      <li><b>Фильтры журнала:</b> по сотруднику, разделу, периоду — основа
+        отчёта «Статистика → Администраторы» (пункт 10 feature-proposals).</li>
+    </ul>
+    <p class="muted stub-note">Почему заглушка: журнал имеет смысл только с персонализацией действий —
+    настоящая авторизация и роли появляются в боевой волне M2; soft-delete —
+    в чек-листе M1. В черновике частично роль журнала играет история статусов
+    заказа (order_status_history, с волны v0.15.0 — и события оплаты).</p>
+  </div>
 </main>
 
 <!-- ========== модалка способа ========== -->

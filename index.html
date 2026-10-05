@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -66,7 +67,7 @@
         <p class="muted" data-content="about.text">Каждая вещь проходит ручной отбор.</p>
       </div>
       <div class="about-img">
-        <img src="assets/img/products/p001.jpg" alt="Пальто из коллекции Sisku">
+        <img id="about-img" src="assets/img/products/p001.jpg" alt="Пальто из коллекции Sisku">
       </div>
     </div>
     <div class="advantages reveal">
@@ -121,13 +122,13 @@
   </div>
 </section>
 
-<!-- ======================= ГОТОВЫЕ ОБРАЗЫ ======================= -->
+<!-- ======================= КОМПЛЕКТЫ (до v0.15.0 — «Готовые образы», правка 2.7) ======================= -->
 <section class="section" id="looks" hidden>
   <div class="container">
     <div class="section-head reveal">
       <div>
-        <div class="eyebrow">Подборки</div>
-        <h2>Готовые образы</h2>
+        <div class="eyebrow" data-content="looks.subtitle">Подборки</div>
+        <h2 data-content="looks.title">Комплекты</h2>
       </div>
       <span class="muted" id="looks-count"></span>
     </div>
@@ -181,7 +182,7 @@
         <div class="contact-line"><dt>Телефон</dt><dd><a data-content-href="contacts.phone_href" data-content="contacts.phone_display" href="tel:+79991234567">+7 (999) 123-45-67</a></dd></div>
         <div class="contact-line"><dt>E-mail</dt><dd><a href="mailto:hello@sisku.example" data-content="contacts.email" data-content-href="contacts.email.href">hello@sisku.example</a></dd></div>
         <div class="contact-line"><dt>Мессенджер</dt><dd><a data-content-href="contacts.messenger_url" data-content="contacts.messenger" href="https://t.me/sisku_shop">Написать в Telegram</a></dd></div>
-        <div class="contact-line"><dt>Отслеживание</dt><dd><button class="btn accent" data-open="track-modal-backdrop" style="min-height:44px;padding:0 22px">Статус заказа по номеру</button></dd></div>
+        <div class="contact-line"><dt>Отслеживание</dt><dd><button class="btn accent" data-open="track-modal-backdrop" style="min-height:44px;padding:0 22px" data-content="order.track.cta">Статус заказа по номеру</button></dd></div>
       </dl>
       <dl style="margin:0">
         <div class="contact-line"><dt>Шоурум</dt><dd data-content="contacts.city">Москва, шоурум по предварительной записи</dd></div>
@@ -253,20 +254,28 @@
         <div class="hp-field" aria-hidden="true"><label>Не заполнять<input type="text" name="company" id="of-hp" tabindex="-1" autocomplete="off"></label></div>
         <div class="field"><label for="of-name">Имя *</label><input id="of-name" autocomplete="name" placeholder="Например, Анна"><div class="err" hidden></div></div>
         <div class="field-row">
-          <div class="field"><label for="of-phone">Телефон *</label><input id="of-phone" type="tel" autocomplete="tel" placeholder="+7 (999) 123-45-67 или 8 999 123-45-67"><div class="err" hidden></div></div>
+          <div class="field"><label for="of-phone">Телефон *</label><input id="of-phone" type="tel" autocomplete="tel" placeholder="+7 999 123-45-67"><small class="hint" data-content="checkout.hint.phone">+7 (999) 123-45-67 или 8 999 123-45-67</small><div class="err" hidden></div></div>
           <div class="field"><label for="of-email">E-mail</label><input id="of-email" type="email" autocomplete="email" placeholder="anna@example.ru"><div class="err" hidden></div></div>
         </div>
-        <div class="field"><label for="of-address">Город и адрес / пункт выдачи</label><input id="of-address" placeholder="Город, улица, дом, квартира — или номер пункта выдачи (СДЭК, Boxberry)"><div class="err" hidden></div></div>
+        <div class="field"><label for="of-address">Город и адрес / пункт выдачи</label><input id="of-address" placeholder="Город, улица, дом"><small class="hint" data-content="checkout.hint.address">Город, улица, дом, квартира — или номер пункта выдачи (СДЭК, Boxberry)</small><div class="err" hidden></div></div>
         <div class="field"><label for="of-payment">Оплата</label><select id="of-payment"></select></div>
         <div class="field"><label for="of-delivery">Доставка</label><select id="of-delivery"></select></div>
         <div class="field"><label for="of-promo">Промокод</label>
           <div style="display:flex;gap:10px">
-            <input id="of-promo" placeholder="Например, SISKU10" style="flex:1">
-            <button type="button" class="btn ghost small" id="of-promo-apply">Применить</button>
+            <input id="of-promo" data-content-placeholder="checkout.promo.placeholder" placeholder="Например, SISKU10" style="flex:1">
+            <button type="button" class="btn ghost small" id="of-promo-apply" data-content="checkout.promo.apply">Применить</button>
           </div>
           <div class="muted" id="of-promo-msg" style="font-size:12.5px;margin-top:6px" hidden></div>
         </div>
         <div class="field"><label for="of-comment">Комментарий</label><textarea id="of-comment" placeholder="Пожелания по размеру, упаковке, времени доставки"></textarea></div>
+        <div class="field consent-field">
+          <label class="consent" for="of-consent">
+            <input type="checkbox" id="of-consent">
+            <span data-content="checkout.consent.text">Согласен(на) на обработку персональных данных и ознакомлен(а) с условиями публичной оферты</span>
+          </label>
+          <span class="consent-links"><a href="privacy.html" target="_blank" rel="noopener">Политика обработки ПДн</a> · <a href="offer.html" target="_blank" rel="noopener">Публичная оферта</a></span>
+          <div class="err" id="of-consent-err" hidden></div>
+        </div>
         <button class="btn accent" type="submit" id="of-submit" style="width:100%">Отправить заказ</button>
         <div class="err" id="of-error" style="margin-top:12px;text-align:center" hidden></div>
       </form>
@@ -275,7 +284,7 @@
       <div class="success-box">
         <div class="eyebrow">Заказ принят</div>
         <div class="num" id="os-number"></div>
-        <p class="muted" style="max-width:32em;margin:14px auto 26px">Мы свяжемся с вами для подтверждения деталей оплаты и доставки. Номер заказа сохраните — по нему можно следить за статусом.</p>
+        <p class="muted" style="max-width:32em;margin:14px auto 26px" data-content="order.confirm.text">Статус заказа можно отслеживать по номеру и коду подтверждения — сохраните их.</p>
         <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
           <button class="btn ghost" id="os-track">Отследить заказ</button>
           <button class="btn" data-close="order-modal-backdrop">Продолжить покупки</button>
@@ -297,8 +306,8 @@
       <div class="subhead">Палитра</div>
       <div class="bb-themes">
         <div>
-          <div class="bb-theme-name">Ivoire — основная тема витрины</div>
-          <div class="bb-swatches">
+          <div class="bb-theme-name"><span data-content="theme.light.name">Ivoire</span> — <span data-content="theme.light.role">основная тема витрины</span></div>
+          <div class="bb-swatches" id="bb-swatches-light">
             <div class="bb-swatch"><div class="color" style="background:#FAF7F2"></div><div class="meta"><b>Фон</b>#FAF7F2</div></div>
             <div class="bb-swatch"><div class="color" style="background:#FFFFFF"></div><div class="meta"><b>Карточки</b>#FFFFFF</div></div>
             <div class="bb-swatch"><div class="color" style="background:#1A1A1E"></div><div class="meta"><b>Текст</b>#1A1A1E</div></div>
@@ -308,8 +317,8 @@
           </div>
         </div>
         <div>
-          <div class="bb-theme-name">Noir &amp; Champagne — вторая тема</div>
-          <div class="bb-swatches">
+          <div class="bb-theme-name"><span data-content="theme.dark.name">Noir &amp; Champagne</span> — <span data-content="theme.dark.role">вторая тема</span></div>
+          <div class="bb-swatches" id="bb-swatches-dark">
             <div class="bb-swatch"><div class="color" style="background:#0D0D10"></div><div class="meta"><b>Фон</b>#0D0D10</div></div>
             <div class="bb-swatch"><div class="color" style="background:#1D1D24"></div><div class="meta"><b>Карточки</b>#1D1D24</div></div>
             <div class="bb-swatch"><div class="color" style="background:#F2EEE4"></div><div class="meta"><b>Текст</b>#F2EEE4</div></div>
@@ -358,18 +367,18 @@
 <div class="modal-backdrop" id="track-modal-backdrop">
   <div class="modal form-modal" role="dialog" aria-modal="true" aria-label="Отслеживание заказа">
     <button class="modal-close" data-close="track-modal-backdrop" aria-label="Закрыть">×</button>
-    <h3>Отследить заказ</h3>
-    <p class="muted" style="font-size:13.5px">Введите номер заказа и код подтверждения: последние 4 цифры телефона ИЛИ первые 4 символа e-mail до «@».</p>
+    <h3 data-content="order.track.title">Отследить заказ</h3>
+    <p class="muted" style="font-size:13.5px" data-content="order.track.hint">Введите номер заказа и код подтверждения: последние 4 цифры телефона ИЛИ первые 4 символа e-mail до «@».</p>
     <form id="track-form" novalidate>
       <div class="field-row">
         <div class="field"><label for="tr-id">Номер заказа</label><input id="tr-id" type="number" min="1" placeholder="Например, 7"></div>
         <div class="field"><label for="tr-tail">Код подтверждения</label><input id="tr-tail" placeholder="4 цифры или 4 символа"></div>
       </div>
-      <button class="btn accent" type="submit" style="width:100%">Показать статус</button>
+      <button class="btn accent" type="submit" style="width:100%" data-content="order.track.button">Показать статус</button>
       <div class="err" id="tr-error" style="margin-top:10px;text-align:center" hidden></div>
     </form>
     <div id="track-result" hidden>
-      <div class="subhead-site" style="margin-top:24px">История статусов</div>
+      <div class="subhead-site" style="margin-top:24px" data-content="order.track.history">История статусов</div>
       <ul class="track-list" id="track-list"></ul>
     </div>
   </div>
@@ -403,6 +412,29 @@
       </table>
     </div>
     <p class="muted size-note">Соотношение может незначительно отличаться в зависимости от бренда, типа кроя (оверсайз или приталенный) и страны производства. Для точного подбора ориентируйтесь на личные измерения сантиметровой лентой.</p>
+  </div>
+</div>
+
+<!-- ======================= МОДАЛКА НЕПОЛНОГО КОМПЛЕКТА (правка 2.21) ======================= -->
+<div class="modal-backdrop" id="look-partial-backdrop">
+  <div class="modal form-modal" role="dialog" aria-modal="true" aria-label="Комплект не полностью в наличии">
+    <button class="modal-close" data-close="look-partial-backdrop" aria-label="Закрыть">×</button>
+    <h3 id="lp-title">Комплект не полностью в наличии</h3>
+    <p class="muted" id="lp-summary" style="font-size:13.5px;margin-top:8px"></p>
+    <div class="lp-cols">
+      <div>
+        <div class="lp-head bad">Нет в наличии</div>
+        <ul class="lp-list" id="lp-missing"></ul>
+      </div>
+      <div>
+        <div class="lp-head">Добавим в корзину</div>
+        <ul class="lp-list" id="lp-available"></ul>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:24px">
+      <button class="btn accent" id="lp-add">Добавить доступное со скидкой</button>
+      <button class="btn ghost" data-close="look-partial-backdrop">Отменить</button>
+    </div>
   </div>
 </div>
 
