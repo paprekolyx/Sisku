@@ -78,11 +78,14 @@ data/            brands.csv · categories.csv · products.csv · variants.csv ·
 supabase/        01_schema → 21_admin_users_phone (выполнять по порядку;
                  06–08 — одноразовые миграции данных: на живой отредактированной
                  базе повторно не запускать, решение F21 от 05.10.2026)
-docs/            tehpasport.md (технический паспорт проекта) · feature-proposals.md ·
-                 tz-proekta.md (техническое задание боевого проекта, v1.2.1)
-docs/plan/       migration-plan.md (план перевода в боевой магазин, v1.2.1) ·
+docs/            tehpasport.md (технический паспорт проекта) · feature-proposals.md
+                 (редакция 2 — приоритизация 05.10.2026 + уточнения 06.10.2026) ·
+                 tz-proekta.md (техническое задание боевого проекта, v1.3) ·
+                 viki-reestr-v1.8.md (опубликованная редакция реестра документации;
+                 публикация реестра с 05.10.2026 ведётся в docs/, вики заморожена)
+docs/plan/       migration-plan.md (план перевода в боевой магазин, v1.3) ·
                  otchet.md (отчёт по учебному проекту и план с нуля, v1.0.2) ·
-                 voprosy-vladeltsu.md (вопросы владельцу и ответы) ·
+                 voprosy-vladeltsu.md (вопросы владельцу и ответы, ред. 1.3) ·
                  matrica-dostupa.md (матрица доступа, согласована с владельцем 05.10.2026)
 docs/priemka/    priemka-v014.md (обработка записок приёмки v0.14.x)
 docs/review/     review-v0131.md (независимое ревью v0.13.1, ревизия 4) ·
