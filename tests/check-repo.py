@@ -21,6 +21,13 @@ CSV расширена на все data/*.csv; docs/review/SISKU-REVIEW-v0.13.1.
 отчёта v0.13.1 — docs/review/review-v0131.md, ревизия 4).
 Состав волны v0.15.0 в REQUIRED: скрипты supabase/17–21 и
 docs/update/update-v0150.md.
+v2.3 (06.10.2026, вне волн — замена data/): бэкап содержимого базы переведён
+на автовыгрузки Supabase — в REQUIRED 13 файлов data/*_rows.csv вместо
+мастер-источников brands/categories/products/variants.csv (удалены из
+репозитория 06.10.2026; посев каталога для новой базы — скрипт 05 или импорт
+бэкапов, docs/setup/setup-supabase.md шаг 3); чтение CSV — utf-8-sig
+(устойчивость к BOM автовыгрузок); CRLF автовыгрузок обрабатывается
+csv-модулем (newline='') — проверка ровного числа колонок не менялась.
 
 Запуск из корня репозитория:  python3 tests/check-repo.py
 Проверяет (без сети и без базы):
@@ -88,7 +95,14 @@ REQUIRED = [
     'assets/fonts/prata-cyrillic-400.woff2', 'assets/fonts/prata-latin-400.woff2',
     'assets/fonts/manrope-cyrillic-var.woff2', 'assets/fonts/manrope-latin-var.woff2',
     'assets/img/hero.jpg',
-    'data/brands.csv', 'data/categories.csv', 'data/products.csv', 'data/variants.csv',
+    # data/ — бэкап содержимого БД: с 06.10.2026 автовыгрузки Supabase (*_rows.csv);
+    # мастер-источники brands/categories/products/variants.csv удалены из репозитория
+    # (посев каталога новой базы — скрипт 05 или импорт бэкапов, setup-supabase шаг 3)
+    'data/brands_rows.csv', 'data/categories_rows.csv', 'data/products_rows.csv',
+    'data/product_variants_rows.csv', 'data/order_statuses_rows.csv',
+    'data/status_transitions_rows.csv', 'data/payment_methods_rows.csv',
+    'data/delivery_methods_rows.csv', 'data/looks_rows.csv', 'data/look_items_rows.csv',
+    'data/brand_templates_rows.csv',
     'supabase/01_schema.sql', 'supabase/02_rls_and_access.sql', 'supabase/03_functions.sql',
     'supabase/04_seed_references_and_content.sql', 'supabase/05_seed_catalog.sql',
     'supabase/06_remove_paid_status.sql', 'supabase/07_draft_v040.sql', 'supabase/08_text_fixes.sql', 'supabase/09_admin_bundles.sql',
@@ -186,7 +200,7 @@ for js, page in JS_PAGE:
 # ---------- 5. CSV (модуль csv — закавыченные запятые не ломают проверку) ----------
 csv_files = sorted('data/' + n for n in os.listdir('data') if n.endswith('.csv'))
 for f in csv_files:
-    with io.open(f, encoding='utf-8', newline='') as fh:
+    with io.open(f, encoding='utf-8-sig', newline='') as fh:  # v2.3: utf-8-sig — автовыгрузки могут приходить с BOM
         rows = list(csv.reader(fh))
     if not rows:
         problems.append('%s: пустой файл' % f)
@@ -284,6 +298,6 @@ if problems:
     for p in problems:
         print('  ✗ ' + p)
     sys.exit(1)
-print('✓ check-repo v2.2: все проверки пройдены (версия %s, страниц %d, SQL-скриптов %d, последний %s)'
+print('✓ check-repo v2.3: все проверки пройдены (версия %s, страниц %d, SQL-скриптов %d, последний %s)'
       % (ver, len(HTML_PAGES), len(on_disk), LAST_SQL))
 sys.exit(0)
