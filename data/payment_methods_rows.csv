@@ -1,0 +1,4 @@
+id,code,name,is_active
+1,sbp,СБП (перевод по номеру телефона),true
+2,card,Перевод на карту,true
+3,onsite,Наличными при самовывозе,true

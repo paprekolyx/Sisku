@@ -1,0 +1,8 @@
+id,code,name,is_final,sort_order
+1,new,Новый,false,1
+2,confirmed,Подтверждён,false,2
+4,packing,Сборка,false,3
+5,shipped,Отправлен,false,4
+6,delivered,Доставлен,true,5
+7,cancelled,Отменён,true,6
+8,returned,Возврат,true,7
