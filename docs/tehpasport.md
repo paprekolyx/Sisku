@@ -210,10 +210,15 @@ sisku-draft/
 │   ├── vendor/ supabase.min.js (214 КБ, v2.116.0) · chart.umd.min.js (202 КБ, v4.4.9)
 │   ├── fonts/  prata-cyrillic/latin-400.woff2 · manrope-cyrillic/latin-var.woff2
 │   └── img/    hero.jpg · hero-dark.jpg · products/p001…p008.jpg (AI-заглушки)
-├── data/       brands.csv (6) · categories.csv (6) · products.csv (8) ·
-│               variants.csv (20 строк) — мастер-источники каталога;
-│               site_content_rows.csv (34) · brand_colors_rows.csv (20) —
-│               бэкап текстов и цветов (05.10.2026, перед правками владельца)
+├── data/       бэкап содержимого БД — автовыгрузки Supabase (06.10.2026),
+│               13 файлов *_rows.csv: каталог (brands 6 · categories 6 ·
+│               products 9 — 8 демо + тестовый товар владельца 00001 ·
+│               product_variants 20), справочники (order_statuses 7 ·
+│               status_transitions 7 · payment_methods 3 · delivery_methods 4),
+│               комплекты (looks 3 · look_items 5), брендбук (brand_colors 20 ·
+│               brand_templates 3), тексты site_content (52 ключа);
+│               заказы/клиенты не выгружены (тестовые данные), promo_codes/
+│               admin_users — не выгружены (чувствительные данные)
 ├── supabase/   01_schema.sql … 21_admin_users_phone.sql + README.md (регламент скриптов)
 ├── docs/       tehpasport.md (этот) · feature-proposals.md · tz-proekta.md (ТЗ)
 │   ├── plan/   migration-plan.md · otchet.md · voprosy-vladeltsu.md · matrica-dostupa.md
@@ -317,9 +322,9 @@ sisku-draft/
 
 | Группа | Таблицы |
 |---|---|
-| Каталог | `brands` (6 записей), `categories` (6), `products` (8 демо-товаров, артикулы 10001…; цена `numeric(10,2)`, `is_active`), `product_variants` (размер/объём + остаток `stock`, `sort_order`; cascade от товара) |
+| Каталог | `brands` (6 записей), `categories` (6), `products` (8 демо-товаров, артикулы 10001…, + тестовый товар владельца 00001 — бэкап 06.10.2026; цена `numeric(10,2)`, `is_active`), `product_variants` (размер/объём + остаток `stock`, `sort_order`; cascade от товара) |
 | Контент | `site_content` (52 ключа текстов витрины — 34 + 18 волны v0.15.0, скрипт 20), `brand_colors` (токены тем), `brand_templates` (шаблоны палитр) |
-| Справочники | `order_statuses` (7), `status_transitions` (7 разрешённых переходов), `payment_methods` (3: СБП, перевод на карту, наличные при самовывозе), `delivery_methods` (4: самовывоз 0 ₽, курьер Москва 600 ₽, СДЭК 350–900 ₽, «Boxberry» 300–800 ₽ — **в живой базе способ переименован владельцем в «Почта России»** 06.10.2026, код `boxberry` и посевные тексты скриптов 04/20 сохранены исторически; аудит захардкоженных названий служб в текстах сайта — задача волны v0.16.0) |
+| Справочники | `order_statuses` (7), `status_transitions` (7 разрешённых переходов), `payment_methods` (3: СБП, перевод на карту, наличные при самовывозе), `delivery_methods` (4: самовывоз 0 ₽, курьер Москва 600 ₽, СДЭК 350–900 ₽, «Почта России» 300–800 ₽ — в живой базе способ **заменён владельцем: код `pochtaruss`** (сверено по бэкапу 06.10.2026); посевы скриптов 04/20 сохраняют «Boxberry» исторически — выравнивание для новых баз и аудит захардкоженных fallback-текстов `index.html` — задача волны v0.16.0) |
 | Заказы | `orders` (клиент, сумма, доставка, `is_paid`+`paid_at` — **признак, а не статус**, `client_id` → clients, фактические скидки `promo_discount`/`look_discount` — v0.13.0), `order_items` (снапшоты цены/названия/варианта — правки каталога не «плывут» в истории), `deliveries` (адрес, трек-номер), `order_status_history` (журнал) |
 | Маркетинг | `promo_codes` (скидка, сроки, лимит использований), `looks` + `look_items` (комплекты и их состав; скидка комплекта применяется сервером) |
 | Клиенты | `clients` (v0.13.0: ФИО, телефон, e-mail, адрес, комментарий менеджера; ключи дедупликации `phone_key`/`email_key`; `name_confirmed` — имя подтверждено админом и не затирается новыми заказами, v0.15.0/скрипт 19; создаются автоматически из заказов — `create_order` v5+ и миграция скрипта 15) |
@@ -413,10 +418,15 @@ admin_set_status v3, draft_reserved_map v2, CHECK total >= 0, DELETE-полит�
 
 ## 7. Данные и контент
 
-- **Мастер-источники каталога — CSV** (`data/`): brands, categories, products,
-  variants. Импорт — через Table Editor Supabase или запасным посевом
-  (скрипт 05). Варианты ссылаются на внутренние id товаров (порядок строк
-  products.csv), не на артикулы.
+- **Бэкап содержимого БД — автовыгрузки Supabase** (`data/*_rows.csv`,
+  13 файлов с 06.10.2026; прежние мастер-источники brands/categories/
+  products/variants.csv удалены из репозитория): каталог, справочники,
+  комплекты, брендбук, тексты `site_content` (52 ключа). Посев каталога для
+  новой базы — скрипт 05 (запасной посев) или импорт из бэкапов
+  (setup-supabase, шаг 3). Заказы/клиенты не выгружены (черновик — тестовые
+  данные), `promo_codes`/`admin_users` — чувствительные данные (коды скидок,
+  хэши паролей) не публикуются. Регламент: выгрузка до и после каждой сессии
+  правок владельца, публикация в `data/`.
 - **Демо-наполнение:** 6 брендов (Aurelle, Maison Nord и др. — вымышленные),
   6 категорий, 8 товаров с AI-фото `p001…p008.jpg`, 20 вариантов размеров/объёмов.
 - **Фото:** hero (2 темы) и товары — сгенерированные заглушки; черновая
