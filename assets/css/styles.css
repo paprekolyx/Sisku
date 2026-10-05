@@ -1,4 +1,5 @@
 
+
 /* ==========================================================================
    SISKU — черновик витрины · v0.1.0-draft
    Дизайн: «quiet luxury». Тема по умолчанию — светлая «Ivoire»,
@@ -457,7 +458,15 @@ body::-webkit-scrollbar-thumb:hover, .modal::-webkit-scrollbar-thumb:hover,
 .look-table .lt-name { text-align: left; color: var(--text); }
 .look-table .lt-name .muted { font-size: 12px; }
 .look-table .lt-price { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; color: var(--muted); }
-.look-table select, .look-table .cselect-btn { min-height: 34px; font-size: 12.5px; margin-top: 6px; }
+.look-table select, .look-table .cselect-btn { min-height: 34px; font-size: 12.5px; }
+/* правка 2.6 (v0.15.0): размерный select — отдельным блоком ПОД наименованием
+   товара, фиксированной ширины: карточка комплекта больше не «скачет»
+   при выборе/изменении варианта (демо-лук «Зимний комплект») */
+.look-table .lt-var { margin-top: 6px; }
+.look-table .lt-var select { width: 190px; max-width: 100%; }
+.look-table .lt-var .cselect { display: block; width: 190px; max-width: 100%; }
+.look-table .lt-var .cselect-btn { width: 100%; min-width: 0; }
+.look-table .lt-var .muted { font-size: 12px; }
 
 /* ==========================================================================
    v0.12.0-draft: юридические документы (политика ПДн, публичная оферта).
@@ -494,3 +503,36 @@ body::-webkit-scrollbar-thumb:hover, .modal::-webkit-scrollbar-thumb:hover,
 /* реквизиты-блок в конце оферты */
 .legal-req { border: 1px solid var(--line); background: var(--surface); padding: 22px 26px; font-size: 14px; line-height: 1.8; }
 .legal-req .ph { display: inline; }
+
+/* ==========================================================================
+   v0.15.0: волна по запискам приёмки v0.14.x (docs/priemka/priemka-v014.md §2)
+   ========================================================================== */
+
+/* правка 2.3б: модалки витрины не «скачут», если контент вырастает
+   (scrollbar-gutter резервирует полосу скроллбарра заранее) */
+.modal { scrollbar-gutter: stable; }
+
+/* правка 2.4: подсказка под полем формы (placeholder — не подсказка:
+   длинные плейсхолдеры выезжали за рамки полушироких полей field-row) */
+.field .hint { display: block; color: var(--muted); font-size: 12.5px; margin-top: 6px; line-height: 1.45; }
+
+/* правка 2.22: чекбокс согласия ПДн/оферта в форме заказа (макет;
+   запись факта согласия в БД — боевая версия M4, П16) */
+.consent-field .consent {
+  display: flex; align-items: flex-start; gap: 10px; margin: 0;
+  font-size: 13.5px; line-height: 1.5; letter-spacing: normal;
+  text-transform: none; color: var(--text);
+}
+.consent-field .consent input { width: 18px; height: 18px; flex: none; margin-top: 2px; accent-color: var(--accent); }
+.consent-links { display: block; font-size: 12.5px; margin-top: 6px; }
+.consent-links a { color: var(--accent); }
+
+/* правка 2.21: стилизованная модалка вместо confirm() при неполном комплекте */
+.lp-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; margin-top: 18px; text-align: left; }
+@media (max-width: 560px) { .lp-cols { grid-template-columns: 1fr; } }
+.lp-head { font-size: 11px; letter-spacing: .16em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: 8px; }
+.lp-head.bad { color: var(--danger); }
+.lp-list { list-style: none; margin: 0; padding: 0; font-size: 13.5px; }
+.lp-list li { padding: 7px 0; border-bottom: 1px solid var(--line); }
+.lp-list li:last-child { border-bottom: 0; }
+.lp-list .vr { color: var(--muted); font-size: 12px; }

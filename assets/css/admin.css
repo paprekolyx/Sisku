@@ -1,4 +1,5 @@
 
+
 /* ==========================================================================
    SISKU — админ-панель (черновик) · v0.14.0-draft
    Оформление: темы «Noir & Champagne» (тёмная, по умолчанию) и «Ivoire»
@@ -90,18 +91,44 @@ table.orders th {
 }
 table.orders td { padding: 14px 16px; border-bottom: 1px solid var(--line); vertical-align: top; }
 table.orders tr:last-child td { border-bottom: 0; }
-table.orders tbody tr { cursor: pointer; transition: background .15s; }
-table.orders tbody tr:hover { background: var(--card); }
+table.orders tbody tr { cursor: pointer; }
+/* правка 2.10 (v0.15.0): единый hover для ВСЕХ таблиц админки (раньше был
+   только у таблицы заказов) + сдержанная зебра .zebra для длинных таблиц
+   (список заказов, site_content — решение В5/опросник 6.5: hover везде,
+   зебра только длинным); анимация 120ms — как в таблице размеров витрины */
+.table-wrap table tbody tr, .mini-table tbody tr { transition: background 120ms; }
+table.zebra tbody tr:nth-child(even) { background: color-mix(in srgb, var(--muted) 5%, transparent); }
+.table-wrap table tbody tr:hover, .mini-table tbody tr:hover,
+table.zebra tbody tr:hover { background: color-mix(in srgb, var(--muted) 12%, transparent); }
+/* правка 2.9 (v0.15.0): пилюли статусов в таблицах — ЗАЛИТЫЕ (были контурные
+   11.5px, терялись): фон 14% цвета статуса, текст — насыщенный цвет статуса,
+   12px/600. Контраст пар — WCAG AA в обеих темах (проверено brandContrast).
+   Косметический хвост волны: мёртвый селектор [data-code="paid"] удалён
+   (статус «Оплачен» вынесен из модели в признак is_paid ещё в v0.2.0, скрипт 06) */
 .status-pill {
-  display: inline-block; padding: 4px 12px; border: 1px solid var(--line);
-  border-radius: 999px; font-size: 11.5px; letter-spacing: .08em; white-space: nowrap;
-  color: var(--muted);
+  display: inline-block; padding: 4px 12px; border: 1px solid transparent;
+  border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: .06em;
+  white-space: nowrap;
+  color: var(--muted); background: color-mix(in srgb, var(--muted) 14%, transparent);
 }
-.status-pill[data-code="new"]       { color: var(--accent); border-color: var(--accent); }
-.status-pill[data-code="paid"],
-.status-pill[data-code="delivered"] { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 55%, transparent); }
+.status-pill[data-code="new"]       { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.status-pill[data-code="delivered"] { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
 .status-pill[data-code="cancelled"],
-.status-pill[data-code="returned"]  { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 55%, transparent); }
+.status-pill[data-code="returned"]  { color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
+/* WCAG AA в светлой теме (правка 2.9): насыщенные цвета на 14% подтонировке
+   не дотягивали до 4.5:1 (danger 4.06, muted 4.47) — текст пилюль слегка
+   затемнён подмешиванием токена --text (проверка brandContrast, худший случай
+   «зебра/hover под пилюлей»: muted 85% → 4.66, accent 92% → 4.80,
+   ok 92% → 4.63, danger 80% → 4.63). Тёмная тема проходит без подмешивания
+   (худший 4.57). Крупная пилюля карточки заказа (.status-pill-lg) —
+   по-прежнему залитая акцентом, правила ниже её не затрагивают. */
+[data-theme="light"] .status-pill,
+[data-theme="light"] .role-pill { color: color-mix(in srgb, var(--muted) 85%, var(--text)); }
+[data-theme="light"] .status-pill[data-code="new"],
+[data-theme="light"] .role-pill[data-role="admin"] { color: color-mix(in srgb, var(--accent) 92%, var(--text)); }
+[data-theme="light"] .status-pill[data-code="delivered"] { color: color-mix(in srgb, var(--ok) 92%, var(--text)); }
+[data-theme="light"] .status-pill[data-code="cancelled"],
+[data-theme="light"] .status-pill[data-code="returned"] { color: color-mix(in srgb, var(--danger) 80%, var(--text)); }
 .paid-mark { color: var(--ok); font-size: 12px; white-space: nowrap; }
 .paid-mark.no { color: var(--muted); }
 .masked { letter-spacing: .06em; }
@@ -114,7 +141,7 @@ table.orders tbody tr:hover { background: var(--card); }
 /* ---------- карточка заказа (модалка) ---------- */
 .modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 50; display: none; align-items: flex-start; justify-content: center; padding: 4vh 16px; }
 .modal-backdrop.open { display: flex; }
-.modal { width: min(860px, 100%); max-height: 90vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--line); position: relative; padding: 36px 38px; }
+.modal { width: min(860px, 100%); max-height: 90vh; overflow-y: auto; background: var(--surface); border: 1px solid var(--line); position: relative; padding: 36px 38px; scrollbar-gutter: stable; } /* scrollbar-gutter — правка 2.3б (v0.15.0): модалка не «скачет» при открытии календаря (скроллбар появляется сразу) */
 .modal-close { position: absolute; top: 14px; right: 14px; width: 38px; height: 38px; background: transparent; border: 1px solid var(--line); color: var(--text); cursor: pointer; border-radius: var(--radius); }
 .modal-close:hover { color: var(--accent); border-color: var(--accent); }
 .modal h2 { font-size: 26px; margin-bottom: 4px; }
@@ -233,7 +260,7 @@ table.orders tbody tr:hover { background: var(--card); }
   .col-created, .col-items, .col-paid, .col-delivery { display: none; }
   table.orders { min-width: 0; }
   table.orders th, table.orders td { padding: 10px 8px; font-size: 13px; }
-  table.orders .status-pill { font-size: 10.5px; padding: 3px 9px; }
+  table.orders .status-pill { font-size: 11px; padding: 3px 10px; } /* правка 2.9: на мобильном пилюли не мельчают до нечитаемых 10.5px */
 
   /* карточка заказа и действия */
   .modal { padding: 24px 18px; }
@@ -267,9 +294,9 @@ th.sortable.active .sort-ic { color: var(--accent); }
 /* заблокированные действия у отменённых заказов */
 .locked-note { color: var(--muted); font-size: 12.5px; margin-top: 10px; }
 
-/* роли пользователей */
-.role-pill { display: inline-block; padding: 3px 11px; border: 1px solid var(--line); border-radius: 999px; font-size: 11.5px; letter-spacing: .06em; color: var(--muted); white-space: nowrap; }
-.role-pill[data-role="admin"] { color: var(--accent); border-color: var(--accent); }
+/* роли пользователей — залитые пилюли, единый стиль со статусами (правка 2.9) */
+.role-pill { display: inline-block; padding: 4px 12px; border: 1px solid transparent; border-radius: 999px; font-size: 12px; font-weight: 600; letter-spacing: .06em; color: var(--muted); background: color-mix(in srgb, var(--muted) 14%, transparent); white-space: nowrap; }
+.role-pill[data-role="admin"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
 
 /* страница входа (мок-авторизация черновика) */
 .login-wrap { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px; }
@@ -481,3 +508,77 @@ body::-webkit-scrollbar-thumb:hover, .modal::-webkit-scrollbar-thumb:hover, .tab
 .stub-list li { margin-bottom: 9px; }
 .stub-list li::marker { color: var(--accent); }
 .stub-note { font-size: 12.5px; border-top: 1px dashed var(--line); padding-top: 14px; margin: 0; }
+
+/* ==========================================================================
+   v0.15.0: волна по запискам приёмки v0.14.x (docs/priemka/priemka-v014.md §2)
+   ========================================================================== */
+
+/* сегменты-подвкладки с заглушками (2.11) — помещаются в одну строку или переносятся */
+.seg.subseg { flex-wrap: wrap; }
+button.seg-btn { font-family: var(--font-body); }
+
+/* 2.14 — кликабельный счётчик связанных товаров (категории/бренды) */
+.count-link {
+  background: none; border: 0; padding: 0; font: inherit; color: var(--accent);
+  cursor: pointer; text-decoration: underline; text-underline-offset: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.count-link:hover { color: var(--text); }
+
+/* 2.16 — site_content: раскрываемые группы ключей по префиксу */
+.sc-group { border: 1px solid var(--line); background: var(--surface); margin-bottom: 12px; }
+.sc-group-head {
+  width: 100%; display: flex; align-items: center; gap: 12px; padding: 13px 16px;
+  background: transparent; border: 0; cursor: pointer; color: var(--text);
+  font: 600 12px/1 var(--font-body); letter-spacing: .14em; text-transform: uppercase; text-align: left;
+}
+.sc-group-head:hover { color: var(--accent); }
+.sc-group-count { color: var(--muted); font-weight: 400; letter-spacing: .06em; text-transform: none; }
+.sc-caret { margin-left: auto; color: var(--muted); font-size: 11px; transition: transform 120ms; }
+.sc-group.collapsed .sc-caret { transform: rotate(-90deg); }
+.sc-group.collapsed .sc-group-body { display: none; }
+.sc-group-body { border-top: 1px solid var(--line); overflow-x: auto; }
+.sc-group-body table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.sc-group-body td, .sc-group-body th { padding: 9px 12px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.sc-group-body tbody tr:last-child td { border-bottom: 0; }
+.sc-group-body th { color: var(--muted); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; white-space: nowrap; }
+.sc-group-body tbody tr { transition: background 120ms; }
+.sc-group-body tbody tr:nth-child(even) { background: color-mix(in srgb, var(--muted) 5%, transparent); } /* зебра — длинная таблица (В5) */
+.sc-group-body tbody tr:hover { background: color-mix(in srgb, var(--muted) 12%, transparent); }
+.sc-key { white-space: nowrap; font-size: 12.5px; color: var(--muted); }
+.sc-val { max-width: 520px; } /* правка 2.16: значение шире (clip 140, полный текст — по клику в редакторе) */
+.sc-desc { color: var(--muted); font-size: 12.5px; width: 30%; }
+.sc-upd { white-space: nowrap; font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+
+/* 2.18 — брендбук: сравнение «сохранённая vs новая» палитры */
+.bbc-themes { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+@media (max-width: 900px) { .bbc-themes { grid-template-columns: 1fr; } }
+.bbc-col h4 { font-family: var(--font-body); font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+.bbc-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.bbc-row { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-bottom: 1px solid var(--line); font-size: 12.5px; }
+.bbc-row:last-child { border-bottom: 0; }
+.bbc-row.diff { background: var(--accent-soft); }
+.bbc-name { min-width: 108px; color: var(--muted); }
+.bbc-chip { width: 34px; height: 22px; flex: none; border: 1px solid var(--line); }
+.bbc-hex { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--text); font-size: 11.5px; }
+
+/* 2.17 — редактируемые названия тем брендбука */
+.bb-names { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+@media (max-width: 900px) { .bb-names { grid-template-columns: 1fr; } }
+.bb-names label { display: block; font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin-bottom: 7px; }
+.bb-names input {
+  width: 100%; min-height: 44px; padding: 8px 12px; background: var(--card); color: var(--text);
+  border: 1px solid var(--line); border-radius: 3px; font-family: var(--font-body); font-size: 13.5px;
+}
+.bb-names input:focus { border-color: var(--accent); outline: none; }
+
+/* 2.15 — полный предпросмотр карточки товара: витрина в iframe
+   (переиспользование разметки и styles.css витрины, без дублирования) */
+.pvfull-frame { width: 100%; height: 68vh; border: 1px solid var(--line); background: var(--bg); display: block; }
+
+/* 2.19 — телефон администратора в таблице пользователей */
+.tel-link { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tel-link:hover { color: var(--accent); border-color: var(--accent); }
+
+/* 2.13 — статистика промокодов: колонка «Скидки, ₽» прячется на узких экранах */
+@media (max-width: 1100px) { .col-promo-disc { display: none; } }
