@@ -73,8 +73,14 @@ assets/js/       config.js (КЛЮЧИ БАЗЫ — только здесь, SIT
 assets/vendor/   supabase.min.js · chart.umd.min.js
 assets/fonts/    prata-*.woff2 · manrope-*.woff2
 assets/img/      hero.jpg (светлая тема) · hero-dark.jpg (тёмная тема) · products/p001…p008.jpg
-data/            brands.csv · categories.csv · products.csv · variants.csv ·
-                 site_content_rows.csv · brand_colors_rows.csv (бэкап контента, 05.10.2026)
+data/            бэкап содержимого базы — автовыгрузки Supabase (06.10.2026), 13 файлов
+                 *_rows.csv: каталог (brands · categories · products · product_variants),
+                 справочники (order_statuses · status_transitions · payment_methods ·
+                 delivery_methods), комплекты (looks · look_items), брендбук
+                 (brand_colors · brand_templates), тексты (site_content — 52 ключа);
+                 заказы/клиенты не выгружены (тестовые данные), promo_codes/admin_users —
+                 не выгружены (чувствительные данные); посев каталога новой базы —
+                 скрипт 05 или импорт бэкапов (docs/setup/setup-supabase.md, шаг 3)
 supabase/        01_schema → 21_admin_users_phone (выполнять по порядку;
                  06–08 — одноразовые миграции данных: на живой отредактированной
                  базе повторно не запускать, решение F21 от 05.10.2026)
