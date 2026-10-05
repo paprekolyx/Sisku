@@ -10,6 +10,17 @@ v2 (v0.14.0, по независимому ревью F14/F20): все 17 стр
 v2.1 (v0.14.1): в REQUIRED добавлены docs/plan/ (migration-plan, otchet,
 voprosy-vladeltsu — плановые документы теперь в репозитории, F37),
 docs/review-v0140.md и docs/update-v0141.md.
+v2.2 (волна v0.15.0 — АН-12; подготовлен 05.10.2026): пути REQUIRED и
+проверок приведены к структуре docs/ с подпапками plan/ priemka/ review/
+setup/ update/ (перестройка 04.10.2026); в REQUIRED добавлены
+docs/tz-proekta.md, docs/priemka/priemka-v014.md,
+docs/review/SISKU-REVIEW-v0140.md, docs/plan/matrica-dostupa.md и бэкапы
+контента data/site_content_rows.csv, data/brand_colors_rows.csv; проверка
+CSV расширена на все data/*.csv; docs/review/SISKU-REVIEW-v0.13.1.md не
+требуется — дубль удалён решением 05.10.2026 (основная репозиторная копия
+отчёта v0.13.1 — docs/review/review-v0131.md, ревизия 4).
+Состав волны v0.15.0 в REQUIRED: скрипты supabase/17–21 и
+docs/update/update-v0150.md.
 
 Запуск из корня репозитория:  python3 tests/check-repo.py
 Проверяет (без сети и без базы):
@@ -81,27 +92,35 @@ REQUIRED = [
     'supabase/01_schema.sql', 'supabase/02_rls_and_access.sql', 'supabase/03_functions.sql',
     'supabase/04_seed_references_and_content.sql', 'supabase/05_seed_catalog.sql',
     'supabase/06_remove_paid_status.sql', 'supabase/07_draft_v040.sql', 'supabase/08_text_fixes.sql', 'supabase/09_admin_bundles.sql',
-    'assets/img/hero-dark.jpg', 'docs/update-v050.md', 'docs/update-v060.md',
-    'shop.html', 'assets/js/shop.js', 'supabase/10_promo_and_tracking.sql', 'docs/update-v070.md',
-    'products.html', 'assets/js/products.js', 'supabase/11_product_management.sql', 'docs/update-v080.md',
+    'assets/img/hero-dark.jpg', 'docs/update/update-v050.md', 'docs/update/update-v060.md',
+    'shop.html', 'assets/js/shop.js', 'supabase/10_promo_and_tracking.sql', 'docs/update/update-v070.md',
+    'products.html', 'assets/js/products.js', 'supabase/11_product_management.sql', 'docs/update/update-v080.md',
     'categories.html', 'brands.html', 'manage.html', 'sitecontent.html', 'sitemap.html',
     'assets/js/categories.js', 'assets/js/brands.js', 'assets/js/manage.js', 'assets/js/sitecontent.js',
-    'supabase/12_manage_policies.sql', 'docs/update-v090.md', 'docs/update-v091.md',
-    'looks.html', 'assets/js/looks.js', 'supabase/13_reserve_and_looks.sql', 'docs/update-v100.md',
+    'supabase/12_manage_policies.sql', 'docs/update/update-v090.md', 'docs/update/update-v091.md',
+    'looks.html', 'assets/js/looks.js', 'supabase/13_reserve_and_looks.sql', 'docs/update/update-v100.md',
     'brandbook.html', 'clients.html', 'assets/js/brandbook.js', 'assets/js/clients.js',
-    'assets/js/brandvars.js', 'supabase/14_brandbook.sql', 'docs/update-v110.md',
-    'supabase/README.md', 'docs/update-v111.md',
-    'privacy.html', 'offer.html', 'docs/update-v0120.md',
-    'supabase/15_clients_and_promo_stats.sql', 'docs/update-v0130.md', 'docs/update-v0131.md',
-    'docs/setup-repo-pages.md', 'docs/setup-supabase.md', 'docs/update-v040.md',
-    'docs/feature-proposals.md', 'docs/code-review-v040.md',
+    'assets/js/brandvars.js', 'supabase/14_brandbook.sql', 'docs/update/update-v110.md',
+    'supabase/README.md', 'docs/update/update-v111.md',
+    'privacy.html', 'offer.html', 'docs/update/update-v0120.md',
+    'supabase/15_clients_and_promo_stats.sql', 'docs/update/update-v0130.md', 'docs/update/update-v0131.md',
+    'docs/setup/setup-repo-pages.md', 'docs/setup/setup-supabase.md', 'docs/update/update-v040.md',
+    'docs/feature-proposals.md', 'docs/review/code-review-v040.md',
     'docs/tehpasport.md', 'tests/check-repo.py',
     # v0.14.0 — волна по независимому ревью (docs/review-v0131.md — отчёт ревьюера)
-    'supabase/16_race_and_integrity_fixes.sql', 'docs/update-v0140.md', 'docs/review-v0131.md',
+    'supabase/16_race_and_integrity_fixes.sql', 'docs/update/update-v0140.md', 'docs/review/review-v0131.md',
     # v0.14.1 — патч по ревью волны v0.14.0 (docs/review-v0140.md); плановые
     # документы в репозитории (docs/plan/ — пункт ревью F37 закрыт)
-    'docs/update-v0141.md', 'docs/review-v0140.md',
+    'docs/update/update-v0141.md', 'docs/review/review-v0140.md',
     'docs/plan/migration-plan.md', 'docs/plan/otchet.md', 'docs/plan/voprosy-vladeltsu.md',
+    # v2.2 (05.10.2026): структура docs/ с подпапками; новые документы и бэкапы
+    'docs/tz-proekta.md', 'docs/priemka/priemka-v014.md',
+    'docs/review/SISKU-REVIEW-v0140.md', 'docs/plan/matrica-dostupa.md',
+    'data/site_content_rows.csv', 'data/brand_colors_rows.csv',
+    # v0.15.0 — волна по запискам приёмки v0.14.x (скрипты 17–21)
+    'supabase/17_look_atomic_save.sql', 'supabase/18_set_paid_unlock.sql',
+    'supabase/19_client_name_policy.sql', 'supabase/20_site_content_wave_keys.sql',
+    'supabase/21_admin_users_phone.sql', 'docs/update/update-v0150.md',
 ] + ['assets/img/products/p00%d.jpg' % i for i in range(1, 9)]
 
 # ---------- 1. обязательные файлы + реестр supabase/README.md ----------
@@ -165,7 +184,8 @@ for js, page in JS_PAGE:
         problems.append('%s: id "%s" не найден в %s' % (js, i, page))
 
 # ---------- 5. CSV (модуль csv — закавыченные запятые не ломают проверку) ----------
-for f in ['data/brands.csv', 'data/categories.csv', 'data/products.csv', 'data/variants.csv']:
+csv_files = sorted('data/' + n for n in os.listdir('data') if n.endswith('.csv'))
+for f in csv_files:
     with io.open(f, encoding='utf-8', newline='') as fh:
         rows = list(csv.reader(fh))
     if not rows:
@@ -206,7 +226,7 @@ for f in sorted(os.listdir('supabase')):
 # ---------- 6.6. последний SQL-скрипт упомянут в документации ----------
 if LAST_SQL:
     doc_pats = ['%s_' % LAST_SQL_NN, '01…%s' % LAST_SQL_NN, '01–%s' % LAST_SQL_NN, '01-%s' % LAST_SQL_NN]
-    for f in ['docs/tehpasport.md', 'docs/setup-supabase.md', 'README.md']:
+    for f in ['docs/tehpasport.md', 'docs/setup/setup-supabase.md', 'README.md']:
         src = io.open(f, encoding='utf-8').read()
         if not any(p in src for p in doc_pats):
             problems.append('%s: не упомянут последний SQL-скрипт (%s) — документация устарела' % (f, LAST_SQL))
@@ -264,6 +284,6 @@ if problems:
     for p in problems:
         print('  ✗ ' + p)
     sys.exit(1)
-print('✓ check-repo v2: все проверки пройдены (версия %s, страниц %d, SQL-скриптов %d, последний %s)'
+print('✓ check-repo v2.2: все проверки пройдены (версия %s, страниц %d, SQL-скриптов %d, последний %s)'
       % (ver, len(HTML_PAGES), len(on_disk), LAST_SQL))
 sys.exit(0)
