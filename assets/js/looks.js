@@ -2,8 +2,12 @@
    SISKU · looks.js — подраздел «Комплекты» вкладки «Магазин» (v0.10.0-draft)
    CRUD луков: название, описание, скидка комплекта, активность,
    состав из конкретных товаров с вариантами. Витрина показывает активные
-   луки в разделе «Готовые образы» и умеет добавлять образ в корзину целиком;
-   скидку пересчитывает сервер в create_order (проверка полноты корзины).
+   луки в разделе «Комплекты» (до v0.15.0 — «Готовые образы», правка 2.7)
+   и умеет добавлять комплект в корзину целиком; скидку пересчитывает сервер
+   в create_order (проверка полноты корзины).
+   v0.15.0 (правка 2.1-Б): сохранение — ОДНИМ RPC draft_save_look (скрипт 17):
+   комплект и состав в одной транзакции; при ошибке вставки позиций комплект
+   больше не остаётся в таблице без состава (баг записки 1).
    ========================================================================== */
 (function () {
   'use strict';
@@ -135,45 +139,30 @@
 
     state.saving = true;
     $('lk-submit').disabled = true;
-    var look = {
+    /* правка 2.1-Б (v0.15.0, скрипт 17): комплект + состав — один RPC,
+       одна транзакция. Ошибка 42883 (функции ещё нет) — база не обновлена,
+       friendlyDbError подскажет выполнить SQL-скрипт последней волны. */
+    db.rpc('draft_save_look', { p: {
+      id: state.editingId || null,
       title: title,
       description: $('lk-desc').value.trim() || null,
       discount_percent: Number($('lk-discount').value || 0),
-      is_active: $('lk-active').checked
-    };
-    var finish = function (lookId) {
-      var jobs = [];
-      if (state.editingId) jobs.push(db.from('look_items').delete().eq('look_id', lookId));
-      Promise.all(jobs).then(function () {
-        return db.from('look_items').insert(rows.map(function (r, i) {
-          return { look_id: lookId, product_id: r.product_id, variant_id: r.variant_id, sort_order: i + 1 };
-        }));
-      }).then(function (res) {
-        state.saving = false;
-        $('lk-submit').disabled = false;
-        if (res.error) { errBox.textContent = res.error.message; errBox.hidden = false; return; }
-        closeModal();
-        load();
-      }).catch(function (err) {
-        state.saving = false;
-        $('lk-submit').disabled = false;
-        errBox.textContent = 'Ошибка сети: ' + err.message;
-        errBox.hidden = false;
-      });
-    };
-    if (state.editingId) {
-      db.from('looks').update(look).eq('id', state.editingId).then(function (res) {
-        if (res.error) { state.saving = false; $('lk-submit').disabled = false; errBox.textContent = res.error.message; errBox.hidden = false; return; }
-        finish(state.editingId);
-      });
-    } else {
-      db.from('looks').insert(look).then(function (res) {
-        if (res.error) { state.saving = false; $('lk-submit').disabled = false; errBox.textContent = res.error.message; errBox.hidden = false; return; }
-        var id = res.data && res.data.length ? res.data[0].id : null;
-        if (!id) { state.saving = false; $('lk-submit').disabled = false; errBox.textContent = 'Комплект создан, но id не вернулся — обновите список'; errBox.hidden = false; return; }
-        finish(id);
-      });
-    }
+      is_active: $('lk-active').checked,
+      items: rows.map(function (r) {
+        return { product_id: r.product_id, variant_id: r.variant_id };
+      })
+    } }).then(function (res) {
+      state.saving = false;
+      $('lk-submit').disabled = false;
+      if (res.error) { errBox.textContent = SiskuUtil.friendlyDbError(res.error); errBox.hidden = false; return; }
+      closeModal();
+      load();
+    }).catch(function (err) {
+      state.saving = false;
+      $('lk-submit').disabled = false;
+      errBox.textContent = 'Ошибка сети: ' + err.message;
+      errBox.hidden = false;
+    });
   }
 
   document.addEventListener('DOMContentLoaded', function () {

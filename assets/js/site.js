@@ -17,6 +17,8 @@
     cart: loadCart(),
     currentProduct: null, currentVariant: null,
     promo: null,            /* применённый промокод: {code, amount} */
+    content: {},            /* v0.15.0: карта site_content (подсказки, тёмное фото «О магазине») */
+    partialAction: null,    /* v0.15.0 (правка 2.21): действие модалки неполного комплекта */
     look: null,             /* применённый комплект: {id, title, percent} */
     looks: [], lookItems: {},
     brandRows: [],
@@ -75,13 +77,24 @@
     var dark = document.documentElement.getAttribute('data-theme') === 'dark';
     img.src = dark ? 'assets/img/hero-dark.jpg' : 'assets/img/hero.jpg';
   }
+  /* v0.15.0 (записка 2, ключ about.img.dark): тёмная версия фото «О магазине» —
+     путь из site_content; пусто — то же фото, что в светлой теме */
+  function setAboutImage() {
+    var img = $('about-img');
+    if (!img) return;
+    var dark = document.documentElement.getAttribute('data-theme') === 'dark';
+    var custom = dark ? String(state.content['about.img.dark'] || '') : '';
+    img.src = custom || 'assets/img/products/p001.jpg';
+  }
   function initTheme() {
     setHeroImage();   /* герой зависит от темы: светлая — женский образ, тёмная — мужской */
+    setAboutImage();
     $('theme-toggle').addEventListener('click', function () {
       var cur = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
       document.documentElement.setAttribute('data-theme', cur);
       try { localStorage.setItem('sisku_theme', cur); } catch (e) {}
       setHeroImage();
+      setAboutImage();
       /* v0.13.0: токены брендбука под новую тему — из свежих строк или из кэша */
       if (state.brandRows.length && window.brandApplyRows) brandApplyRows(state.brandRows);
       else if (window.applyBrandCached) applyBrandCached();
@@ -92,9 +105,16 @@
   function applyContent(rows) {
     var map = {};
     rows.forEach(function (r) { map[r.key] = r.value; });
+    state.content = map;
     document.querySelectorAll('[data-content]').forEach(function (el) {
       var v = map[el.getAttribute('data-content')];
       if (v) el.textContent = v;               /* текст внутри тега остаётся запасным */
+    });
+    /* v0.15.0 (правка 2.8): placeholder'ы полей — тоже из site_content
+       (текст внутри тега заменяется textContent'ом, для плейсхолдеров — атрибут) */
+    document.querySelectorAll('[data-content-placeholder]').forEach(function (el) {
+      var v = map[el.getAttribute('data-content-placeholder')];
+      if (v) el.setAttribute('placeholder', v);
     });
     document.querySelectorAll('[data-content-href]').forEach(function (el) {
       var key = el.getAttribute('data-content-href');
@@ -104,6 +124,38 @@
          значения из site_content больше не попадают на витрину */
       var safe = SiskuUtil.safeUrl(v);
       if (safe) el.setAttribute('href', safe);
+    });
+    setAboutImage();          /* п.2: тёмное фото «О магазине» (about.img.dark) */
+    renderBrandbookHelp();    /* правка 2.18: палитры справки — из живых токенов */
+  }
+
+  /* ---------- брендбук-справка: палитры из brand_colors (правка 2.18) ----------
+     Статические HEX в модалке справки устаревали после изменения цветов в
+     админке. Теперь плашки рендерятся из свежих строк brand_colors (бандл)
+     или из кэша токенов; значения проходят hex-валидацию (культура F05).
+     Нет ни строк, ни кэша — остаются статические плашки-запасные. */
+  function renderBrandbookHelp() {
+    var rows = (state.brandRows && state.brandRows.length) ? state.brandRows
+      : (window.brandCachedRows ? (brandCachedRows() || []) : []);
+    if (!rows.length) return;
+    var LABELS = [
+      { key: 'bg', name: 'Фон' }, { key: 'surface', name: 'Карточки' },
+      { key: 'text', name: 'Текст' }, { key: 'muted', name: 'Второстепенный' },
+      { key: 'accent', name: 'Акцент' }, { key: 'line', name: 'Линии' }
+    ];
+    ['light', 'dark'].forEach(function (theme) {
+      var host = $('bb-swatches-' + theme);
+      if (!host) return;
+      var vals = {};
+      rows.forEach(function (r) {
+        if (r.theme === theme && /^#[0-9a-fA-F]{6}$/.test(String(r.value || ''))) vals[r.key] = r.value;
+      });
+      if (!vals.bg) return;
+      host.innerHTML = LABELS.filter(function (l) { return vals[l.key]; }).map(function (l) {
+        var hex = String(vals[l.key]).toUpperCase();
+        return '<div class="bb-swatch"><div class="color" style="background:' + esc(hex) + '"></div>' +
+          '<div class="meta"><b>' + l.name + '</b>' + esc(hex) + '</div></div>';
+      }).join('');
     });
   }
 
@@ -154,6 +206,7 @@
       try { localStorage.setItem('sisku_theme_apply_ms', String(Math.round((t1 - t0) * 100) / 100)); } catch (e) {}
       if (window.brandCacheSave) brandCacheSave(d.brand);
       state.brandRows = d.brand;
+      renderBrandbookHelp();   /* справка — из свежих строк, а не из кэша */
     }
     state.payments = d.payments || [];
     state.deliveries = d.deliveries || [];
@@ -191,7 +244,7 @@
       });
       applyContent(res[4].data);
       if (window.loadAndApplyBrand) {
-        loadAndApplyBrand(db).then(function (rows) { state.brandRows = rows; }).catch(function () {});
+        loadAndApplyBrand(db).then(function (rows) { state.brandRows = rows; renderBrandbookHelp(); }).catch(function () {});
       }
       state.payments = res[5].data;
       state.deliveries = res[6].data;
@@ -284,7 +337,7 @@
     switch (n % 10) { case 1: return ''; case 2: case 3: case 4: return 'а'; default: return 'ов'; }
   }
 
-  /* ---------- готовые образы (луки) ---------- */
+  /* ---------- комплекты (луки; до v0.15.0 — «готовые образы», правка 2.7) ---------- */
   function lookSum(look) {
     var items = state.lookItems[look.id] || [];
     return items.reduce(function (s, i) {
@@ -296,7 +349,7 @@
     var sec = $('looks');
     if (!state.looks.length) { sec.hidden = true; return; }
     sec.hidden = false;
-    $('looks-count').textContent = state.looks.length + ' образ' + plural(state.looks.length);
+    $('looks-count').textContent = state.looks.length + ' комплект' + plural(state.looks.length);
     $('looks-grid').innerHTML = state.looks.map(function (l) {
       var items = state.lookItems[l.id] || [];
       if (!items.length) return '';
@@ -308,15 +361,17 @@
         var v = i.variant_id ? findVariant(i.product_id, i.variant_id) : null;
         var varCell;
         if (v) {
-          varCell = '<span class="muted">' + esc(v.label) + '</span>';
+          varCell = '<div class="lt-var"><span class="muted">' + esc(v.label) + '</span></div>';
         } else {
           var opts = (state.variants[i.product_id] || []).filter(function (x) { return x.stock > 0; });
-          varCell = '<select class="look-var-sel" data-look="' + l.id + '" data-idx="' + idx + '" aria-label="Размер: ' + esc(p ? p.name : '') + '">' +
+          varCell = '<div class="lt-var"><select class="look-var-sel" data-look="' + l.id + '" data-idx="' + idx + '" aria-label="Размер: ' + esc(p ? p.name : '') + '">' +
             '<option value="">Выберите размер…</option>' +
             opts.map(function (x) { return '<option value="' + x.id + '">' + esc(x.label) + ' (' + x.stock + ' шт.)</option>'; }).join('') +
-            '</select>';
+            '</select></div>';
         }
-        return '<tr><td class="lt-name">' + esc(p ? p.name : '—') + ' ' + varCell + '</td>' +
+        /* правка 2.6 (v0.15.0): наименование — блок, вариант — блок ниже
+           (фиксированная ширина select в styles.css): ячейка не меняет ширину */
+        return '<tr><td class="lt-name">' + esc(p ? p.name : '—') + varCell + '</td>' +
           '<td class="lt-price">' + money(p ? p.price : 0) + '</td></tr>';
       }).join('');
       return '<article class="look-card" data-look-card="' + l.id + '">' +
@@ -352,12 +407,17 @@
       }
       chosen.push({ product_id: it.product_id, variant_id: vid });
     }
-    var available = [], missing = [];
+    var available = [], missing = [], availNames = [];
     chosen.forEach(function (c) {
       var v = findVariant(c.product_id, c.variant_id);
       var p = findProduct(c.product_id);
-      if (v && v.stock > 0) available.push(c);
-      else missing.push((p ? p.name : 'товар') + (v ? '' : ' (нет варианта)'));
+      var nm = p ? p.name : 'товар';
+      if (v && v.stock > 0) {
+        available.push(c);
+        availNames.push(nm + ' · ' + v.label);
+      } else {
+        missing.push(v ? nm + ' · ' + v.label + ' — нет в наличии' : nm + ' — нет варианта');
+      }
     });
     if (!available.length) { toast('Комплект нельзя добавить: ничего нет в наличии'); return; }
     var proceed = function () {
@@ -370,12 +430,23 @@
       toast('Комплект «' + l.title + '» в корзине' + (pct > 0 ? ': скидка −' + pct + '%' : ''));
     };
     if (missing.length) {
-      if (confirm('Нет в наличии: ' + missing.join(', ') + '.\n\n' +
-          'Добавить в корзину товары в наличии (' + available.length + ' из ' + chosen.length + ') со скидкой комплекта?\n' +
-          '«Отмена» — отказаться от добавления.')) proceed();
+      /* правка 2.21 (v0.15.0): стилизованная модалка выбора вместо confirm() —
+         состав (что есть / чего нет) и две кнопки; поведение partial_policy —
+         П11 (M1), пока как раньше: доступные позиции добавляются со скидкой */
+      openLookPartial(l, chosen.length, availNames, missing, proceed);
     } else {
       proceed();
     }
+  }
+  function openLookPartial(look, totalCount, availNames, missingNames, action) {
+    state.partialAction = action;
+    var pct = Number(look.discount_percent || 0);
+    $('lp-title').textContent = 'Комплект «' + look.title + '»: не всё в наличии';
+    $('lp-summary').textContent = 'В наличии ' + availNames.length + ' из ' + totalCount + ' позиций комплекта.' +
+      (pct > 0 ? ' Скидка комплекта −' + pct + '% применится к доступным товарам.' : '');
+    $('lp-missing').innerHTML = missingNames.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('');
+    $('lp-available').innerHTML = availNames.map(function (n) { return '<li>' + esc(n) + '</li>'; }).join('');
+    openModal('look-partial-backdrop');
   }
   function validateLook() {
     if (!state.look) return;
@@ -590,6 +661,8 @@
     var phone = $('of-phone').value.trim();
     var email = $('of-email').value.trim();
     var ok = true;
+    var consentErr = $('of-consent-err');
+    consentErr.hidden = true;
     setFieldError('of-name', ''); setFieldError('of-phone', ''); setFieldError('of-email', '');
     if (name.length < 2) { setFieldError('of-name', 'Укажите имя'); ok = false; }
     if (!phone && !email) { setFieldError('of-phone', 'Телефон или e-mail для связи'); ok = false; }
@@ -599,6 +672,13 @@
     }
     if (email && !emailOk(email)) {
       setFieldError('of-email', 'Формат: имя@домен.ru — например, anna@example.ru');
+      ok = false;
+    }
+    /* правка 2.22 (v0.15.0): согласие ПДн/оферта обязательно (макет;
+       запись факта согласия в БД — боевая M4, П16) */
+    if (!$('of-consent').checked) {
+      consentErr.textContent = 'Отметьте согласие с обработкой персональных данных и условиями оферты';
+      consentErr.hidden = false;
       ok = false;
     }
     if (!ok) return;
@@ -789,6 +869,18 @@
       openModal('order-modal-backdrop');
     });
     $('order-form').addEventListener('submit', submitOrder);
+
+    /* правка 2.21: «Добавить доступное со скидкой» в модалке неполного комплекта */
+    $('lp-add').addEventListener('click', function () {
+      closeModal('look-partial-backdrop');
+      var act = state.partialAction;
+      state.partialAction = null;
+      if (act) act();
+    });
+    /* правка 2.22: ошибка согласия гаснет, как только чекбокс отмечен */
+    $('of-consent').addEventListener('change', function () {
+      if (this.checked) $('of-consent-err').hidden = true;
+    });
 
     loadAll().catch(function (err) {
       $('product-grid').innerHTML = '<div class="cart-empty" style="grid-column:1/-1">Не удалось загрузить каталог: ' + esc(err.message) + '</div>';

@@ -3,11 +3,36 @@
    Правка текстов витрины из таблицы site_content: ключи не меняются,
    значение обновляется на сервере; витрина подхватит его при следующем
    открытии страницы (Ctrl + F5). Поиск по ключу/значению/подсказке.
+   v0.15.0 (правка 2.16): группы по префиксу ключа — раскрываемые секции
+   с человекочитаемыми именами; значение шире (clip 140, полный текст —
+   в редакторе по клику); «Обновлён» — только дата, время в тултипе.
    ========================================================================== */
 (function () {
   'use strict';
 
-  var state = { rows: [], editingKey: null, saving: false };
+  var state = { rows: [], editingKey: null, saving: false, collapsed: {} };
+
+  /* правка 2.16: справочник префиксов — заголовок группы = человекочитаемое имя */
+  var GROUPS = [
+    { prefix: 'brand.',    name: 'Бренд' },
+    { prefix: 'hero.',     name: 'Первый экран' },
+    { prefix: 'about.',    name: 'О магазине' },
+    { prefix: 'adv.',      name: 'Преимущества' },
+    { prefix: 'catalog.',  name: 'Каталог' },
+    { prefix: 'looks.',    name: 'Комплекты' },
+    { prefix: 'order.',    name: 'Заказ и условия' },
+    { prefix: 'checkout.', name: 'Форма оформления' },
+    { prefix: 'contacts.', name: 'Контакты' },
+    { prefix: 'footer.',   name: 'Футер' },
+    { prefix: 'theme.',    name: 'Брендбук: темы' }
+  ];
+  var OTHER = { prefix: '', name: 'Прочее' };
+  function groupOf(key) {
+    for (var i = 0; i < GROUPS.length; i++) {
+      if (String(key).indexOf(GROUPS[i].prefix) === 0) return GROUPS[i];
+    }
+    return OTHER;
+  }
 
   function $(id) { return document.getElementById(id); }
   /* общие утилиты — assets/js/util.js (v0.14.0, фикс F32: одна копия на проект) */
@@ -38,21 +63,57 @@
     });
   }
 
+  function rowHtml(r) {
+    /* правка 2.16: значение — clip 140 (полный текст — в редакторе по клику);
+       «Обновлён» — только дата, полные дата и время — в тултипе */
+    var upd = r.updated_at ? new Date(r.updated_at) : null;
+    return '<tr>' +
+      '<td class="sc-key">' + esc(r.key) + '</td>' +
+      '<td class="user-fio sc-val" data-edit="' + esc(r.key) + '" title="Редактировать значение — полный текст в редакторе">' + esc(clip(r.value, 140) || '—') + '</td>' +
+      '<td class="sc-desc">' + esc(r.description || '') + '</td>' +
+      '<td class="sc-upd" title="' + (upd ? esc(upd.toLocaleString('ru-RU')) : '') + '">' +
+        (upd ? upd.toLocaleDateString('ru-RU') : '—') + '</td>' +
+    '</tr>';
+  }
+  function tableHtml(rows) {
+    return '<table><thead><tr><th>Ключ</th><th>Значение</th><th>Где используется</th><th>Обновлён</th></tr></thead>' +
+      '<tbody>' + rows.map(rowHtml).join('') + '</tbody></table>';
+  }
   function render() {
     var q = $('sc-search').value.trim().toLowerCase();
     var list = state.rows.filter(function (r) {
       if (!q) return true;
       return (r.key + ' ' + (r.value || '') + ' ' + (r.description || '')).toLowerCase().indexOf(q) !== -1;
     });
-    $('sc-body').innerHTML = list.map(function (r) {
-      return '<tr>' +
-        '<td style="white-space:nowrap;font-size:13px" class="muted">' + esc(r.key) + '</td>' +
-        '<td class="user-fio sc-val" data-edit="' + esc(r.key) + '" title="Редактировать значение">' + esc(clip(r.value, 90) || '—') + '</td>' +
-        '<td class="muted" style="font-size:12.5px">' + esc(r.description || '') + '</td>' +
-        '<td class="tabular muted" style="font-size:12.5px;white-space:nowrap">' +
-          (r.updated_at ? new Date(r.updated_at).toLocaleString('ru-RU', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—') + '</td>' +
-      '</tr>';
+    if (q) {
+      /* поиск — плоский список без групп (иначе результаты прятались бы по свёрнутым секциям) */
+      $('sc-list').innerHTML = list.length
+        ? '<section class="sc-group"><div class="sc-group-body">' + tableHtml(list) + '</div></section>'
+        : '<div class="empty">Ничего не найдено по запросу «' + esc(q) + '»</div>';
+      return;
+    }
+    var byGroup = {};
+    list.forEach(function (r) {
+      var g = groupOf(r.key).name;
+      (byGroup[g] = byGroup[g] || []).push(r);
+    });
+    var names = GROUPS.map(function (g) { return g.name; }).concat([OTHER.name]);
+    $('sc-list').innerHTML = names.filter(function (n) { return byGroup[n] && byGroup[n].length; }).map(function (n) {
+      var rowsG = byGroup[n];
+      return '<section class="sc-group' + (state.collapsed[n] ? ' collapsed' : '') + '">' +
+        '<button type="button" class="sc-group-head" data-toggle-group="' + esc(n) + '">' +
+          '<span>' + esc(n) + '</span>' +
+          '<span class="sc-group-count">' + rowsG.length + ' ключ' + pluralKeys(rowsG.length) + '</span>' +
+          '<span class="sc-caret">▼</span>' +
+        '</button>' +
+        '<div class="sc-group-body">' + tableHtml(rowsG) + '</div>' +
+      '</section>';
     }).join('');
+  }
+  function pluralKeys(n) {
+    var m = n % 100;
+    if (m >= 11 && m <= 14) return 'ей';
+    switch (n % 10) { case 1: return ''; case 2: case 3: case 4: return 'а'; default: return 'ей'; }
   }
 
   function openModal(key) {
@@ -99,7 +160,15 @@
     $('btn-logout').addEventListener('click', function () { if (window.mockLogout) window.mockLogout(); });
     $('btn-refresh').addEventListener('click', load);
     $('sc-search').addEventListener('input', render);
-    $('sc-body').addEventListener('click', function (e) {
+    $('sc-list').addEventListener('click', function (e) {
+      /* правка 2.16: клик по заголовку группы — свернуть/развернуть секцию */
+      var gh = e.target.closest('[data-toggle-group]');
+      if (gh) {
+        var name = gh.getAttribute('data-toggle-group');
+        state.collapsed[name] = !state.collapsed[name];
+        gh.closest('.sc-group').classList.toggle('collapsed', !!state.collapsed[name]);
+        return;
+      }
       var ed = e.target.closest('[data-edit]');
       if (ed) openModal(ed.getAttribute('data-edit'));
     });

@@ -4,6 +4,10 @@
    витрины, редактор вариантов (размеры/объёмы + остатки), черновая загрузка
    фото (сжатие в браузере до ~320px, dataURL хранится в image_url),
    импорт CSV и шаблон CSV. Категории и бренды — справочники из БД.
+   v0.15.0 (правка 2.15): «Полный предпросмотр» — модалка карточки товара
+   глазами покупателя: разметка и styles.css витрины переиспользуются
+   (iframe srcdoc), а не дублируются; данные — из текущей формы
+   (включая несохранённые правки).
    ========================================================================== */
 (function () {
   'use strict';
@@ -120,6 +124,63 @@
     });
     $('pv-stock').textContent = stock > 0 ? 'в наличии' : 'нет в наличии';
     $('pv-stock').className = 'pv-stock' + (stock > 0 ? '' : ' out');
+  }
+
+  /* ---------- полный предпросмотр карточки витрины (правка 2.15) ----------
+     Разметка модалки товара витрины рендерится в iframe, который грузит
+     настоящие styles.css/fonts.css и применяет кэш токенов брендбука
+     (brandvars.js) — переиспользование, а не дублирование стилей.
+     Тема iframe — текущая тема админки. */
+  function openFullPreview() {
+    var name = $('pf-name').value.trim() || 'Название товара';
+    var price = $('pf-price').value || 0;
+    var brand = $('pf-brand').value ? brandName(Number($('pf-brand').value)) : '';
+    if (brand === '—') brand = '';
+    var desc = $('pf-desc').value.trim();
+    var img = $('pf-img-url').value.trim() || state.imgData || stubSrc();
+    var vars = [];
+    $('pf-variants').querySelectorAll('.var-row').forEach(function (r) {
+      var label = r.querySelector('.var-label').value.trim();
+      var stock = Number(r.querySelector('.var-stock').value || 0);
+      if (label) vars.push({ label: label, stock: stock });
+    });
+    var isPerfume = /мл/i.test((vars[0] || {}).label || '');
+    var totalStock = vars.reduce(function (s, v) { return s + v.stock; }, 0);
+    var isNew = true;
+    if (state.editingId) {
+      var pr = state.products.filter(function (x) { return x.id === state.editingId; })[0];
+      isNew = !!(pr && pr.created_at && (Date.now() - new Date(pr.created_at).getTime()) < 30 * 864e5);
+    }
+    var theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    var card =
+      '<div class="product-grid" style="max-width:920px;margin:0 auto;border:1px solid var(--line);background:var(--surface)">' +
+        '<div class="product-media"><img src="' + esc(img) + '" alt="" onerror="this.style.display=\'none\'"></div>' +
+        '<div class="product-info">' +
+          (isNew ? '<div style="margin-bottom:12px"><span style="display:inline-block;background:var(--accent);color:var(--bg);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;padding:4px 10px;font-weight:600">New</span></div>' : '') +
+          '<div class="brand">' + esc(brand) + '</div>' +
+          '<h3>' + esc(name) + '</h3>' +
+          '<div class="price">' + money(price) + '</div>' +
+          '<p class="desc">' + esc(desc) + '</p>' +
+          '<div class="variant-label">' + (isPerfume ? 'Объём' : 'Размер') + '</div>' +
+          '<div class="variants">' + (vars.length
+            ? vars.map(function (v) {
+                return '<button class="variant' + (v.stock ? '' : ' out') + '">' + esc(v.label) +
+                  '<span class="st">' + (v.stock ? v.stock + ' шт.' : 'нет') + '</span></button>';
+              }).join('')
+            : '<span class="muted">варианты не заданы</span>') + '</div>' +
+          '<div style="margin-top:26px;display:flex;gap:12px;align-items:center">' +
+            '<button class="btn accent">В корзину</button>' +
+            '<span class="muted" style="font-size:13px">' + (totalStock ? 'остаток: ' + totalStock + ' шт.' : 'нет в наличии') + '</span>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+    $('pvfull-frame').srcdoc =
+      '<!DOCTYPE html><html lang="ru" data-theme="' + theme + '"><head><meta charset="utf-8">' +
+      '<link rel="stylesheet" href="assets/css/fonts.css">' +
+      '<link rel="stylesheet" href="assets/css/styles.css">' +
+      '<script src="assets/js/brandvars.js"></' + 'script>' +
+      '</head><body style="margin:0;padding:28px 20px">' + card + '</body></html>';
+    $('pvfull-modal-backdrop').classList.add('open');
   }
 
   /* ---------- варианты ---------- */
@@ -344,10 +405,23 @@
   }
 
   /* ---------- старт ---------- */
+  /* правка 2.11 (v0.15.0): products.html#inventory — панель-заглушка «Инвентаризация» */
+  function applyInventoryHash() {
+    var on = location.hash === '#inventory';
+    $('panel-inventory').hidden = !on;
+    $('panel-products').hidden = on;
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     $('ver').textContent = SITE_VERSION;
     if (window.initAdminTheme) window.initAdminTheme();
+    applyInventoryHash();
+    window.addEventListener('hashchange', applyInventoryHash);
     $('btn-logout').addEventListener('click', function () { if (window.mockLogout) window.mockLogout(); });
+    /* правка 2.15: полный предпросмотр карточки витрины */
+    $('pv-full').addEventListener('click', openFullPreview);
+    $('pvfull-modal-close').addEventListener('click', function () { $('pvfull-modal-backdrop').classList.remove('open'); });
+    $('pvfull-modal-backdrop').addEventListener('click', function (e) { if (e.target === $('pvfull-modal-backdrop')) $('pvfull-modal-backdrop').classList.remove('open'); });
     $('btn-refresh').addEventListener('click', load);
     $('p-search').addEventListener('input', render);
     $('p-cat').addEventListener('change', render);

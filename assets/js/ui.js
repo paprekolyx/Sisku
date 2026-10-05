@@ -167,6 +167,12 @@
       }
       btn.addEventListener('click', function (e) { e.preventDefault(); pop.classList.contains('open') ? close() : open(); });
       pop.addEventListener('click', function (e) {
+        /* фикс 2.3а (v0.15.0): клик внутри попапа не должен всплывать до
+           document-обработчика «клик вне» — при листании месяца build()
+           перерисовывает pop.innerHTML, кликнутая кнопка отсоединяется от
+           DOM, и wrap.contains(e.target) возвращал false — календарь
+           закрывался на каждом клике по «‹»/«›» */
+        e.stopPropagation();
         var nav = e.target.closest('[data-nav]');
         if (nav) { view = new Date(view.getFullYear(), view.getMonth() + Number(nav.getAttribute('data-nav')), 1); build(); return; }
         var day = e.target.closest('[data-day]');
@@ -174,6 +180,10 @@
         if (e.target.closest('[data-clear]')) { setVal(''); close(); return; }
         if (e.target.closest('[data-today]')) { setVal(iso(new Date())); close(); }
       });
+      /* фикс 2.3в (v0.15.0): страницы могут дёрнуть refresh после подмены
+         значения (модалка промокода открывается повторно с другими датами) —
+         подпись кнопки синхронизируется, календарь сбрасывается на значение */
+      inp.addEventListener('refresh', function () { view = null; label(); });
       document.addEventListener('click', function (e) { if (!wrap.contains(e.target)) close(); });
       label();
     });

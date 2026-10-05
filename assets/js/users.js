@@ -4,6 +4,10 @@
    manager (менеджер), partner (бизнес-партнёр). Страницы ролями пока
    не ограничиваются — модель копится для боевой версии.
    Пароль хранится хешем SHA-256 (только для макета!).
+   v0.15.0 (правка 2.19, скрипт 21): колонка «Телефон» (admin_users.phone,
+   кликабельный tel:), валидация мессенджера при вводе — только https-ссылка
+   whitelisted-сервиса или tel: (обычный текст «нет» больше не превращается
+   в битую ссылку); пусто — «нет». safeUrl остаётся вторым рубежом.
    ========================================================================== */
 (function () {
   'use strict';
@@ -16,6 +20,20 @@
   };
 
   var state = { users: [], editingId: null };
+
+  /* правка 2.19: whitelist доменов мессенджеров (https) — обычный текст
+     в поле ссылки не принимается; телефон — отдельная колонка (скрипт 21) */
+  var MESS_DOMAINS = ['t.me', 'telegram.me', 'wa.me', 'whatsapp.com',
+                      'vk.me', 'vk.com', 'max.ru', 'ok.ru'];
+  function messengerOk(v) {
+    if (!v) return true;                       /* пусто — «нет», допустимо */
+    if (/^tel:/i.test(v)) return SiskuUtil.phoneOk(v.replace(/^tel:/i, ''));
+    var u = null;
+    try { u = new URL(v); } catch (e) { return false; }
+    if (u.protocol !== 'https:') return false;
+    var host = u.hostname.toLowerCase().replace(/^www\./, '');
+    return MESS_DOMAINS.indexOf(host) !== -1;
+  }
 
   function $(id) { return document.getElementById(id); }
   /* общие утилиты — assets/js/util.js (v0.14.0, фикс F32: одна копия на проект) */
@@ -55,10 +73,14 @@
             (u.is_active ? '' : ' <span class="muted">(отключён)</span>') + '</td>' +
           '<td class="muted">' + esc(u.email) + '</td>' +
           '<td>' + (function () {
-            /* фикс F05 (v0.14.0): whitelist схем — javascript: в messenger_url больше не исполняется */
+            /* фикс F05 (v0.14.0): whitelist схем — javascript: в messenger_url больше не исполняется;
+               правка 2.19 (v0.15.0): пусто — «нет» (владелец просила не показывать «—») */
             var mu = SiskuUtil.safeUrl(u.messenger_url);
-            return mu ? '<a href="' + esc(mu) + '" target="_blank" rel="noopener">ссылка</a>' : '<span class="muted">—</span>';
+            return mu ? '<a href="' + esc(mu) + '" target="_blank" rel="noopener">ссылка</a>' : '<span class="muted">нет</span>';
           })() + '</td>' +
+          '<td>' + (u.phone
+            ? '<a class="tel-link" href="tel:' + esc(String(u.phone).replace(/[^\d+]/g, '')) + '">' + esc(u.phone) + '</a>'
+            : '<span class="muted">нет</span>') + '</td>' +
           '<td><span class="role-pill" data-role="' + esc(u.role) + '">' + esc(ROLES[u.role] || u.role) + '</span></td>' +
           '<td class="tabular muted">' + new Date(u.created_at).toLocaleDateString('ru-RU') + '</td>' +
           '<td><button class="btn" data-del="' + u.id + '" style="min-height:34px;padding:0 14px">Удалить</button></td>' +
@@ -78,10 +100,11 @@
     $('um-fio').value = u ? u.fio : '';
     $('um-email').value = u ? u.email : '';
     $('um-mess').value = u ? (u.messenger_url || '') : '';
+    $('um-phone').value = u ? (u.phone || '') : '';
     $('um-role').value = u ? u.role : 'manager';
     $('um-pass').value = '';
     $('um-pass-hint').hidden = !u;
-    ['um-fio-err', 'um-email-err', 'um-pass-err', 'um-error'].forEach(function (id) { $(id).hidden = true; });
+    ['um-fio-err', 'um-email-err', 'um-phone-err', 'um-mess-err', 'um-pass-err', 'um-error'].forEach(function (id) { $(id).hidden = true; });
     $('user-modal-backdrop').classList.add('open');
     if (window.enhanceSelects) enhanceSelects($('user-modal-backdrop'));
   }
@@ -95,12 +118,23 @@
     var fio = $('um-fio').value.trim();
     var email = $('um-email').value.trim();
     var mess = $('um-mess').value.trim();
+    var phone = $('um-phone').value.trim();
     var role = $('um-role').value;
     var pass = $('um-pass').value;
     var ok = true;
-    $('um-fio-err').hidden = true; $('um-email-err').hidden = true; $('um-pass-err').hidden = true;
+    $('um-fio-err').hidden = true; $('um-email-err').hidden = true;
+    $('um-phone-err').hidden = true; $('um-mess-err').hidden = true; $('um-pass-err').hidden = true;
     if (fio.length < 5) { $('um-fio-err').textContent = 'Укажите ФИО полностью'; $('um-fio-err').hidden = false; ok = false; }
     if (!emailOk(email)) { $('um-email-err').textContent = 'Формат почты: name@example.ru'; $('um-email-err').hidden = false; ok = false; }
+    /* правка 2.19 (v0.15.0): телефон — формат РФ; мессенджер — только ссылка */
+    if (phone && !SiskuUtil.phoneOk(phone)) {
+      $('um-phone-err').textContent = 'Формат телефона: +7 (999) 123-45-67 или 8 999 123-45-67';
+      $('um-phone-err').hidden = false; ok = false;
+    }
+    if (!messengerOk(mess)) {
+      $('um-mess-err').textContent = 'Мессенджер: ссылка https:// (t.me, wa.me, vk.me, max.ru, ok.ru, whatsapp.com, telegram.me, vk.com) или tel:+79991234567. Обычный текст не принимается — оставьте поле пустым.';
+      $('um-mess-err').hidden = false; ok = false;
+    }
     if (!state.editingId && pass.length < 6) { $('um-pass-err').textContent = 'Пароль минимум 6 символов'; $('um-pass-err').hidden = false; ok = false; }
     if (state.editingId && pass && pass.length < 6) { $('um-pass-err').textContent = 'Пароль минимум 6 символов'; $('um-pass-err').hidden = false; ok = false; }
     if (!ok) return;
@@ -109,7 +143,7 @@
       state.saving = true;
       var btn = $('um-submit');
       btn.disabled = true;
-      var row = { fio: fio, email: email, messenger_url: mess || null, role: role, updated_at: new Date().toISOString() };
+      var row = { fio: fio, email: email, messenger_url: mess || null, phone: phone || null, role: role, updated_at: new Date().toISOString() };
       if (hash) row.password_hash = hash;
       var q = state.editingId
         ? db.from('admin_users').update(row).eq('id', state.editingId)
@@ -131,9 +165,18 @@
     else finish(null);
   }
 
+  /* правка 2.11 (v0.15.0): users.html#roles — панель-заглушка «Ролевая модель» */
+  function applyRolesHash() {
+    var on = location.hash === '#roles';
+    $('panel-roles').hidden = !on;
+    $('panel-users').hidden = on;
+  }
+
   document.addEventListener('DOMContentLoaded', function () {
     $('ver').textContent = SITE_VERSION;
     if (window.initAdminTheme) window.initAdminTheme();
+    applyRolesHash();
+    window.addEventListener('hashchange', applyRolesHash);
     $('btn-logout').addEventListener('click', function () { if (window.mockLogout) window.mockLogout(); });
     $('btn-refresh').addEventListener('click', load);
     $('btn-new').addEventListener('click', function () { openModal(null); });

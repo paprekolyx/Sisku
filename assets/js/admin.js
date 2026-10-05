@@ -19,7 +19,7 @@
     sort: { field: 'created', dir: 'desc' },   /* сортировка таблицы заказов */
     page: 1,                                    /* пагинация таблицы заказов */
     topSort: 'sum',                             /* топ товаров: sum | qty */
-    funnelMode: 'chart',                        /* воронка: chart | table */
+    funnelMode: 'table',                        /* воронка: chart | table (v0.15.0, правка 2.12: по умолчанию таблица) */
     charts: {}
   };
 
@@ -170,7 +170,7 @@
         .filter(function (t) { return t.from_status_id === o.status_id; })
         .map(function (t) { return statusByid(t.to_status_id); })
         .sort(function (a, b) { return (a.sort_order || 0) - (b.sort_order || 0); });   /* «Сборка» раньше «Отменён» */
-      var locked = st.code === 'cancelled';   /* отменённые заказы не изменяются */
+      var locked = st.code === 'cancelled';   /* отменённые: статусы заблокированы, оплата — нет (правка 2.2) */
 
       $('order-modal-body').innerHTML =
         '<div class="modal-head-row"><h2>Заказ № ' + o.id + '</h2>' +
@@ -205,9 +205,9 @@
               : '<option value="">переходы недоступны (финальный статус)</option>') +
           '</select>' +
           '<button class="btn" id="oc-apply"' + (allowed.length && !locked ? '' : ' disabled') + '>Применить</button>' +
-          '<button class="btn" id="oc-paid"' + (locked ? ' disabled' : '') + '>' + (o.is_paid ? 'Снять отметку оплаты' : 'Отметить оплаченным') + '</button>' +
+          '<button class="btn" id="oc-paid">' + (o.is_paid ? 'Снять отметку оплаты' : 'Отметить оплаченным') + '</button>' +
         '</div>' +
-        (locked ? '<div class="locked-note">Заказ отменён — изменения статусов и оплаты заблокированы.</div>' : '') +
+        (locked ? '<div class="locked-note">Заказ отменён — смена статуса заблокирована. Признак оплаты изменить можно: деньги могли поступить после отмены или быть возвращены (правка 2.2, скрипт 18).</div>' : '') +
         '<div class="err-box" id="oc-error" hidden></div>' +
         '<div class="subhead">История статусов</div>' +
         '<ul class="history">' + history.map(function (h) {
@@ -235,7 +235,9 @@
         var self = this;   /* фикс F11 (v0.14.0): при ошибке RPC кнопка возвращалась
                               в disabled навсегда — карточка «залипала» до переоткрытия */
         self.disabled = true;
-        db.rpc('admin_set_paid', { p_order_id: o.id, p_is_paid: !o.is_paid })
+        /* правка 2.2 (v0.15.0): v2 функции — с автором события (скрипт 18);
+           событие смены оплаты пишется в историю заказа */
+        db.rpc('admin_set_paid', { p_order_id: o.id, p_is_paid: !o.is_paid, p_changed_by: 'draft-admin' })
           .then(function (res) {
             if (res && res.error) { $('oc-error').textContent = res.error.message; $('oc-error').hidden = false; self.disabled = false; return; }
             loadAll().then(function () { openOrder(o.id); });
@@ -613,12 +615,13 @@
       : '−' + money(p.discount_value);
   }
   function promoStateOf(p) {
+    /* t — полное название (CSV, метрики), s — короткое слово для пилюли (правка 2.13) */
     var now = new Date();
-    if (!p.is_active) return { t: 'отключён', c: 'cancelled' };
-    if (p.valid_until && new Date(p.valid_until + 'T23:59:59') < now) return { t: 'истёк', c: 'cancelled' };
-    if (p.usage_limit != null && Number(p.used_count) >= Number(p.usage_limit)) return { t: 'лимит исчерпан', c: 'returned' };
-    if (p.valid_from && new Date(p.valid_from + 'T00:00:00') > now) return { t: 'ещё не начался', c: 'new' };
-    return { t: 'активен', c: 'delivered' };
+    if (!p.is_active) return { t: 'отключён', s: 'отключён', c: 'cancelled' };
+    if (p.valid_until && new Date(p.valid_until + 'T23:59:59') < now) return { t: 'истёк', s: 'истёк', c: 'cancelled' };
+    if (p.usage_limit != null && Number(p.used_count) >= Number(p.usage_limit)) return { t: 'лимит исчерпан', s: 'лимит', c: 'returned' };
+    if (p.valid_from && new Date(p.valid_from + 'T00:00:00') > now) return { t: 'ещё не начался', s: 'не начался', c: 'new' };
+    return { t: 'активен', s: 'активен', c: 'delivered' };
   }
   function promoAggregates(list) {
     var withP = list.filter(function (o) { return o.promo_code_id != null; });
@@ -708,21 +711,25 @@
       destroyChart('promoCodes');
       $('promocodes-chart').hidden = true;
       $('promocodes-table').hidden = false;
+      /* правка 2.13 (v0.15.0): короткие заголовки («Заказов», «Скидки, ₽»),
+         «Использовано» объединено с кодом (n/лимит), статус — короткое слово;
+         колонка «Скидки, ₽» прячется на узких экранах (.col-promo-disc) */
       $('table-promo-codes').innerHTML =
         '<thead><tr><th>Код</th><th style="text-align:right">Скидка</th>' +
-        '<th style="text-align:right">Заказов за период</th><th style="text-align:right">Скидки за период</th>' +
-        '<th style="text-align:right">Использовано</th><th>Статус</th></tr></thead><tbody>' +
+        '<th style="text-align:right">Заказов</th><th class="col-promo-disc" style="text-align:right">Скидки, ₽</th>' +
+        '<th>Статус</th></tr></thead><tbody>' +
         (rows.length
           ? rows.map(function (r) {
               var st = promoStateOf(r.p);
-              return '<tr><td><b>' + esc(r.p.code) + '</b></td>' +
+              var used = r.p.used_count + (r.p.usage_limit != null ? '/' + r.p.usage_limit : ', без лимита');
+              return '<tr><td><b>' + esc(r.p.code) + '</b>' +
+                '<div class="muted" style="font-size:11.5px">использовано: ' + used + '</div></td>' +
                 '<td class="num">' + discountLabel(r.p) + '</td>' +
                 '<td class="num">' + r.n + '</td>' +
-                '<td class="num">' + money(r.disc) + '</td>' +
-                '<td class="num">' + r.p.used_count + (r.p.usage_limit != null ? ' из ' + r.p.usage_limit : '') + '</td>' +
-                '<td><span class="status-pill" data-code="' + st.c + '">' + st.t + '</span></td></tr>';
+                '<td class="num col-promo-disc">' + money(r.disc) + '</td>' +
+                '<td><span class="status-pill" data-code="' + st.c + '">' + st.s + '</span></td></tr>';
             }).join('')
-          : '<tr><td colspan="6" class="muted">Промокодов пока нет — создайте в «Управление → Промокоды»</td></tr>') +
+          : '<tr><td colspan="5" class="muted">Промокодов пока нет — создайте в «Управление → Промокоды»</td></tr>') +
         '</tbody>';
       return;
     }
@@ -803,6 +810,13 @@
   }
 
   /* ---------- вкладки и события ---------- */
+  /* правка 2.11 (v0.15.0): «Заказы → Возвраты» — панель-заглушка внутри
+     admin.html (П21: отдельная страница и статусная модель возвратов — M4) */
+  function showReturns(on) {
+    $('panel-orders').hidden = on;
+    $('panel-returns').hidden = !on;
+    if (on) $('panel-stats').hidden = true;
+  }
   function switchTab(which) {
     var orders = which === 'orders';
     $('tab-orders').classList.toggle('active', orders);
@@ -811,6 +825,7 @@
     $('tab-stats').setAttribute('aria-selected', !orders);
     $('panel-orders').hidden = !orders;
     $('panel-stats').hidden = orders;
+    $('panel-returns').hidden = true;
     if (!orders) renderStatsActive();
   }
 
@@ -881,9 +896,15 @@
       });
     });
 
+    /* правка 2.11: кнопка сегмента «Возвраты» и хэш admin.html#returns
+       (ссылка со страницы «Сборка») открывают панель-заглушку */
+    $('seg-returns').addEventListener('click', function () { showReturns(true); });
+
     /* ссылка admin.html#stats открывает сразу вкладку статистики;
        v0.13.0: #stats-promos и т.п. открывают конкретную подвкладку */
-    if (location.hash === '#stats') {
+    if (location.hash === '#returns') {
+      showReturns(true);
+    } else if (location.hash === '#stats') {
       switchTab('stats');
     } else if (location.hash.indexOf('#stats-') === 0) {
       switchTab('stats');

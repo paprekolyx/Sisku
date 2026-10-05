@@ -2,15 +2,17 @@
    SISKU · brands.js — подраздел «Бренды» вкладки «Магазин» (v0.9.0-draft)
    CRUD брендов: создание, правка кликом по названию, активация,
    удаление с защитой FK (бренд с товарами база не отдаст), счётчик товаров.
+   v0.15.0 (правка 2.14): клик по счётчику товаров — модалка со списком
+   связанных товаров и фильтром («посмотреть, что мешает» удалить бренд).
    ========================================================================== */
 (function () {
   'use strict';
 
-  var state = { brands: [], counts: {}, editingId: null, saving: false };
+  var state = { brands: [], counts: {}, products: [], variants: {}, editingId: null, saving: false, prodsBrandId: null };
 
   function $(id) { return document.getElementById(id); }
   /* общие утилиты — assets/js/util.js (v0.14.0, фикс F32: одна копия на проект) */
-  var esc = SiskuUtil.esc;
+  var esc = SiskuUtil.esc, money = SiskuUtil.money;
 
   function load() {
     $('brand-empty').hidden = true;
@@ -22,13 +24,20 @@
     }
     Promise.all([
       db.from('brands').select('*').order('name'),
-      db.from('products').select('brand_id')
+      /* правка 2.14 (v0.15.0): поля товаров и варианты — для модалки связей */
+      db.from('products').select('id,article,name,price,is_active,brand_id'),
+      db.from('product_variants').select('product_id,label,stock')
     ]).then(function (res) {
-      if (res[0].error) throw res[0].error;
+      res.forEach(function (r) { if (r.error) throw r.error; });
       state.brands = res[0].data || [];
+      state.products = res[1].data || [];
+      state.variants = {};
+      (res[2].data || []).forEach(function (v) {
+        (state.variants[v.product_id] = state.variants[v.product_id] || []).push(v);
+      });
       state.counts = {};
-      (res[1].data || []).forEach(function (p) {
-        state.counts[p.brand_id] = (state.counts[p.brand_id] || 0) + 1;
+      state.products.forEach(function (p) {
+        if (p.brand_id != null) state.counts[p.brand_id] = (state.counts[p.brand_id] || 0) + 1;
       });
       render();
     }).catch(function (e) {
@@ -43,10 +52,45 @@
       return '<tr>' +
         '<td class="user-fio" data-edit="' + b.id + '" title="Открыть редактирование">' + esc(b.name) + '</td>' +
         '<td class="muted" style="font-size:13px">' + esc(b.country || '—') + '</td>' +
-        '<td class="tabular">' + (state.counts[b.id] || 0) + '</td>' +
+        '<td class="tabular">' + (state.counts[b.id]
+          ? '<button class="count-link" data-brandprods="' + b.id + '" title="Показать товары бренда">' + state.counts[b.id] + '</button>'
+          : '0') + '</td>' +
         '<td><button class="btn" data-toggle="' + b.id + '" style="min-height:32px;padding:0 12px">' +
           (b.is_active ? 'активен' : 'скрыт') + '</button></td>' +
         '<td><button class="btn" data-del="' + b.id + '" style="min-height:34px;padding:0 14px">Удалить</button></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  /* ---------- товары бренда (правка 2.14) ---------- */
+  function openBrandProds(id) {
+    var b = state.brands.filter(function (x) { return x.id === id; })[0];
+    state.prodsBrandId = id;
+    $('bp-title').textContent = 'Товары бренда: ' + (b ? b.name : '№ ' + id);
+    $('bp-filter').value = '';
+    renderBrandProds();
+    $('brandprods-modal-backdrop').classList.add('open');
+  }
+  function renderBrandProds() {
+    var q = $('bp-filter').value.trim().toLowerCase();
+    var list = state.products.filter(function (p) {
+      if (p.brand_id !== state.prodsBrandId) return false;
+      if (q && (p.name + ' ' + p.article).toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+    $('bp-empty').hidden = list.length !== 0;
+    $('bp-body').innerHTML = list.map(function (p) {
+      var vs = state.variants[p.id] || [];
+      var stock = vs.reduce(function (s, v) { return s + v.stock; }, 0);
+      var vars = vs.length
+        ? vs.map(function (v) { return esc(v.label) + ' (' + v.stock + ')'; }).join(', ')
+        : '<span class="muted">—</span>';
+      return '<tr>' +
+        '<td>' + esc(p.name) + '<div class="muted" style="font-size:12px">' + esc(p.article) + '</div></td>' +
+        '<td class="muted" style="font-size:12.5px">' + vars + '</td>' +
+        '<td class="tabular" style="text-align:right">' + money(p.price) + '</td>' +
+        '<td class="tabular' + (stock < 3 ? ' low-stock' : '') + '" style="text-align:right">' + stock + '</td>' +
+        '<td>' + (p.is_active ? '<span class="role-pill" data-role="admin">активен</span>' : '<span class="role-pill">скрыт</span>') + '</td>' +
       '</tr>';
     }).join('');
   }
@@ -102,7 +146,13 @@
     $('brand-modal-close').addEventListener('click', closeModal);
     $('brand-modal-backdrop').addEventListener('click', function (e) { if (e.target === $('brand-modal-backdrop')) closeModal(); });
     $('brand-form').addEventListener('submit', save);
+    /* правка 2.14: клик по счётчику — модалка товаров бренда */
+    $('bp-filter').addEventListener('input', renderBrandProds);
+    $('bp-modal-close').addEventListener('click', function () { $('brandprods-modal-backdrop').classList.remove('open'); });
+    $('brandprods-modal-backdrop').addEventListener('click', function (e) { if (e.target === $('brandprods-modal-backdrop')) $('brandprods-modal-backdrop').classList.remove('open'); });
     $('brand-body').addEventListener('click', function (e) {
+      var bp = e.target.closest('button[data-brandprods]');
+      if (bp) { openBrandProds(Number(bp.getAttribute('data-brandprods'))); return; }
       var tg = e.target.closest('button[data-toggle]');
       if (tg) {
         var id = Number(tg.getAttribute('data-toggle'));

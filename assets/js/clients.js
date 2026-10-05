@@ -196,6 +196,10 @@
       note: note || null,
       phone_key: phoneKey(phone),
       email_key: emailKey(email),
+      /* правка 2.20 (v0.15.0, скрипт 19): сохранение карточки админом =
+         имя подтверждено — create_order v7 больше не перезапишет full_name
+         новыми заказами этого клиента (минимальная политика до П8а) */
+      name_confirmed: true,
       updated_at: new Date().toISOString()
     }).eq('id', c.id).then(function (res) {
       state.saving = false;

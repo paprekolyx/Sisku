@@ -6,7 +6,12 @@
    • живая проверка контрастов WCAG 2.1 по контрольным парам;
    • предпросмотр на реальных компонентах (отдельная кнопка, модалка);
    • шаблоны палитр: название + комментарий + все значения обеих тем;
-   • справка «Брендбук» — окно, идентичное витринному;
+   • справка «Брендбук» — окно, идентичное витринному; с v0.15.0 (правка 2.18)
+     палитры справки ЖИВЫЕ — из токенов редактора, обе темы рядом;
+   • режим сравнения «сохранённая vs новая (несохранённая)» — правка 2.18;
+   • названия тем — изменяемые (правка 2.17): ключи site_content
+     theme.light.name/role, theme.dark.name/role (скрипт 20), поля
+     редактирования на этой странице; витрина и справка берут имена оттуда;
    • индикатор скорости применения темы на витрине (localStorage-замер).
    ========================================================================== */
 (function () {
@@ -24,7 +29,25 @@
     { key: 'btn_text', name: 'Кнопка (текст)' }
   ];
 
-  var state = { values: { light: {}, dark: {}, global: {} }, templates: [], saving: false };
+  var state = {
+    values: { light: {}, dark: {}, global: {} },
+    saved: { light: {}, dark: {}, global: {} },   /* правка 2.18: сохранённая палитра — для режима сравнения */
+    names: {},                                    /* правка 2.17: theme.*.name / theme.*.role из site_content */
+    templates: [], saving: false, savingNames: false
+  };
+  var NAME_KEYS = ['theme.light.name', 'theme.light.role', 'theme.dark.name', 'theme.dark.role'];
+  var NAME_DEFAULTS = {
+    'theme.light.name': 'Ivoire', 'theme.light.role': 'основная тема витрины',
+    'theme.dark.name': 'Noir & Champagne', 'theme.dark.role': 'вторая тема'
+  };
+  function safeHex(v) { return /^#[0-9a-fA-F]{6}$/.test(String(v || '')) ? String(v) : 'transparent'; }
+  function copyVals() {
+    return {
+      light: Object.assign({}, state.values.light),
+      dark: Object.assign({}, state.values.dark),
+      global: Object.assign({}, state.values.global)
+    };
+  }
 
   function $(id) { return document.getElementById(id); }
   /* общие утилиты — assets/js/util.js (v0.14.0, фикс F32: одна копия на проект) */
@@ -40,9 +63,15 @@
     }
     Promise.all([
       db.from('brand_colors').select('*'),
-      db.from('brand_templates').select('*').order('created_at', { ascending: false })
+      db.from('brand_templates').select('*').order('created_at', { ascending: false }),
+      /* правка 2.17: названия тем — из site_content (скрипт 20) */
+      db.from('site_content').select('key,value').in('key', NAME_KEYS)
     ]).then(function (res) {
       if (res[0].error) throw res[0].error;
+      if (res[2] && !res[2].error) {
+        state.names = {};
+        (res[2].data || []).forEach(function (r) { state.names[r.key] = r.value; });
+      }
       (res[0].data || []).forEach(function (r) {
         state.values[r.theme] = state.values[r.theme] || {};
         /* фикс F05 (v0.14.0): значения из БД валидируются до попадания
@@ -58,6 +87,8 @@
       });
       state.templates = res[1].data || [];
       buildEditors();
+      state.saved = copyVals();   /* правка 2.18: срез сохранённой палитры */
+      renderNames();
       renderTemplates();
       refreshContrast();
       refreshSpeed();
@@ -132,6 +163,93 @@
     });
   }
 
+  /* ---------- названия тем (правка 2.17) ---------- */
+  function themeName(theme) {
+    var v = state.names['theme.' + theme + '.name'];
+    return (v == null || String(v).trim() === '') ? NAME_DEFAULTS['theme.' + theme + '.name'] : String(v);
+  }
+  function themeRole(theme) {
+    var v = state.names['theme.' + theme + '.role'];
+    return (v == null || String(v).trim() === '') ? NAME_DEFAULTS['theme.' + theme + '.role'] : String(v);
+  }
+  function renderNames() {
+    ['light', 'dark'].forEach(function (theme) {
+      var full = esc(themeName(theme)) + ' — ' + esc(themeRole(theme));
+      var edName = $('bbe-name-' + theme);
+      if (edName) edName.innerHTML = full;
+      var helpName = $('bbhelp-name-' + theme);
+      if (helpName) helpName.innerHTML = full;
+      var tag = $('pvf-tag-' + theme);
+      if (tag) tag.textContent = themeName(theme);
+      $('bb-tn-' + theme).value = themeName(theme);
+      $('bb-tr-' + theme).value = themeRole(theme);
+    });
+  }
+  function saveNames() {
+    if (state.savingNames) return;
+    var rows = [];
+    ['light', 'dark'].forEach(function (theme) {
+      var n = $('bb-tn-' + theme).value.trim() || NAME_DEFAULTS['theme.' + theme + '.name'];
+      var r = $('bb-tr-' + theme).value.trim() || NAME_DEFAULTS['theme.' + theme + '.role'];
+      rows.push({ key: 'theme.' + theme + '.name', value: n, updated_at: new Date().toISOString() });
+      rows.push({ key: 'theme.' + theme + '.role', value: r, updated_at: new Date().toISOString() });
+    });
+    state.savingNames = true;
+    $('bb-names-save').disabled = true;
+    db.from('site_content').upsert(rows, { onConflict: 'key' }).then(function (res) {
+      state.savingNames = false;
+      $('bb-names-save').disabled = false;
+      if (res.error) { $('bb-names-msg').textContent = 'Ошибка: ' + res.error.message; return; }
+      rows.forEach(function (r) { state.names[r.key] = r.value; });
+      renderNames();
+      $('bb-names-msg').textContent = 'Сохранено. Витрина подхватит названия после Ctrl + F5.';
+    }).catch(function (e) {
+      state.savingNames = false;
+      $('bb-names-save').disabled = false;
+      $('bb-names-msg').textContent = 'Ошибка сети: ' + e.message;
+    });
+  }
+
+  /* ---------- справка: живые палитры обеих тем (правка 2.18) ---------- */
+  var HELP_TOKENS = [
+    { key: 'bg', name: 'Фон' }, { key: 'surface', name: 'Карточки' },
+    { key: 'text', name: 'Текст' }, { key: 'muted', name: 'Второстепенный' },
+    { key: 'accent', name: 'Акцент' }, { key: 'line', name: 'Линии' }
+  ];
+  function renderHelp() {
+    ['light', 'dark'].forEach(function (theme) {
+      var host = $('bbhelp-swatches-' + theme);
+      if (!host) return;
+      var vals = state.values[theme] || {};
+      host.innerHTML = HELP_TOKENS.filter(function (tk) {
+        return /^#[0-9a-fA-F]{6}$/.test(String(vals[tk.key] || ''));
+      }).map(function (tk) {
+        var hex = String(vals[tk.key]).toUpperCase();
+        return '<div class="bb-swatch"><div class="color" style="background:' + esc(hex) + '"></div>' +
+          '<div class="meta"><b>' + tk.name + '</b>' + esc(hex) + '</div></div>';
+      }).join('');
+    });
+  }
+
+  /* ---------- сравнение «сохранённая vs новая» (правка 2.18) ---------- */
+  function renderCompare() {
+    function col(title, src, theme) {
+      return '<div class="bbc-col"><h4>' + esc(title) + '</h4>' + TOKENS.map(function (tk) {
+        var a = String((state.saved[theme] || {})[tk.key] || '').toUpperCase();
+        var b = String((state.values[theme] || {})[tk.key] || '').toUpperCase();
+        var v = src === 'saved' ? a : b;
+        return '<div class="bbc-row' + (a !== b ? ' diff' : '') + '">' +
+          '<span class="bbc-name">' + esc(tk.name) + '</span>' +
+          '<span class="bbc-chip" style="background:' + safeHex(v) + '"></span>' +
+          '<span class="bbc-hex">' + esc(v) + '</span></div>';
+      }).join('') + '</div>';
+    }
+    $('bb-compare-body').innerHTML = ['light', 'dark'].map(function (theme) {
+      return '<div><div class="subhead-sm">' + esc(themeName(theme)) + ' — ' + esc(themeRole(theme)) + '</div>' +
+        '<div class="bbc-pair">' + col('Текущая сохранённая', 'saved', theme) + col('Новая (в редакторе)', 'cur', theme) + '</div></div>';
+    }).join('');
+  }
+
   /* ---------- скорость темы ---------- */
   function refreshSpeed() {
     var ms = null;
@@ -158,6 +276,7 @@
          новую палитру до отрисовки, не дожидаясь запроса к базе */
       if (window.brandCacheSave) brandCacheSave(editorRows());
       if (window.applyBrandCached) applyBrandCached();
+      state.saved = copyVals();   /* правка 2.18: сохранённая палитра = текущая */
       if (cb) cb();
     }).catch(function (e) {
       state.saving = false;
@@ -233,7 +352,15 @@
       saveColors(function () { alert('Цвета сохранены. Откройте витрину или любую страницу админки с Ctrl + F5 — тема применится до отрисовки.'); refreshSpeed(); });
     });
     $('bb-preview').addEventListener('click', openPreview);
-    $('bb-book').addEventListener('click', function () { $('brandbook-modal-backdrop').classList.add('open'); });
+    $('bb-book').addEventListener('click', function () {
+      renderNames(); renderHelp();   /* правки 2.17/2.18: справка живая — из значений редактора */
+      $('brandbook-modal-backdrop').classList.add('open');
+    });
+    $('bb-compare').addEventListener('click', function () {
+      renderCompare();
+      $('bb-compare-backdrop').classList.add('open');
+    });
+    $('bb-names-save').addEventListener('click', saveNames);
     $('bt-save').addEventListener('click', saveTemplate);
     $('bt-body').addEventListener('click', function (e) {
       var ap = e.target.closest('button[data-apply]');

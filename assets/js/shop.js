@@ -39,8 +39,8 @@
         var period = (p.valid_from || p.valid_until)
           ? fmtDate(p.valid_from) + ' — ' + fmtDate(p.valid_until)
           : 'бессрочно';
-        var used = 'Использовано ' + p.used_count +
-          (p.usage_limit != null ? ' из ' + p.usage_limit + ' лимита' : ', без лимита');
+        /* правка 2.3г (v0.15.0): компактный формат колонки «Использовано / лимит» */
+        var used = p.used_count + (p.usage_limit != null ? ' из ' + p.usage_limit : ', без лимита');
         return '<tr>' +
           '<td class="user-fio" data-edit="' + p.id + '" title="Открыть редактирование">' + esc(p.code) + '</td>' +
           '<td>' + discount + '</td>' +
@@ -76,6 +76,10 @@
     if (window.enhanceSelects) enhanceSelects($('promo-modal-backdrop'));
     if (window.enhanceDates) enhanceDates($('promo-modal-backdrop'));
     if (window.enhanceNumbers) enhanceNumbers($('promo-modal-backdrop'));
+    /* правка 2.3в (v0.15.0): enhanceDates идемпотентен (data-dp-done), поэтому
+       при повторном открытии модалки подписи dp-кнопок оставались от прошлого
+       промокода — синхронизируем их событием refresh (ui.js) после подмены значений */
+    ['pc-from', 'pc-until'].forEach(function (id) { $(id).dispatchEvent(new Event('refresh')); });
   }
   function closeModal() { $('promo-modal-backdrop').classList.remove('open'); }
 

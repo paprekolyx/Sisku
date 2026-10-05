@@ -2,15 +2,19 @@
    SISKU · categories.js — подраздел «Категории» вкладки «Магазин» (v0.9.0-draft)
    CRUD категорий каталога: создание, правка кликом по названию, авто-slug,
    удаление с защитой FK, счётчик товаров в категории.
+   v0.15.0 (правка 2.14): клик по счётчику товаров — модалка со списком
+   связанных товаров (название, вариант, цена, остаток, активность) и
+   фильтром: FK-защита удаления объясняет «почему нельзя», а список
+   показывает «что именно мешает».
    ========================================================================== */
 (function () {
   'use strict';
 
-  var state = { cats: [], catCounts: {}, editingCatId: null };
+  var state = { cats: [], catCounts: {}, products: [], variants: {}, editingCatId: null, prodsCatId: null };
 
   function $(id) { return document.getElementById(id); }
   /* общие утилиты — assets/js/util.js (v0.14.0, фикс F32: одна копия на проект) */
-  var esc = SiskuUtil.esc;
+  var esc = SiskuUtil.esc, money = SiskuUtil.money;
   function loadCats() {
     /* фикс F31 (v0.14.0): guard неподключённой БД — общий паттерн плашки
        вместо непойманного TypeError (единственный модуль без guard'а) */
@@ -22,12 +26,19 @@
     }
     Promise.all([
       db.from('categories').select('*').order('id'),
-      db.from('products').select('category_id')
+      /* правка 2.14 (v0.15.0): поля товаров и варианты — для модалки связей */
+      db.from('products').select('id,article,name,price,is_active,category_id'),
+      db.from('product_variants').select('product_id,label,stock')
     ]).then(function (res) {
-      if (res[0].error) throw res[0].error;
+      res.forEach(function (r) { if (r.error) throw r.error; });
       state.cats = res[0].data || [];
+      state.products = res[1].data || [];
+      state.variants = {};
+      (res[2].data || []).forEach(function (v) {
+        (state.variants[v.product_id] = state.variants[v.product_id] || []).push(v);
+      });
       state.catCounts = {};
-      (res[1].data || []).forEach(function (p) {
+      state.products.forEach(function (p) {
         state.catCounts[p.category_id] = (state.catCounts[p.category_id] || 0) + 1;
       });
       renderCats();
@@ -43,11 +54,46 @@
         '<td class="user-fio" data-catedit="' + c.id + '" title="Открыть редактирование">' + esc(c.name) + '</td>' +
         '<td class="muted" style="font-size:13px">' + esc(c.slug) + '</td>' +
         '<td class="muted" style="font-size:13px">' + esc(c.description || '—') + '</td>' +
-        '<td class="tabular">' + (state.catCounts[c.id] || 0) + '</td>' +
+        '<td class="tabular">' + (state.catCounts[c.id]
+          ? '<button class="count-link" data-catprods="' + c.id + '" title="Показать товары категории">' + state.catCounts[c.id] + '</button>'
+          : '0') + '</td>' +
         '<td><button class="btn" data-catdel="' + c.id + '" style="min-height:34px;padding:0 14px">Удалить</button></td>' +
       '</tr>';
     }).join('');
   }
+  /* ---------- товары категории (правка 2.14) ---------- */
+  function openCatProds(id) {
+    var c = state.cats.filter(function (x) { return x.id === id; })[0];
+    state.prodsCatId = id;
+    $('cp-title').textContent = 'Товары категории: ' + (c ? c.name : '№ ' + id);
+    $('cp-filter').value = '';
+    renderCatProds();
+    $('catprods-modal-backdrop').classList.add('open');
+  }
+  function renderCatProds() {
+    var q = $('cp-filter').value.trim().toLowerCase();
+    var list = state.products.filter(function (p) {
+      if (p.category_id !== state.prodsCatId) return false;
+      if (q && (p.name + ' ' + p.article).toLowerCase().indexOf(q) === -1) return false;
+      return true;
+    });
+    $('cp-empty').hidden = list.length !== 0;
+    $('cp-body').innerHTML = list.map(function (p) {
+      var vs = state.variants[p.id] || [];
+      var stock = vs.reduce(function (s, v) { return s + v.stock; }, 0);
+      var vars = vs.length
+        ? vs.map(function (v) { return esc(v.label) + ' (' + v.stock + ')'; }).join(', ')
+        : '<span class="muted">—</span>';
+      return '<tr>' +
+        '<td>' + esc(p.name) + '<div class="muted" style="font-size:12px">' + esc(p.article) + '</div></td>' +
+        '<td class="muted" style="font-size:12.5px">' + vars + '</td>' +
+        '<td class="tabular" style="text-align:right">' + money(p.price) + '</td>' +
+        '<td class="tabular' + (stock < 3 ? ' low-stock' : '') + '" style="text-align:right">' + stock + '</td>' +
+        '<td>' + (p.is_active ? '<span class="role-pill" data-role="admin">активен</span>' : '<span class="role-pill">скрыт</span>') + '</td>' +
+      '</tr>';
+    }).join('');
+  }
+
   function slugify(s) {
     var map = { 'а':'a','б':'b','в':'v','г':'g','д':'d','е':'e','ё':'e','ж':'zh','з':'z','и':'i','й':'y','к':'k','л':'l','м':'m','н':'n','о':'o','п':'p','р':'r','с':'s','т':'t','у':'u','ф':'f','х':'h','ц':'c','ч':'ch','ш':'sh','щ':'sch','ъ':'','ы':'y','ь':'','э':'e','ю':'yu','я':'ya' };
     return s.toLowerCase().split('').map(function (ch) {
@@ -107,7 +153,13 @@
       if (state.editingCatId) return;      /* авто-slug только при создании */
       $('cm-slug').value = slugify(this.value);
     });
+    /* правка 2.14: клик по счётчику — модалка товаров категории */
+    $('cp-filter').addEventListener('input', renderCatProds);
+    $('cp-modal-close').addEventListener('click', function () { $('catprods-modal-backdrop').classList.remove('open'); });
+    $('catprods-modal-backdrop').addEventListener('click', function (e) { if (e.target === $('catprods-modal-backdrop')) $('catprods-modal-backdrop').classList.remove('open'); });
     $('cat-body').addEventListener('click', function (e) {
+      var cp = e.target.closest('button[data-catprods]');
+      if (cp) { openCatProds(Number(cp.getAttribute('data-catprods'))); return; }
       var del = e.target.closest('button[data-catdel]');
       if (del) {
         var id = Number(del.getAttribute('data-catdel'));
