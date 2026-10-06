@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -154,7 +155,7 @@
       <div class="term-card">
         <span class="num">02</span>
         <h3 data-content="order.delivery.title">Доставка</h3>
-        <p data-content="order.delivery.text">Курьер по Москве, СДЭК и Boxberry по России, самовывоз.</p>
+        <p data-content="order.delivery.text">Курьер по городу, службы доставки по России, самовывоз из шоурума.</p>
       </div>
       <div class="term-card">
         <span class="num">03</span>
@@ -257,7 +258,7 @@
           <div class="field"><label for="of-phone">Телефон *</label><input id="of-phone" type="tel" autocomplete="tel" placeholder="+7 999 123-45-67"><small class="hint" data-content="checkout.hint.phone">+7 (999) 123-45-67 или 8 999 123-45-67</small><div class="err" hidden></div></div>
           <div class="field"><label for="of-email">E-mail</label><input id="of-email" type="email" autocomplete="email" placeholder="anna@example.ru"><div class="err" hidden></div></div>
         </div>
-        <div class="field"><label for="of-address">Город и адрес / пункт выдачи</label><input id="of-address" placeholder="Город, улица, дом"><small class="hint" data-content="checkout.hint.address">Город, улица, дом, квартира — или номер пункта выдачи (СДЭК, Boxberry)</small><div class="err" hidden></div></div>
+        <div class="field"><label for="of-address">Город и адрес / пункт выдачи</label><input id="of-address" placeholder="Город, улица, дом"><small class="hint" data-content="checkout.hint.address">Город, улица, дом, квартира — или номер пункта выдачи выбранной службы доставки</small><div class="err" hidden></div></div>
         <div class="field"><label for="of-payment">Оплата</label><select id="of-payment"></select></div>
         <div class="field"><label for="of-delivery">Доставка</label><select id="of-delivery"></select></div>
         <div class="field"><label for="of-promo">Промокод</label>
@@ -380,6 +381,51 @@
     <div id="track-result" hidden>
       <div class="subhead-site" style="margin-top:24px" data-content="order.track.history">История статусов</div>
       <ul class="track-list" id="track-list"></ul>
+      <!-- v0.16.0: заявка на возврат — из статусов «Отправлен» и «Доставлен»
+           (решение аналитика 06.10.2026; повторные заявки из «Возврата» не делаем) -->
+      <div id="track-return" hidden>
+        <button class="btn ghost" type="button" id="tr-return-btn" data-content="returns.cta.track">Оформить возврат</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================= МОДАЛКА ЗАЯВКИ НА ВОЗВРАТ (v0.16.0, fp №3) ======================= -->
+<div class="modal-backdrop" id="return-modal-backdrop">
+  <div class="modal form-modal" role="dialog" aria-modal="true" aria-label="Заявка на возврат">
+    <button class="modal-close" data-close="return-modal-backdrop" aria-label="Закрыть">×</button>
+    <div id="return-form-view">
+      <h3 data-content="returns.form.title">Заявка на возврат</h3>
+      <p class="muted" style="font-size:13.5px" data-content="returns.form.hint">Заявку на возврат можно оформить в течение 7 дней после получения заказа. Заполните форму — заявка поступит менеджеру.</p>
+      <form id="return-form" novalidate>
+        <div class="field-row">
+          <div class="field"><label for="rr-order" data-content="returns.form.order">Номер заказа</label><input id="rr-order" readonly tabindex="-1"></div>
+          <div class="field"><label for="rr-code" data-content="returns.form.code">Код подтверждения</label><input id="rr-code" readonly tabindex="-1"></div>
+        </div>
+        <div class="field"><label for="rr-reason" data-content="returns.form.reason">Причина возврата</label>
+          <select id="rr-reason"><option value="">Выберите причину…</option></select>
+          <div class="err" id="rr-reason-err" hidden></div>
+        </div>
+        <div class="field"><label for="rr-comment" data-content="returns.form.comment">Комментарий</label>
+          <textarea id="rr-comment" maxlength="2000" data-content-placeholder="returns.form.comment.placeholder" placeholder="Опишите ситуацию подробнее — это ускорит рассмотрение заявки"></textarea>
+        </div>
+        <div class="field rr-photo">
+          <label for="rr-photo-input" data-content="returns.form.photo">Фото товара</label>
+          <input type="file" id="rr-photo-input" accept="image/*" disabled>
+          <small class="hint" data-content="returns.form.photo.note">Загрузка фото появится позже — пока опишите причину в комментарии</small>
+        </div>
+        <button class="btn accent" type="submit" id="rr-submit" style="width:100%" data-content="returns.form.submit">Отправить заявку</button>
+        <div class="err" id="rr-error" style="margin-top:10px;text-align:center" hidden></div>
+      </form>
+    </div>
+    <div id="return-success-view" hidden>
+      <div class="success-box">
+        <div class="eyebrow" data-content="returns.form.success">Заявка принята и передана менеджеру. Номер заявки:</div>
+        <div class="num" id="rr-number"></div>
+        <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:22px">
+          <button class="btn" data-close="return-modal-backdrop">Закрыть</button>
+        </div>
+      </div>
     </div>
   </div>
 </div>

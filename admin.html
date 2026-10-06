@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
@@ -47,7 +48,7 @@
   <div class="seg subseg">
     <a class="seg-btn active" href="admin.html" id="seg-orders-list">Список заказов</a>
     <a class="seg-btn" href="assembly.html">Сборка</a>
-    <button class="seg-btn" type="button" id="seg-returns" title="Заглушка: планируется в боевой версии (M4)">Возвраты</button>
+    <button class="seg-btn" type="button" id="seg-returns" title="Очередь заявок на возврат (v0.16.0)">Возвраты</button>
   </div>
   <div class="toolbar">
     <input type="search" id="f-search" placeholder="Поиск: №, имя, телефон, e-mail" aria-label="Поиск заказов">
@@ -96,6 +97,7 @@
     <button class="seg-btn" data-stab="promos" role="tab" aria-selected="false">Акции</button>
     <button class="seg-btn" data-stab="admins" role="tab" aria-selected="false">Администраторы</button>
     <button class="seg-btn" data-stab="clients" role="tab" aria-selected="false">Клиенты</button>
+    <button class="seg-btn" data-stab="returns" role="tab" aria-selected="false" id="stab-returns-btn">Возвраты</button>
   </div>
 
   <!-- ========== подвкладка «Заказы» (статистика v0.1–v0.12 без изменений) ========== -->
@@ -175,11 +177,12 @@
       <div class="chart-box">
         <h3>Статистика по кодам</h3>
         <div class="seg" id="promocodes-seg" role="group" aria-label="Вид представления">
-          <button class="seg-btn active" data-mode="chart">Диаграмма</button>
-          <button class="seg-btn" data-mode="table">Таблица</button>
+          <button class="seg-btn" data-mode="chart">Диаграмма</button>
+          <button class="seg-btn active" data-mode="table">Таблица</button>
         </div>
-        <div id="promocodes-chart"><canvas id="chart-promo-codes" height="220"></canvas></div>
-        <div id="promocodes-table" hidden><table class="mini-table" id="table-promo-codes"></table></div>
+        <!-- правка 2.3 (v0.16.0, записка 6): по умолчанию — таблица (аналогично воронке, правка 2.12 v0.15.0) -->
+        <div id="promocodes-chart" hidden><canvas id="chart-promo-codes" height="220"></canvas></div>
+        <div id="promocodes-table"><table class="mini-table" id="table-promo-codes"></table></div>
         <div class="subhead-sm">Сводка по кодам</div>
         <ul class="metric-list" id="promo-metrics"></ul>
       </div>
@@ -246,44 +249,88 @@
       агрегаты, пороги сегментов и графики.</p>
     </div>
   </div>
+
+  <!-- ========== подвкладка «Возвраты»: статистика заявок (v0.16.0, fp №3) ========== -->
+  <div id="stab-returns" hidden>
+    <div class="toolbar">
+      <select id="r-period" aria-label="Период статистики возвратов">
+        <option value="7">Последние 7 дней</option>
+        <option value="30">Последние 30 дней</option>
+        <option value="90">Последние 90 дней</option>
+        <option value="all" selected>Всё время</option>
+      </select>
+      <button class="btn" id="btn-returns-csv">Выгрузить CSV</button>
+      <span class="muted" style="font-size:13px">Сумма возвратов — по заявкам в статусе «Товар проверен, возврат оформлен» (сумма связанного заказа).</span>
+    </div>
+    <div class="kpi-grid" id="kpi-returns"></div>
+    <div class="charts-grid">
+      <div class="chart-box">
+        <h3 id="reasons-title">Причины возвратов</h3>
+        <div class="seg" id="reasons-seg" role="group" aria-label="Вид причин">
+          <button class="seg-btn" data-mode="chart">Диаграмма</button>
+          <button class="seg-btn active" data-mode="table">Таблица</button>
+        </div>
+        <div id="reasons-chart" hidden><canvas id="chart-reasons" height="220"></canvas></div>
+        <div id="reasons-table"><table class="mini-table" id="table-reasons"></table></div>
+        <div class="empty" id="reasons-empty" hidden>За выбранный период заявок на возврат нет.</div>
+      </div>
+      <div class="chart-box">
+        <h3>Заявки по дням</h3>
+        <canvas id="chart-return-days" height="220"></canvas>
+        <div class="empty" id="return-days-empty" hidden>За выбранный период заявок на возврат нет.</div>
+      </div>
+    </div>
+  </div>
 </main>
 
-<!-- ========== «Заказы → Возвраты»: заглушка (v0.15.0, правка 2.11; П21 — M4) ========== -->
+<!-- ========== «Заказы → Возвраты»: очередь заявок (v0.16.0, fp №3; вместо заглушки v0.15.0) ========== -->
 <main class="panel container" id="panel-returns" hidden>
   <div class="seg subseg">
     <a class="seg-btn" href="admin.html">Список заказов</a>
     <a class="seg-btn" href="assembly.html">Сборка</a>
     <button class="seg-btn active" type="button" id="seg-returns-active">Возвраты</button>
   </div>
-  <div class="stub-card">
-    <div class="stub-badge">Заглушка · планируется</div>
-    <h3>Возвраты</h3>
-    <p class="muted" style="font-size:14px">Раздел «Заказы → Возвраты»: отдельная страница заявок и статусная
-    модель возвратов (docs/feature-proposals.md, пункт 3; план —
-    docs/priemka/priemka-v014.md, П21; боевая волна M4). Статус «Возврат»
-    уже есть в статусной модели заказов — здесь появится работа с заявками.</p>
-    <div class="subhead-sm">Что здесь появится</div>
-    <ul class="stub-list">
-      <li><b>Заявки на возврат:</b> список и карточки заявок со своей статусной
-        моделью — «Заявка → Товар на складе → Проверен, возврат оформлен»
-        (цепочка на согласовании с владельцем, опросник 6.6).</li>
-      <li><b>Флаг «деньги возвращены»:</b> отдельно от статуса заказа — связан
-        с признаком оплаты (правка 2.2 этой волны: оплату можно снимать
-        и у отменённых заказов).</li>
-      <li><b>Чек возврата:</b> печать/выгрузка чека — требование 54-ФЗ
-        при возврате денег (юридический контур M4).</li>
-      <li><b>Причины возврата:</b> справочник или свободный текст — решается
-        с владельцем (опросник 6.6).</li>
-      <li><b>Карантин returned-товаров:</b> вернувшаяся позиция попадает
-        в «требует осмотра» до решения о возврате на склад (фикс F51
-        ревью v0.13.1, чек-лист M1).</li>
-    </ul>
-    <p class="muted stub-note">Почему заглушка: возвраты — юридически значимый контур (чеки, сроки,
-    парфюмерия — вопрос ЮР-03), он осознанно отнесён в боевую волну M4
-    (docs/plan/migration-plan.md). В черновике статус «Возврат» доступен
-    в карточке заказа — этого достаточно для оценки воронки.</p>
+  <div class="toolbar">
+    <select id="rr-filter" aria-label="Фильтр по статусу заявки">
+      <option value="">Все статусы</option>
+    </select>
+    <span class="muted" style="font-size:13px">Заявки покупателей с витрины (окно отслеживания заказа). Товар по заявке в статусе «Возврат» уходит в карантин — осмотр в карточке товара.</span>
+    <span class="spacer"></span>
+    <button class="btn" id="rr-refresh">Обновить</button>
   </div>
+  <div class="table-wrap">
+    <table class="orders zebra">
+      <thead>
+        <tr>
+          <th>№</th>
+          <th>Создана</th>
+          <th>Заказ</th>
+          <th>Клиент</th>
+          <th>Причина</th>
+          <th class="col-comment">Комментарий</th>
+          <th>Статус</th>
+        </tr>
+      </thead>
+      <tbody id="rr-body"></tbody>
+    </table>
+  </div>
+  <div class="pager" id="rr-pager" hidden>
+    <button class="btn" id="rr-prev" style="min-height:36px;padding:0 16px">← Ранее</button>
+    <span class="muted" id="rr-info" style="font-size:13px"></span>
+    <button class="btn" id="rr-next" style="min-height:36px;padding:0 16px">Далее →</button>
+  </div>
+  <div class="loading" id="rr-loading" hidden>Загружаем заявки…</div>
+  <div class="empty" id="rr-empty" hidden>Заявок на возврат пока нет.</div>
+  <div class="err-box" id="rr-error" hidden></div>
 </main>
+
+<!-- ======================= КАРТОЧКА ЗАЯВКИ НА ВОЗВРАТ (v0.16.0) ======================= -->
+<div class="modal-backdrop" id="ret-modal-backdrop">
+  <div class="modal" role="dialog" aria-modal="true" aria-label="Заявка на возврат">
+    <button class="modal-close" id="ret-modal-close" aria-label="Закрыть">×</button>
+    <div id="ret-modal-body"></div>
+  </div>
+</div>
 
 <!-- ======================= КАРТОЧКА ЗАКАЗА ======================= -->
 <div class="modal-backdrop" id="order-modal-backdrop">

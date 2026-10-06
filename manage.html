@@ -1,11 +1,12 @@
 
 
+
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SISKU · Оплата и доставка (черновик)</title>
+<title>SISKU · Справочники (черновик)</title>
 <meta name="robots" content="noindex">
 <script>/* тема до отрисовки — без «моргания» (паттерн витрины) */
 (function(){try{var t=localStorage.getItem('sisku_admin_theme');document.documentElement.setAttribute('data-theme', t==='light'?'light':'dark');}catch(e){}})();
@@ -44,7 +45,7 @@
 
 <main class="panel container" id="panel-manage">
   <div class="seg subseg">
-    <a class="seg-btn active" href="manage.html">Оплата и доставка</a>
+    <a class="seg-btn active" href="manage.html">Справочники</a>
     <a class="seg-btn" href="shop.html">Промокоды</a>
     <a class="seg-btn" href="sitecontent.html">Сайт</a>
     <a class="seg-btn" href="sitemap.html">Карта сайта</a>
@@ -82,13 +83,28 @@
       <tbody id="pay-body"></tbody>
     </table>
   </div>
+
+  <!-- ================== ПРИЧИНЫ ВОЗВРАТОВ (v0.16.0, fp №3) ================== -->
+  <div class="toolbar" style="margin-top:36px">
+    <span class="muted" style="font-size:13px">Причины возврата: список в форме заявки на возврат витрины (только активные). Удаление — отключением: причина может быть использована в заявках.</span>
+    <span class="spacer"></span>
+    <button class="btn primary" id="btn-new-reason">Новая причина возврата</button>
+  </div>
+  <div class="table-wrap">
+    <table class="orders" style="min-width:640px">
+      <thead>
+        <tr><th>Название</th><th>Порядок</th><th>Активна</th><th></th></tr>
+      </thead>
+      <tbody id="rrn-body"></tbody>
+    </table>
+  </div>
   <div class="err-box" id="mng-error" hidden></div>
 </main>
 
 <!-- ========== «Управление → Журнал действий»: заглушка (v0.15.0, правка 2.11; П31 — M1/M2) ========== -->
 <main class="panel container" id="panel-audit" hidden>
   <div class="seg subseg">
-    <a class="seg-btn" href="manage.html">Оплата и доставка</a>
+    <a class="seg-btn" href="manage.html">Справочники</a>
     <a class="seg-btn" href="shop.html">Промокоды</a>
     <a class="seg-btn" href="sitecontent.html">Сайт</a>
     <a class="seg-btn" href="sitemap.html">Карта сайта</a>
@@ -150,9 +166,13 @@
           <input id="mm-max" type="number" min="0" step="50" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="пусто — цена известна заранее">
         </div>
       </div>
+      <div class="field" id="mm-sort-field" style="margin-bottom:14px" hidden>
+        <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="mm-sort">Порядок в списке</label>
+        <input id="mm-sort" type="number" min="1" step="1" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="1">
+      </div>
       <div class="field" style="margin-bottom:18px;display:flex;align-items:center;gap:10px">
         <input id="mm-active" type="checkbox" checked style="width:18px;height:18px;accent-color:var(--accent)">
-        <label for="mm-active" style="font-size:13px;color:var(--text)">Способ активен (виден в форме заказа)</label>
+        <label for="mm-active" id="mm-active-label" style="font-size:13px;color:var(--text)">Способ активен (виден в форме заказа)</label>
       </div>
       <button class="btn primary" type="submit" id="mm-submit" style="width:100%">Сохранить</button>
       <div class="err-box" id="mm-error" style="margin-top:12px" hidden></div>
