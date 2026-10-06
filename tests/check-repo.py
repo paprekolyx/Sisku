@@ -28,6 +28,10 @@ v2.3 (06.10.2026, вне волн — замена data/): бэкап содер
 бэкапов, docs/setup/setup-supabase.md шаг 3); чтение CSV — utf-8-sig
 (устойчивость к BOM автовыгрузок); CRLF автовыгрузок обрабатывается
 csv-модулем (newline='') — проверка ровного числа колонок не менялась.
+v2.4 (волна v0.16.0): в REQUIRED добавлены скрипты supabase/22–25,
+docs/update/update-v0160.md, docs/priemka/priemka-v015.md и
+docs/viki-reestr.md (опубликованная редакция реестра документации —
+решение аналитика 06.10.2026); проверка последнего SQL-скрипта — 25.
 
 Запуск из корня репозитория:  python3 tests/check-repo.py
 Проверяет (без сети и без базы):
@@ -135,6 +139,13 @@ REQUIRED = [
     'supabase/17_look_atomic_save.sql', 'supabase/18_set_paid_unlock.sql',
     'supabase/19_client_name_policy.sql', 'supabase/20_site_content_wave_keys.sql',
     'supabase/21_admin_users_phone.sql', 'docs/update/update-v0150.md',
+    # v2.4 (волна v0.16.0): возвраты + карантин (скрипты 22–25), инструкция
+    # волны, обработка приёмки v0.15.0 и опубликованная редакция реестра
+    # документации (docs/viki-reestr.md — решение аналитика 06.10.2026)
+    'supabase/22_return_reasons_and_requests.sql', 'supabase/23_quarantine.sql',
+    'supabase/24_return_content_keys.sql', 'supabase/25_delivery_seed_align.sql',
+    'docs/update/update-v0160.md', 'docs/priemka/priemka-v015.md',
+    'docs/viki-reestr.md',
 ] + ['assets/img/products/p00%d.jpg' % i for i in range(1, 9)]
 
 # ---------- 1. обязательные файлы + реестр supabase/README.md ----------
@@ -298,6 +309,6 @@ if problems:
     for p in problems:
         print('  ✗ ' + p)
     sys.exit(1)
-print('✓ check-repo v2.3: все проверки пройдены (версия %s, страниц %d, SQL-скриптов %d, последний %s)'
+print('✓ check-repo v2.4: все проверки пройдены (версия %s, страниц %d, SQL-скриптов %d, последний %s)'
       % (ver, len(HTML_PAGES), len(on_disk), LAST_SQL))
 sys.exit(0)
