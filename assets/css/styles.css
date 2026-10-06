@@ -1,5 +1,6 @@
 
 
+
 /* ==========================================================================
    SISKU — черновик витрины · v0.1.0-draft
    Дизайн: «quiet luxury». Тема по умолчанию — светлая «Ivoire»,
@@ -536,3 +537,41 @@ body::-webkit-scrollbar-thumb:hover, .modal::-webkit-scrollbar-thumb:hover,
 .lp-list li { padding: 7px 0; border-bottom: 1px solid var(--line); }
 .lp-list li:last-child { border-bottom: 0; }
 .lp-list .vr { color: var(--muted); font-size: 12px; }
+
+/* ==========================================================================
+   v0.16.0: волна по запискам приёмки v0.15.0 (docs/priemka/priemka-v015.md §2)
+   + форма заявки на возврат (fp №3)
+   ========================================================================== */
+
+/* правка 2.6 (М1): тексты hero не касаются рамки экрана на узких экранах
+   (.hero-in — контейнер, но padding: 96px 0 перезаписывал боковые отступы) */
+@media (max-width: 720px) { .hero-in { padding-left: 20px; padding-right: 20px; } }
+@media (max-width: 560px) { .hero-in { padding-left: 16px; padding-right: 16px; } }
+
+/* правка 2.7 (М2): «Быстрый просмотр» — функция наведения; на тач-устройствах
+   кнопка мелькала при тапе и не нужна (открытие карточки — тапом по карточке) */
+@media (hover: none) { .card-media .quick { display: none; } }
+
+/* правка 2.9 (М4): форма заказа на мобильных — рублёвые суммы в сводке не
+   переносятся (знак ₽ не «уезжает» на следующую строку) */
+.order-summary .row span:last-child { white-space: nowrap; }
+@media (max-width: 560px) {
+  /* кастомные селекты оплаты/доставки — во всю ширину поля, без ухода вправо */
+  .form-modal .field .cselect { display: block; width: 100%; }
+  .form-modal .field .cselect-btn { width: 100%; min-width: 0; }
+  /* подсказки полей (в т.ч. hint промокода) — мельче и с переносом длинных слов */
+  .field .hint { font-size: 12px; overflow-wrap: anywhere; }
+}
+
+/* v0.16.0 (fp №3): окно отслеживания — кнопка «Оформить возврат»;
+   форма заявки — заглушка блока фото (хранилище — M5) */
+#track-return { margin-top: 20px; text-align: center; }
+.rr-photo input[type="file"] {
+  width: 100%; padding: 10px 12px; background: var(--surface); color: var(--muted);
+  border: 1px dashed var(--line); border-radius: var(--radius);
+  font-family: var(--font-body); font-size: 13px;
+}
+.rr-photo input[type="file"]:disabled { cursor: not-allowed; opacity: .6; }
+.rr-photo .hint { color: var(--muted); }
+/* поля номера заказа и кода в форме возврата — только для чтения */
+#return-form input[readonly] { color: var(--muted); cursor: default; }

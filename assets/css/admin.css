@@ -1,5 +1,6 @@
 
 
+
 /* ==========================================================================
    SISKU — админ-панель (черновик) · v0.14.0-draft
    Оформление: темы «Noir & Champagne» (тёмная, по умолчанию) и «Ivoire»
@@ -129,6 +130,42 @@ table.zebra tbody tr:hover { background: color-mix(in srgb, var(--muted) 12%, tr
 [data-theme="light"] .status-pill[data-code="delivered"] { color: color-mix(in srgb, var(--ok) 92%, var(--text)); }
 [data-theme="light"] .status-pill[data-code="cancelled"],
 [data-theme="light"] .status-pill[data-code="returned"] { color: color-mix(in srgb, var(--danger) 80%, var(--text)); }
+/* v0.16.0 (fp №3): пилюли статусов заявок на возврат — единый стиль
+   .status-pill (залитые, контраст ≥ 4.5 в обеих темах, как у заказов v0.15.0);
+   «Товар вернулся на склад» — базовая muted-пилюля (в работе) */
+.status-pill[data-code="rr_created"]  { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.status-pill[data-code="rr_verified"] { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.status-pill[data-code="rr_rejected"] { color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
+[data-theme="light"] .status-pill[data-code="rr_created"]  { color: color-mix(in srgb, var(--accent) 92%, var(--text)); }
+[data-theme="light"] .status-pill[data-code="rr_verified"] { color: color-mix(in srgb, var(--ok) 92%, var(--text)); }
+[data-theme="light"] .status-pill[data-code="rr_rejected"] { color: color-mix(in srgb, var(--danger) 80%, var(--text)); }
+/* очередь заявок: колонка комментария — в две строки с многоточием */
+.col-comment { max-width: 260px; }
+/* v0.16.0 (фикс F51): карантин — счётчик в списке товаров, метка на «Сборке»,
+   плашка и кнопки осмотра в карточке товара (вар-строка — flex, кнопки мелкие) */
+.quarantine-cell { color: var(--danger); font-weight: 600; }
+.asm-quarantine { color: var(--danger); font-size: 11.5px; white-space: nowrap; }
+.var-label-cell { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.var-quarantine-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.var-quarantine-row .btn { min-height: 30px; padding: 0 10px; font-size: 12px; }
+.var-quarantine {
+  display: inline-block; padding: 4px 10px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 600; white-space: nowrap;
+  color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent);
+}
+
+/* правка 2.4 (v0.16.0, записка 7): тёмная тема админки — нативные элементы
+   форм тоже тёмные (color-scheme), color-поля брендбука без светлой рамки
+   браузера; hex-поля редактора в тёмной теме — гарантированно тёмные
+   (статическая палитра Noir: элементы управления редактора — не витрина,
+   токены брендбука на них не влияют). Светлая тема витрины остаётся яркой —
+   это ожидаемое поведение. */
+:root { color-scheme: dark; }
+[data-theme="light"] { color-scheme: light; }
+.bbe-color { -webkit-appearance: none; appearance: none; }
+[data-theme="dark"] .bbe-hex { background: #1D1D24; color: #F2EEE4; border-color: #2A2A33; }
+[data-theme="dark"] .bbe-swatch { background: #16161B; }
+
 .paid-mark { color: var(--ok); font-size: 12px; white-space: nowrap; }
 .paid-mark.no { color: var(--muted); }
 .masked { letter-spacing: .06em; }
@@ -257,7 +294,7 @@ table.zebra tbody tr:hover { background: color-mix(in srgb, var(--muted) 12%, tr
   .toolbar .cselect, .toolbar .cselect-btn { width: 100%; }
 
   /* таблица заказов: прячем второстепенные столбцы, уплотняем остальное */
-  .col-created, .col-items, .col-paid, .col-delivery { display: none; }
+  .col-created, .col-items, .col-paid, .col-delivery, .col-comment { display: none; }
   table.orders { min-width: 0; }
   table.orders th, table.orders td { padding: 10px 8px; font-size: 13px; }
   table.orders .status-pill { font-size: 11px; padding: 3px 10px; } /* правка 2.9: на мобильном пилюли не мельчают до нечитаемых 10.5px */
@@ -579,6 +616,9 @@ button.seg-btn { font-family: var(--font-body); }
 /* 2.19 — телефон администратора в таблице пользователей */
 .tel-link { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .tel-link:hover { color: var(--accent); border-color: var(--accent); }
+/* правка 2.5 (v0.16.0): e-mail администратора — кликабельный mailto (тот же стиль) */
+.mail-link { color: var(--text); text-decoration: none; border-bottom: 1px solid var(--line); }
+.mail-link:hover { color: var(--accent); border-color: var(--accent); }
 
 /* 2.13 — статистика промокодов: колонка «Скидки, ₽» прячется на узких экранах */
 @media (max-width: 1100px) { .col-promo-disc { display: none; } }
