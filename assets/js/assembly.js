@@ -29,13 +29,17 @@
       if (res.error) throw res.error;
       var d = res.data;
       var stock = {};
-      (d.stock || []).forEach(function (v) { stock[v.id] = v.stock; });
+      var quarantine = {};   /* v0.16.0 (скрипт 23): бандл v2 — остатки с карантином */
+      (d.stock || []).forEach(function (v) {
+        stock[v.id] = v.stock;
+        quarantine[v.id] = Number(v.quarantine_qty || 0);
+      });
       if (!(d.orders || []).length) { showEmpty(); $('asm-body').innerHTML = ''; return; }
-      render(d.orders, d.items || [], stock);
+      render(d.orders, d.items || [], stock, quarantine);
     }).catch(function (e) { showError('Ошибка загрузки: ' + e.message); });
   }
 
-  function render(orders, items, stock) {
+  function render(orders, items, stock, quarantine) {
     $('asm-loading').hidden = true;
     $('asm-empty').hidden = true;
     var byOrder = {};
@@ -73,7 +77,11 @@
           '<td class="tabular">' + i.quantity + '</td>' +
           '<td class="tabular' + (lowStock ? ' low-stock' : '') + '"' +
             (short ? ' title="Остатка меньше, чем нужно в заказе"' : (lowStock ? ' title="Остаток менее 3 шт"' : '')) + '>' +
-            (st != null ? st + (lowStock ? ' ⚠' : '') : '—') + '</td>' +
+            (st != null ? st + (lowStock ? ' ⚠' : '') : '—') +
+            /* v0.16.0 (фикс F51): единицы в карантине — не продаются, ждут осмотра */
+            (quarantine && quarantine[i.variant_id]
+              ? ' <span class="asm-quarantine" title="В карантине, требует осмотра (возврат)">+' + quarantine[i.variant_id] + ' кар.</span>'
+              : '') + '</td>' +
           (idx === 0
             ? '<td rowspan="' + list.length + '"><button class="btn" data-ship="' + o.id + '" style="min-height:34px;padding:0 14px">→ Отправлен</button></td>'
             : '') +

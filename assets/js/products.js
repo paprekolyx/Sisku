@@ -35,6 +35,11 @@
   function reservedOf(productId) {
     return (state.variants[productId] || []).reduce(function (s, v) { return s + (state.reserved[v.id] || 0); }, 0);
   }
+  /* v0.16.0 (скрипт 23, фикс F51): карантин — вернувшиеся по заявкам единицы,
+     «требует осмотра»; в доступный остаток витрины НЕ входит */
+  function quarantineOf(productId) {
+    return (state.variants[productId] || []).reduce(function (s, v) { return s + Number(v.quarantine_qty || 0); }, 0);
+  }
 
   /* ---------- список ---------- */
   function load() {
@@ -104,6 +109,7 @@
         '<td class="tabular">' + money(p.price) + '</td>' +
         '<td class="tabular' + (stock < 3 ? ' low-stock' : '') + '">' + stock + '</td>' +
         '<td class="tabular muted">' + reservedOf(p.id) + '</td>' +
+        '<td class="tabular' + (quarantineOf(p.id) ? ' quarantine-cell' : ' muted') + '">' + (quarantineOf(p.id) || '—') + '</td>' +
         '<td><button class="btn" data-active="' + p.id + '" style="min-height:32px;padding:0 12px">' +
           (p.is_active ? 'активен' : 'скрыт') + '</button></td>' +
         '<td><button class="btn" data-edit="' + p.id + '" style="min-height:34px;padding:0 14px">Карточка</button></td>' +
@@ -184,16 +190,52 @@
   }
 
   /* ---------- варианты ---------- */
-  function addVariantRow(id, label, stock) {
+  function addVariantRow(id, label, stock, quarantine) {
     var row = document.createElement('div');
     row.className = 'var-row';
     if (id) row.setAttribute('data-vid', id);
+    var quar = Number(quarantine || 0);
     row.innerHTML =
-      '<input class="var-label" placeholder="Размер / объём (S, 50 мл…)" value="' + esc(label || '') + '">' +
+      /* v0.16.0 (фикс F51): карантин варианта — счётчик + осмотр («вернуть
+         в продажу» / «списать», RPC admin_resolve_quarantine, скрипт 23);
+         блок живёт в одной grid-ячейке с названием (var-row — 3 колонки);
+         складские движения с журналом — fp №3b (v0.28.0) */
+      '<div class="var-label-cell">' +
+        '<input class="var-label" placeholder="Размер / объём (S, 50 мл…)" value="' + esc(label || '') + '">' +
+        (id && quar > 0
+          ? '<div class="var-quarantine-row">' +
+              '<span class="var-quarantine" title="Требует осмотра: вернулось по заявке на возврат">карантин ' + quar + ' шт.</span>' +
+              '<button type="button" class="btn ghost small var-q-restock" title="Вернуть ' + quar + ' шт. в продажу">В продажу</button>' +
+              '<button type="button" class="btn ghost small var-q-writeoff" title="Списать ' + quar + ' шт. (брак и т.п.)">Списать</button>' +
+            '</div>'
+          : '') +
+      '</div>' +
       '<input class="var-stock" type="number" min="0" step="1" placeholder="Остаток" value="' + (stock != null ? stock : 0) + '">' +
       '<button type="button" class="btn ghost small var-del" title="Убрать вариант">×</button>';
     row.querySelector('.var-del').addEventListener('click', function () { row.remove(); refreshPreview(); });
     row.querySelector('.var-stock').addEventListener('input', refreshPreview);
+    ['restock', 'writeoff'].forEach(function (action) {
+      var b = row.querySelector('.var-q-' + action);
+      if (!b) return;
+      b.addEventListener('click', function () {
+        var what = action === 'restock' ? 'вернуть в продажу' : 'списать';
+        if (!confirm('Осмотр карантина: ' + what + ' ' + quar + ' шт. варианта «' + (label || '') + '»?')) return;
+        b.disabled = true;
+        db.rpc('admin_resolve_quarantine', {
+          p_variant_id: id, p_qty: quar, p_action: action, p_changed_by: 'draft-admin'
+        }).then(function (res) {
+          if (res.error) { alert(SiskuUtil.friendlyDbError(res.error)); b.disabled = false; return; }
+          /* свежие значения — из ответа RPC (локально, без гонки с load()),
+             затем фоновое перечитывание и перерисовка карточки */
+          var d = res.data || {};
+          (state.variants[state.editingId] || []).forEach(function (v) {
+            if (v.id === id) { v.stock = d.stock; v.quarantine_qty = d.quarantine_qty; }
+          });
+          load();
+          openModal(state.editingId);
+        }).catch(function (e) { alert('Ошибка сети: ' + e.message); b.disabled = false; });
+      });
+    });
     $('pf-variants').appendChild(row);
     refreshPreview();
   }
@@ -237,8 +279,8 @@
     ['pf-article-err', 'pf-name-err', 'pf-price-err', 'pf-cat-err', 'pf-error'].forEach(function (x) { $(x).hidden = true; });
     $('pf-variants').innerHTML = '';
     var vars = p ? (state.variants[p.id] || []) : [];
-    if (vars.length) vars.forEach(function (v) { addVariantRow(v.id, v.label, v.stock); });
-    else addVariantRow(null, '', 0);
+    if (vars.length) vars.forEach(function (v) { addVariantRow(v.id, v.label, v.stock, v.quarantine_qty); });
+    else addVariantRow(null, '', 0, 0);
     /* селекты бренда/категории ставим после enhance (нативный select живёт внутри .cselect) */
     $('pf-brand').value = p && p.brand_id ? String(p.brand_id) : '';
     $('pf-cat').value = p && p.category_id ? String(p.category_id) : '';

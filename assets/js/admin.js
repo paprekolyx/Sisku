@@ -12,8 +12,13 @@
     orders: [], items: [], statuses: [], transitions: [],
     payments: [], deliveries: [], history: [],
     promos: [],              /* v0.13.0: промокоды — подвкладка статистики «Акции» */
-    statsTab: 'orders',      /* v0.13.0: активная подвкладка: orders | promos | admins | clients */
-    promoMode: 'chart',      /* v0.13.0: «по кодам» — диаграмма или таблица */
+    statsTab: 'orders',      /* v0.13.0: активная подвкладка: orders | promos | admins | clients | returns */
+    promoMode: 'table',      /* правка 2.3 (v0.16.0, записка 6): «Акции» по умолчанию — таблица (было chart) */
+    returns: { requests: [], reasons: [], content: {} },   /* v0.16.0 (fp №3): заявки, причины, тексты returns.* */
+    returnsLoaded: false,    /* бандл возвратов загружен (лениво — при первом открытии) */
+    rrFilter: '',            /* фильтр очереди заявок по статусу */
+    rrPage: 1,               /* пагинация очереди (30 на страницу) */
+    returnMode: 'table',     /* статистика причин: chart | table */
     revealed: {},            /* заказ, у которого раскрыты контакты */
     methodsMode: 'table',    /* «Таблица» по умолчанию, «Диаграмма» — по переключателю */
     sort: { field: 'created', dir: 'desc' },   /* сортировка таблицы заказов */
@@ -156,8 +161,10 @@
     }
   }
 
-  /* ---------- карточка заказа ---------- */
-  function openOrder(id) {
+  /* ---------- карточка заказа ----------
+     backReturn (v0.16.0): id заявки на возврат, из которой открыт заказ —
+     в карточке появляется обратная ссылка «← К заявке № X» */
+  function openOrder(id, backReturn) {
     var o = state.orders.filter(function (x) { return x.id === id; })[0];
     if (!o) return;
     var items = itemsOf(id);
@@ -173,6 +180,7 @@
       var locked = st.code === 'cancelled';   /* отменённые: статусы заблокированы, оплата — нет (правка 2.2) */
 
       $('order-modal-body').innerHTML =
+        (backReturn ? '<div style="margin-bottom:10px"><button class="linklike" id="oc-back-return">← К заявке на возврат № ' + backReturn + '</button></div>' : '') +
         '<div class="modal-head-row"><h2>Заказ № ' + o.id + '</h2>' +
         '<span class="status-pill status-pill-lg" data-code="' + esc(st.code) + '">' + esc(st.name) + '</span></div>' +
         '<div class="muted" style="font-size:12.5px;margin-top:2px">создан ' + fmtDate(o.created_at) + '</div>' +
@@ -249,6 +257,12 @@
           });
       });
 
+    if (backReturn) {
+      $('oc-back-return').addEventListener('click', function () {
+        $('order-modal-backdrop').classList.remove('open');
+        openReturnRequest(backReturn);
+      });
+    }
     $('order-modal-backdrop').classList.add('open');
     if (window.enhanceSelects) enhanceSelects($('order-modal-body'));
   }
@@ -588,7 +602,7 @@
   }
 
   /* ---------- подвкладки статистики (v0.13.0) ---------- */
-  var STATS_TABS = ['orders', 'promos', 'admins', 'clients'];
+  var STATS_TABS = ['orders', 'promos', 'admins', 'clients', 'returns'];
   function switchStatsTab(tab) {
     if (STATS_TABS.indexOf(tab) === -1) tab = 'orders';
     state.statsTab = tab;
@@ -598,11 +612,21 @@
       b.setAttribute('aria-selected', on ? 'true' : 'false');
     });
     STATS_TABS.forEach(function (t) { $('stab-' + t).hidden = t !== tab; });
+    /* v0.16.0: «Возвраты» — данные из отдельного бандла (ленивая загрузка) */
+    if (tab === 'returns') {
+      loadReturns(false).then(function () { renderReturnStats(); }).catch(function (e) {
+        $('kpi-returns').innerHTML = '';
+        $('reasons-empty').hidden = false;
+        $('reasons-empty').textContent = 'Не удалось загрузить заявки: ' + (e.message || e);
+      });
+      return;
+    }
     renderStatsActive();
   }
   function renderStatsActive() {
     if (state.statsTab === 'orders') renderStats();
     else if (state.statsTab === 'promos') renderPromoStats();
+    else if (state.statsTab === 'returns') renderReturnStats();
     /* admins и clients — заглушки, рендер не нужен */
   }
 
@@ -809,13 +833,404 @@
     URL.revokeObjectURL(a.href);
   }
 
+  /* ---------- v0.16.0 (fp №3): возвраты — очередь, карточка, статистика ----------
+     Данные — draft_returns_bundle() одним RPC (грабля №4: очередь соединений
+     бесплатного тарифа); заказы и статусы — уже в state из draft_admin_bundle.
+     Подписи статусов — из ключей site_content returns.status.* (бандл),
+     запасные значения — в коде (правило: изменяемые тексты не хардкодить). */
+  var RETURN_STATUSES = ['created', 'returned_to_stock', 'verified', 'rejected'];
+  var RETURN_FALLBACK = {
+    created: 'Заявка оформлена',
+    returned_to_stock: 'Товар вернулся на склад',
+    verified: 'Товар проверен, возврат оформлен',
+    rejected: 'Отклонено'
+  };
+  var RETURN_NEXT = {
+    created: ['returned_to_stock', 'rejected'],
+    returned_to_stock: ['verified', 'rejected'],
+    verified: [], rejected: []
+  };
+  var RETURN_ACTION = {
+    returned_to_stock: 'Товар вернулся на склад',
+    verified: 'Товар проверен, возврат оформлен',
+    rejected: 'Отклонить заявку'
+  };
+  function returnStatusLabel(code) {
+    return state.returns.content['returns.status.' + code] || RETURN_FALLBACK[code] || code;
+  }
+  function returnPill(code) {
+    return '<span class="status-pill" data-code="rr_' + esc(code) + '">' + esc(returnStatusLabel(code)) + '</span>';
+  }
+  function reasonById(id) {
+    return state.returns.reasons.filter(function (r) { return r.id === id; })[0] || {};
+  }
+  function orderById(id) {
+    return state.orders.filter(function (o) { return o.id === id; })[0] || null;
+  }
+
+  function loadReturns(force) {
+    if (state.returnsLoaded && !force) return Promise.resolve();
+    if (!db) return Promise.reject({ message: dbError || 'нет БД' });
+    $('rr-loading').hidden = false;
+    return db.rpc('draft_returns_bundle').then(function (res) {
+      $('rr-loading').hidden = true;
+      if (res.error) throw res.error;
+      var d = res.data || {};
+      state.returns.requests = d.requests || [];
+      state.returns.reasons = d.reasons || [];
+      state.returns.content = {};
+      (d.content || []).forEach(function (c) { state.returns.content[c.key] = c.value; });
+      state.returnsLoaded = true;
+      buildRrFilter();
+      var title = state.returns.content['returns.stats.title'];
+      if (title && $('stab-returns-btn')) $('stab-returns-btn').textContent = title;
+    });
+  }
+  function buildRrFilter() {
+    var keep = $('rr-filter').value;
+    $('rr-filter').innerHTML = '<option value="">Все статусы</option>' +
+      RETURN_STATUSES.map(function (c) {
+        return '<option value="' + c + '">' + esc(returnStatusLabel(c)) + '</option>';
+      }).join('');
+    $('rr-filter').value = RETURN_STATUSES.indexOf(keep) !== -1 ? keep : '';
+    $('rr-filter').dispatchEvent(new Event('refresh'));
+    if (window.enhanceSelects) enhanceSelects();
+  }
+  function filteredReturns() {
+    var list = state.returns.requests.slice();
+    if (state.rrFilter) list = list.filter(function (r) { return r.status === state.rrFilter; });
+    list.sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); });
+    return list;
+  }
+  function renderReturns() {
+    if (!state.returnsLoaded) return;
+    var list = filteredReturns();
+    var PAGESIZE = 30;
+    var pages = Math.max(1, Math.ceil(list.length / PAGESIZE));
+    if (state.rrPage > pages) state.rrPage = pages;
+    if (state.rrPage < 1) state.rrPage = 1;
+    var visible = list.slice((state.rrPage - 1) * PAGESIZE, state.rrPage * PAGESIZE);
+    $('rr-loading').hidden = true;
+    $('rr-error').hidden = true;
+    $('rr-empty').hidden = list.length !== 0;
+    $('rr-empty').textContent = state.returns.requests.length
+      ? 'Ничего не найдено по фильтру — выберите другой статус.'
+      : 'Заявок на возврат пока нет. Форма заявки — на витрине, в окне отслеживания заказа (статусы «Отправлен» и «Доставлен»).';
+    $('rr-body').innerHTML = visible.map(function (r) {
+      var o = orderById(r.order_id);
+      var cm = r.comment ? (r.comment.length > 60 ? r.comment.slice(0, 60) + '…' : r.comment) : '—';
+      return '<tr data-rid="' + r.id + '">' +
+        '<td class="tabular"><b>№ ' + r.id + '</b></td>' +
+        '<td class="tabular muted">' + fmtDate(r.created_at) + '</td>' +
+        '<td class="tabular">№ ' + r.order_id + '</td>' +
+        '<td>' + esc(o ? o.customer_name : '—') + '</td>' +
+        '<td>' + esc(reasonById(r.reason_id).name || '—') + '</td>' +
+        '<td class="muted" style="font-size:13px">' + esc(cm) + '</td>' +
+        '<td>' + returnPill(r.status) +
+          (r.refund_paid ? ' <span class="paid-mark">деньги возвращены</span>' : '') + '</td>' +
+      '</tr>';
+    }).join('');
+    var pager = $('rr-pager');
+    if (pages > 1) {
+      pager.hidden = false;
+      $('rr-info').textContent = 'Стр. ' + state.rrPage + ' из ' + pages +
+        ' (показано ' + ((state.rrPage - 1) * PAGESIZE + 1) + '–' +
+        Math.min(list.length, state.rrPage * PAGESIZE) + ' из ' + list.length + ')';
+      $('rr-prev').disabled = state.rrPage <= 1;
+      $('rr-next').disabled = state.rrPage >= pages;
+    } else {
+      pager.hidden = true;
+    }
+  }
+
+  function openReturnRequest(id) {
+    var r = state.returns.requests.filter(function (x) { return x.id === id; })[0];
+    if (!r) return;
+    var o = orderById(r.order_id);
+    var reason = reasonById(r.reason_id);
+    var next = RETURN_NEXT[r.status] || [];
+    var inputStyle = 'width:100%;min-height:42px;padding:9px 12px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px';
+    $('ret-modal-body').innerHTML =
+      '<div class="modal-head-row"><h2>Заявка на возврат № ' + r.id + '</h2>' + returnPill(r.status) + '</div>' +
+      '<div class="muted" style="font-size:12.5px;margin-top:2px">создана ' + fmtDate(r.created_at) +
+        ' · ' + esc(r.created_by === 'site' ? 'покупателем с сайта' : (r.created_by || '—')) +
+        (r.resolved_at ? ' · завершена ' + fmtDate(r.resolved_at) : '') +
+        (r.handled_by ? ' · обработал ' + esc(r.handled_by) : '') + '</div>' +
+      '<div class="order-meta">' +
+        '<div>' +
+          metaRow('Заказ', o
+            ? '<button class="linklike" id="ret-to-order" style="font:inherit;font-size:14px">№ ' + o.id + ' от ' + fmtDate(o.created_at) + '</button>'
+            : '№ ' + r.order_id) +
+          metaRow('Клиент', esc(o ? o.customer_name : '—')) +
+          metaRow('Сумма заказа', o ? '<b class="tabular">' + money(o.total + o.delivery_cost) + '</b>' : '—') +
+          metaRow('Статус заказа', o ? esc(statusByid(o.status_id).name || '—') : '—') +
+        '</div>' +
+        '<div>' +
+          metaRow('Причина', esc(reason.name || '—')) +
+          metaRow('Комментарий', r.comment ? esc(r.comment) : '—') +
+          metaRow('Фото', '<span class="muted">не загружено — заглушка до подключения хранилища (M5)</span>') +
+          metaRow('Деньги', r.refund_paid
+            ? '<b style="color:var(--ok)">возвращены' + (r.refund_paid_at ? ' ' + fmtDate(r.refund_paid_at) : '') + '</b>'
+            : 'не возвращены') +
+        '</div>' +
+      '</div>' +
+      (r.status === 'returned_to_stock' || r.status === 'verified'
+        ? '<div class="locked-note">Товар по заявке — в карантине «требует осмотра»: остаток не продаётся. Осмотр — в карточке товара («Магазин → Товары»): «вернуть в продажу» или «списать» (скрипт 23).</div>'
+        : '') +
+      (next.length
+        ? '<div class="subhead">Обработка заявки</div>' +
+          '<div class="actions-row">' +
+          next.map(function (c) {
+            return '<button class="btn' + (c === 'rejected' ? '' : ' primary') + '" data-rst="' + c + '"' +
+              (c === 'returned_to_stock' ? ' title="Заказ будет переведён в статус «Возврат», остатки уйдут в карантин"' : '') + '>' +
+              esc(RETURN_ACTION[c]) + '</button>';
+          }).join('') +
+          '</div>'
+        : '') +
+      '<div class="subhead">Деньги возвращены</div>' +
+      '<label style="display:flex;align-items:center;gap:10px;font-size:14px">' +
+        '<input type="checkbox" id="ret-refund" style="width:18px;height:18px;accent-color:var(--accent)"' + (r.refund_paid ? ' checked' : '') + '> ' +
+        'Возврат денег подтверждён' + (r.refund_paid_at ? ' <span class="muted">(' + fmtDate(r.refund_paid_at) + ')</span>' : '') +
+      '</label>' +
+      '<div style="margin-top:10px">' +
+        '<label for="ret-receipt" style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px">Реквизиты чека возврата (в макете необязательные)</label>' +
+        '<input id="ret-receipt" value="' + esc(r.refund_receipt || '') + '" placeholder="Например: чек возврата от дд.мм.гггг, сумма" style="' + inputStyle + '">' +
+      '</div>' +
+      '<div class="actions-row" style="margin-top:12px"><button class="btn" id="ret-refund-save">Сохранить деньги/чек</button></div>' +
+      '<div class="err-box" id="ret-error" hidden></div>';
+
+    var toOrder = $('ret-to-order');
+    if (toOrder) toOrder.addEventListener('click', function () {
+      $('ret-modal-backdrop').classList.remove('open');
+      openOrder(r.order_id, r.id);   /* обратная навигация: заказ → «← К заявке» */
+    });
+    $('ret-modal-body').querySelectorAll('button[data-rst]').forEach(function (b) {
+      b.addEventListener('click', function () {
+        var code = b.getAttribute('data-rst');
+        if (code === 'rejected' && !confirm('Отклонить заявку № ' + r.id + '?')) return;
+        b.disabled = true;
+        db.rpc('admin_set_return_status', {
+          p_request_id: r.id, p_status_code: code, p_comment: null, p_changed_by: 'draft-admin'
+        }).then(function (res) {
+          if (res.error) {
+            $('ret-error').textContent = SiskuUtil.friendlyDbError(res.error);
+            $('ret-error').hidden = false;
+            b.disabled = false;
+            return;
+          }
+          /* при «Товар вернулся на склад» заказ переведён в «Возврат»,
+             остатки — в карантине: обновляем оба бандла и перерисовываем */
+          Promise.all([loadAll(), loadReturns(true)]).then(function () {
+            renderReturns();
+            openReturnRequest(r.id);
+          });
+        }).catch(function (e) {
+          $('ret-error').textContent = 'Ошибка сети: ' + e.message;
+          $('ret-error').hidden = false;
+          b.disabled = false;
+        });
+      });
+    });
+    $('ret-refund-save').addEventListener('click', function () {
+      var self = this;
+      self.disabled = true;
+      db.rpc('admin_set_return_refund', {
+        p_request_id: r.id, p_paid: $('ret-refund').checked,
+        p_receipt: $('ret-receipt').value.trim() || null, p_changed_by: 'draft-admin'
+      }).then(function (res) {
+        if (res.error) {
+          $('ret-error').textContent = SiskuUtil.friendlyDbError(res.error);
+          $('ret-error').hidden = false;
+          self.disabled = false;
+          return;
+        }
+        loadReturns(true).then(function () { renderReturns(); openReturnRequest(r.id); });
+      }).catch(function (e) {
+        $('ret-error').textContent = 'Ошибка сети: ' + e.message;
+        $('ret-error').hidden = false;
+        self.disabled = false;
+      });
+    });
+
+    $('ret-modal-backdrop').classList.add('open');
+  }
+
+  /* ---------- статистика «Возвраты» (v0.16.0) ---------- */
+  function returnsInPeriod() {
+    var days = $('r-period').value;
+    var list = state.returns.requests.slice();
+    if (days !== 'all') {
+      var from = Date.now() - Number(days) * 864e5;
+      list = list.filter(function (r) { return new Date(r.created_at).getTime() >= from; });
+    }
+    return list;
+  }
+  function returnAggregates(list) {
+    var verified = list.filter(function (r) { return r.status === 'verified'; });
+    var rejected = list.filter(function (r) { return r.status === 'rejected'; });
+    var sum = verified.reduce(function (s, r) {
+      var o = orderById(r.order_id);
+      return s + (o ? o.total + o.delivery_cost : 0);
+    }, 0);
+    var paidN = verified.filter(function (r) { return r.refund_paid; }).length;
+    var resolved = list.filter(function (r) { return r.resolved_at; });
+    var avgDays = resolved.length
+      ? resolved.reduce(function (s, r) { return s + (new Date(r.resolved_at) - new Date(r.created_at)); }, 0) / resolved.length / 864e5
+      : 0;
+    return { verified: verified, rejected: rejected, sum: sum, paidN: paidN, avgDays: avgDays };
+  }
+  function renderReturnStats() {
+    if (!state.returnsLoaded) return;
+    var list = returnsInPeriod();
+    var agg = returnAggregates(list);
+    $('kpi-returns').innerHTML =
+      kpi('Заявок', list.length, 'за выбранный период') +
+      kpi('Возвратов оформлено', agg.verified.length, 'товар проверен, возврат оформлен') +
+      kpi('Отклонено', agg.rejected.length, 'заявок отклонено') +
+      kpi('Сумма возвратов', money(agg.sum), agg.paidN + ' с отметкой «деньги возвращены»') +
+      kpi('Средний срок', agg.avgDays ? agg.avgDays.toFixed(1) + ' дн.' : '—', 'от заявки до завершения');
+    drawReasons(list);
+    drawReturnDays(list);
+  }
+  function reasonRows(list) {
+    var counts = {};
+    list.forEach(function (r) { counts[r.reason_id] = (counts[r.reason_id] || 0) + 1; });
+    var known = {};
+    var rows = state.returns.reasons.map(function (rr) {
+      known[rr.id] = true;
+      return { name: rr.name, n: counts[rr.id] || 0 };
+    });
+    Object.keys(counts).forEach(function (rid) {
+      if (!known[rid]) rows.push({ name: 'Причина №' + rid + ' (вне справочника)', n: counts[rid] });
+    });
+    rows.sort(function (a, b) { return b.n - a.n; });
+    return rows;
+  }
+  function drawReasons(list) {
+    var rows = reasonRows(list);
+    $('reasons-empty').hidden = list.length !== 0;
+    if (state.returnMode !== 'chart') {
+      destroyChart('reasons');
+      $('reasons-chart').hidden = true;
+      $('reasons-table').hidden = false;
+      $('table-reasons').innerHTML =
+        '<thead><tr><th>Причина</th><th style="text-align:right">Заявок</th><th style="text-align:right">Доля, %</th></tr></thead><tbody>' +
+        (rows.length
+          ? rows.map(function (r) {
+              return '<tr><td>' + esc(r.name) + '</td>' +
+                '<td class="tabular" style="text-align:right">' + r.n + '</td>' +
+                '<td class="tabular" style="text-align:right">' + (list.length ? Math.round(r.n / list.length * 100) : 0) + '</td></tr>';
+            }).join('')
+          : '<tr><td colspan="3" class="muted">Нет данных</td></tr>') +
+        '</tbody>';
+      return;
+    }
+    $('reasons-table').hidden = true;
+    $('reasons-chart').hidden = false;
+    chartDefaults(); destroyChart('reasons');
+    var nz = rows.filter(function (r) { return r.n > 0; });
+    $('chart-reasons').style.display = nz.length ? '' : 'none';
+    if (!nz.length) return;
+    state.charts.reasons = new Chart($('chart-reasons'), {
+      type: 'bar',
+      data: {
+        labels: nz.map(function (r) { return r.name; }),
+        datasets: [{ label: 'Заявок', data: nz.map(function (r) { return r.n; }),
+          backgroundColor: SiskuUtil.hexToRgba(GOLD, .45), borderColor: GOLD, borderWidth: 1 }]
+      },
+      options: {
+        indexAxis: 'y', responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { precision: 0 }, grid: { color: LINE } },
+          y: { grid: { display: false } }
+        }
+      }
+    });
+  }
+  function drawReturnDays(list) {
+    chartDefaults(); destroyChart('returnDays');
+    $('return-days-empty').hidden = list.length !== 0;
+    $('chart-return-days').style.display = list.length ? '' : 'none';
+    if (!list.length) return;
+    var byDay = {};
+    list.forEach(function (r) {
+      var k = dayKey(r.created_at);          /* локальная дата — без UTC-фантомов */
+      byDay[k] = (byDay[k] || 0) + 1;
+    });
+    var keys = Object.keys(byDay).sort();
+    state.charts.returnDays = new Chart($('chart-return-days'), {
+      type: 'line',
+      data: {
+        labels: keys.map(function (k) { var p = k.split('-'); return p[2] + '.' + p[1]; }),
+        datasets: [{ label: 'Заявок', data: keys.map(function (k) { return byDay[k]; }),
+          borderColor: GOLD, backgroundColor: SiskuUtil.hexToRgba(GOLD, .15), fill: true, tension: .35 }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          y: { ticks: { precision: 0 }, grid: { color: LINE } },
+          x: { grid: { display: false } }
+        }
+      }
+    });
+  }
+  function exportReturnsCsv() {
+    var list = returnsInPeriod();
+    var agg = returnAggregates(list);
+    var periodLabel = $('r-period').selectedOptions[0].textContent;
+    var R = [];
+    R.push(['Статистика возвратов — период «' + periodLabel + '»']);
+    R.push([]);
+    R.push(['1. Сводка'], ['Метрика', 'Значение']);
+    R.push(['Заявок', list.length]);
+    R.push(['Возвратов оформлено (verified)', agg.verified.length]);
+    R.push(['Отклонено', agg.rejected.length]);
+    R.push(['В обработке', list.length - agg.verified.length - agg.rejected.length]);
+    R.push(['Сумма возвратов, ₽', agg.sum]);
+    R.push(['С отметкой «деньги возвращены»', agg.paidN]);
+    R.push(['Средний срок, дней', agg.avgDays ? agg.avgDays.toFixed(1) : '—']);
+    R.push([]);
+    R.push(['2. Причины'], ['Причина', 'Заявок', 'Доля, %']);
+    reasonRows(list).forEach(function (r) {
+      R.push([r.name, r.n, list.length ? Math.round(r.n / list.length * 100) : 0]);
+    });
+    R.push([]);
+    R.push(['3. Заявки'], ['№', 'Создана', 'Заказ №', 'Клиент', 'Причина', 'Статус', 'Деньги возвращены', 'Завершена', 'Комментарий']);
+    list.slice().sort(function (a, b) { return new Date(b.created_at) - new Date(a.created_at); })
+      .forEach(function (r) {
+        var o = orderById(r.order_id);
+        R.push([r.id, fmtDate(r.created_at), r.order_id, o ? o.customer_name : '',
+          reasonById(r.reason_id).name || '', returnStatusLabel(r.status),
+          r.refund_paid ? 'да' : 'нет', r.resolved_at ? fmtDate(r.resolved_at) : '',
+          (r.comment || '').replace(/;/g, ',').replace(/\n/g, ' ')]);
+      });
+    var csv = R.map(function (row) {
+      return row.map(SiskuUtil.csvCell).join(';');   /* анти-формульный префикс (фикс F06) */
+    }).join('\r\n');
+    var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'sisku-returns-stats-' + $('r-period').value + '-' + dayKey(new Date()) + '.csv';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
   /* ---------- вкладки и события ---------- */
-  /* правка 2.11 (v0.15.0): «Заказы → Возвраты» — панель-заглушка внутри
-     admin.html (П21: отдельная страница и статусная модель возвратов — M4) */
+  /* v0.16.0 (fp №3): «Заказы → Возвраты» — полноценная очередь заявок
+     (вместо заглушки v0.15.0); данные — draft_returns_bundle одним RPC */
   function showReturns(on) {
     $('panel-orders').hidden = on;
     $('panel-returns').hidden = !on;
-    if (on) $('panel-stats').hidden = true;
+    if (on) {
+      $('panel-stats').hidden = true;
+      loadReturns(false).then(function () { renderReturns(); }).catch(function (e) {
+        $('rr-loading').hidden = true;
+        $('rr-error').hidden = false;
+        $('rr-error').textContent = 'Не удалось загрузить заявки: ' + (e.message || e);
+      });
+    }
   }
   function switchTab(which) {
     var orders = which === 'orders';
@@ -896,9 +1311,42 @@
       });
     });
 
-    /* правка 2.11: кнопка сегмента «Возвраты» и хэш admin.html#returns
-       (ссылка со страницы «Сборка») открывают панель-заглушку */
+    /* v0.16.0 (fp №3): кнопка сегмента «Возвраты» и хэш admin.html#returns
+       (ссылка со страницы «Сборка») открывают очередь заявок */
     $('seg-returns').addEventListener('click', function () { showReturns(true); });
+
+    /* очередь заявок: фильтр, пагинация, обновление, открытие карточки */
+    $('rr-filter').addEventListener('change', function () {
+      state.rrFilter = this.value; state.rrPage = 1; renderReturns();
+    });
+    $('rr-refresh').addEventListener('click', function () {
+      loadReturns(true).then(function () { renderReturns(); }).catch(function (e) {
+        $('rr-loading').hidden = true;
+        $('rr-error').hidden = false;
+        $('rr-error').textContent = 'Не удалось загрузить заявки: ' + (e.message || e);
+      });
+    });
+    $('rr-prev').addEventListener('click', function () { state.rrPage -= 1; renderReturns(); });
+    $('rr-next').addEventListener('click', function () { state.rrPage += 1; renderReturns(); });
+    $('rr-body').addEventListener('click', function (e) {
+      var tr = e.target.closest('tr[data-rid]');
+      if (tr) openReturnRequest(Number(tr.getAttribute('data-rid')));
+    });
+    $('ret-modal-close').addEventListener('click', function () { $('ret-modal-backdrop').classList.remove('open'); });
+    $('ret-modal-backdrop').addEventListener('click', function (e) {
+      if (e.target === $('ret-modal-backdrop')) $('ret-modal-backdrop').classList.remove('open');
+    });
+
+    /* статистика «Возвраты»: период, CSV, вид причин */
+    $('r-period').addEventListener('change', renderReturnStats);
+    $('btn-returns-csv').addEventListener('click', exportReturnsCsv);
+    $('reasons-seg').addEventListener('click', function (e) {
+      var b = e.target.closest('.seg-btn');
+      if (!b) return;
+      state.returnMode = b.getAttribute('data-mode') === 'chart' ? 'chart' : 'table';
+      $('reasons-seg').querySelectorAll('.seg-btn').forEach(function (x) { x.classList.toggle('active', x === b); });
+      drawReasons(returnsInPeriod());
+    });
 
     /* ссылка admin.html#stats открывает сразу вкладку статистики;
        v0.13.0: #stats-promos и т.п. открывают конкретную подвкладку */

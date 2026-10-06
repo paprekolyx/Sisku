@@ -22,7 +22,9 @@
     look: null,             /* применённый комплект: {id, title, percent} */
     looks: [], lookItems: {},
     brandRows: [],
-    lastOrderId: null       /* для кнопки «Отследить заказ» на экране успеха */
+    lastOrderId: null,      /* для кнопки «Отследить заказ» на экране успеха */
+    returnReasons: [],      /* v0.16.0 (fp №3): активные причины возврата из справочника */
+    lastTrack: null         /* v0.16.0: результат отслеживания — вход в форму возврата */
   };
 
   /* ---------- утилиты ---------- */
@@ -215,14 +217,20 @@
     (d.look_items || []).forEach(function (i) {
       (state.lookItems[i.look_id] = state.lookItems[i.look_id] || []).push(i);
     });
+    /* v0.16.0: причины возврата — из бандла витрины v2 (скрипт 22); если база
+       ещё не обновлена (бандл v1) — отдельный запрос ниже подстрахует */
+    state.returnReasons = d.return_reasons || [];
+    if (!state.returnReasons.length) loadReturnReasons();
     buildFilters();
     buildOrderSelects();
+    buildReturnReasons();
     if (window.enhanceSelects) enhanceSelects();   /* кастомные селекты поверх нативных */
     renderCatalog();
     renderLooks();
     renderCart();
   }
   function loadAllLegacy() {
+    loadReturnReasons();   /* v0.16.0: отдельным запросом, ошибка не блокирует витрину */
     return Promise.all([
       db.from('brands').select('*').eq('is_active', true).order('name'),
       db.from('categories').select('*').order('id'),
@@ -260,6 +268,30 @@
       renderLooks();
       renderCart();
     });
+  }
+
+  /* ---------- v0.16.0 (fp №3): причины возврата для формы заявки ----------
+     Причины — из справочника return_reasons (активные, по порядку). Основной
+     путь — бандл витрины v2 (скрипт 22); запасной — отдельный запрос (база
+     без скрипта 22 не роняет витрину: форма просто не откроется без причин). */
+  function loadReturnReasons() {
+    if (!db) return;
+    db.from('return_reasons').select('*').eq('is_active', true).order('sort_order').then(function (res) {
+      if (res.error || !res.data) return;
+      state.returnReasons = res.data;
+      buildReturnReasons();
+      if (window.enhanceSelects) enhanceSelects($('return-modal-backdrop'));
+    }).catch(function () {});
+  }
+  function buildReturnReasons() {
+    var sel = $('rr-reason');
+    if (!sel) return;
+    var ph = state.content['returns.form.reason.placeholder'] || 'Выберите причину…';
+    sel.innerHTML = '<option value="">' + esc(ph) + '</option>' +
+      state.returnReasons.map(function (r) {
+        return '<option value="' + r.id + '">' + esc(r.name) + '</option>';
+      }).join('');
+    sel.dispatchEvent(new Event('refresh'));   /* кастомный селект ui.js — синхронно */
   }
 
   /* ---------- фильтры ---------- */
@@ -363,10 +395,19 @@
         if (v) {
           varCell = '<div class="lt-var"><span class="muted">' + esc(v.label) + '</span></div>';
         } else {
-          var opts = (state.variants[i.product_id] || []).filter(function (x) { return x.stock > 0; });
+          /* правка 2.2 (v0.16.0, записка 2): единственный вариант товара —
+             выбран по умолчанию (без «Выберите размер…»); проверка в addLook
+             при этом не срабатывает ложно. Вариантов несколько — как раньше:
+             плейсхолдер + только варианты в наличии */
+          var allVars = state.variants[i.product_id] || [];
+          var single = allVars.length === 1;
+          var opts = single ? allVars : allVars.filter(function (x) { return x.stock > 0; });
           varCell = '<div class="lt-var"><select class="look-var-sel" data-look="' + l.id + '" data-idx="' + idx + '" aria-label="Размер: ' + esc(p ? p.name : '') + '">' +
-            '<option value="">Выберите размер…</option>' +
-            opts.map(function (x) { return '<option value="' + x.id + '">' + esc(x.label) + ' (' + x.stock + ' шт.)</option>'; }).join('') +
+            (single ? '' : '<option value="">Выберите размер…</option>') +
+            opts.map(function (x) {
+              return '<option value="' + x.id + '"' + (single ? ' selected' : '') + '>' +
+                esc(x.label) + (x.stock ? ' (' + x.stock + ' шт.)' : ' (нет в наличии)') + '</option>';
+            }).join('') +
             '</select></div>';
         }
         /* правка 2.6 (v0.15.0): наименование — блок, вариант — блок ниже
@@ -479,7 +520,11 @@
     $('pm-variants').innerHTML = vars.map(function (v) {
       return '<button class="variant' + (v.stock ? '' : ' out') + '" data-vid="' + v.id + '">' +
         esc(v.label) + '<span class="st">' + (v.stock ? v.stock + ' шт.' : 'нет') + '</span></button>';
-    }).join('') || '<span class="muted">варианты не заданы</span>';
+    }).join('') || '<span class="muted">нет в наличии</span>';
+    /* v0.16.0 (приёмка v0.15.0 §2.1, записка 1-баг): товар без вариантов
+       (или с нулём наличия по всем вариантам) — состояние «нет в наличии»,
+       кнопка «В корзину» неактивна; тост «Выберите размер» — только когда
+       выбор реально есть (обработчик pm-add ниже) */
     $('pm-variants').querySelectorAll('.variant').forEach(function (b) {
       b.addEventListener('click', function () {
         if (b.classList.contains('out')) return;
@@ -495,6 +540,9 @@
       var btn = $('pm-variants').querySelector('[data-vid="' + first.id + '"]');
       if (btn) btn.click();
     }
+    var anyStock = vars.some(function (v) { return v.stock > 0; });
+    $('pm-add').disabled = !anyStock;
+    if (!anyStock) $('pm-stock').textContent = 'нет в наличии';
     openModal('product-modal-backdrop');
   }
 
@@ -596,11 +644,17 @@
     $('cart-open').addEventListener('click', function () {
       $('cart-drawer').classList.add('open');
       $('drawer-backdrop').classList.add('open');
+      /* правка 2.8 (v0.16.0, записка М3): фон не скроллится при открытой
+         корзине — паттерн модалок (openModal/closeModal выше) */
+      document.body.style.overflow = 'hidden';
     });
   }
   function closeDrawer() {
     $('cart-drawer').classList.remove('open');
     $('drawer-backdrop').classList.remove('open');
+    /* скролл возвращается, только если нет открытых модалок (checkout
+       закрывает drawer и сразу открывает модалку заказа — она держит блокировку) */
+    if (!document.querySelector('.modal-backdrop.open')) document.body.style.overflow = '';
   }
 
   /* ---------- оформление заказа ---------- */
@@ -796,6 +850,8 @@
       e.preventDefault();
       var err = $('tr-error');
       err.hidden = true;
+      $('track-return').hidden = true;   /* v0.16.0: CTA возврата показывается только с результатом */
+      state.lastTrack = null;
       var id = Number($('tr-id').value);
       var tail = $('tr-tail').value.trim();
       if (!id || !tail) { err.textContent = 'Заполните оба поля'; err.hidden = false; return; }
@@ -809,6 +865,12 @@
           return;
         }
         $('track-result').hidden = false;
+        /* v0.16.0 (fp №3): «Оформить возврат» — из статусов «Отправлен» и
+           «Доставлен» (track_order v2, скрипт 22: return_available); из
+           «Возврата» повторные заявки не делаем (решение аналитика 06.10.2026).
+           База без скрипта 22 — поля нет, кнопка не показывается */
+        state.lastTrack = { order_id: id, code: tail, status_code: d.status_code || '' };
+        $('track-return').hidden = d.return_available !== true;
         $('track-list').innerHTML = d.history.map(function (h) {
           return '<li><span class="dot"></span><span><span class="st">' + esc(h.status) + '</span>' +
             (h.comment ? '<div class="cm">' + esc(h.comment) + '</div>' : '') + '</span>' +
@@ -821,6 +883,58 @@
       closeModal('order-modal-backdrop');
       if (state.lastOrderId) $('tr-id').value = state.lastOrderId;
       openModal('track-modal-backdrop');
+    });
+
+    /* v0.16.0 (fp №3): форма заявки на возврат — вход из окна отслеживания */
+    $('tr-return-btn').addEventListener('click', function () {
+      if (!state.lastTrack) return;
+      $('rr-order').value = state.lastTrack.order_id;
+      $('rr-code').value = state.lastTrack.code;
+      $('rr-comment').value = '';
+      $('rr-error').hidden = true;
+      $('rr-reason-err').hidden = true;
+      var sel = $('rr-reason');
+      sel.value = '';
+      sel.dispatchEvent(new Event('refresh'));
+      $('return-form-view').hidden = false;
+      $('return-success-view').hidden = true;
+      closeModal('track-modal-backdrop');
+      openModal('return-modal-backdrop');
+    });
+    $('return-form').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var err = $('rr-error');
+      var reasonErr = $('rr-reason-err');
+      err.hidden = true; reasonErr.hidden = true;
+      if (!state.lastTrack) { err.textContent = 'Сначала найдите заказ в окне отслеживания'; err.hidden = false; return; }
+      var reasonId = Number($('rr-reason').value);
+      if (!reasonId) { reasonErr.textContent = 'Выберите причину возврата'; reasonErr.hidden = false; return; }
+      var btn = $('rr-submit');
+      var label = btn.textContent;
+      btn.disabled = true;
+      btn.textContent = 'Отправляем…';
+      db.rpc('create_return_request', { p: {
+        order_id: state.lastTrack.order_id,
+        code: state.lastTrack.code,
+        reason_id: reasonId,
+        comment: $('rr-comment').value.trim() || null
+      } }).then(function (res) {
+        btn.disabled = false;
+        btn.textContent = label;
+        if (res.error) { err.textContent = SiskuUtil.friendlyDbError(res.error); err.hidden = false; return; }
+        $('rr-number').textContent = '№ ' + res.data.request_id;
+        $('return-form-view').hidden = true;
+        $('return-success-view').hidden = false;
+        /* заявка оформлена: CTA в окне отслеживания гасится до смены статуса
+           (повторную заявку сервер всё равно не примет — антиспам) */
+        state.lastTrack = null;
+        $('track-return').hidden = true;
+      }).catch(function (err2) {
+        btn.disabled = false;
+        btn.textContent = label;
+        err.textContent = 'Ошибка сети: ' + err2.message;
+        err.hidden = false;
+      });
     });
 
     $('product-grid').addEventListener('click', function (e) {
@@ -839,7 +953,14 @@
     });
     $('pm-add').addEventListener('click', function () {
       if (!state.currentProduct) return;
-      if (!state.currentVariant) { toast('Выберите ' + $('pm-variant-label').textContent.toLowerCase()); return; }
+      if (!state.currentVariant) {
+        /* правка 2.1: тост «Выберите размер» — только когда варианты в наличии
+           действительно есть; иначе — честное «нет в наличии» */
+        var vars = state.variants[state.currentProduct.id] || [];
+        if (vars.some(function (v) { return v.stock > 0; })) toast('Выберите ' + $('pm-variant-label').textContent.toLowerCase());
+        else toast('Товара нет в наличии');
+        return;
+      }
       addToCart(state.currentProduct.id, state.currentVariant);
     });
     $('cart-body').addEventListener('click', function (e) {

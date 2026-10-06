@@ -71,7 +71,12 @@
         return '<tr>' +
           '<td class="user-fio" data-edit="' + u.id + '" title="Открыть редактирование">' + esc(u.fio) +
             (u.is_active ? '' : ' <span class="muted">(отключён)</span>') + '</td>' +
-          '<td class="muted">' + esc(u.email) + '</td>' +
+          /* правка 2.5 (v0.16.0, записка 8): mailto — только для валидного
+             e-mail (тот же паттерн, что tel:); старые данные («-» и мусор) —
+             обычный текст без ссылки */
+          '<td class="muted">' + (emailOk(u.email)
+            ? '<a class="mail-link" href="mailto:' + esc(u.email) + '">' + esc(u.email) + '</a>'
+            : esc(u.email)) + '</td>' +
           '<td>' + (function () {
             /* фикс F05 (v0.14.0): whitelist схем — javascript: в messenger_url больше не исполняется;
                правка 2.19 (v0.15.0): пусто — «нет» (владелец просила не показывать «—») */
