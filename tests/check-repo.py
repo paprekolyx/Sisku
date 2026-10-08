@@ -170,6 +170,10 @@ REQUIRED = [
     # v2.6 (волна v0.17.1): универсальный чек-лист приёмки (регистрация — решение Д2а)
     # и инструкция волны
     'docs/priemka/chek-list-priemki-funkcionala.md', 'docs/update/update-v0171.md',
+    # v2.7 (волна v0.18.0): карточка клиента — история заказов, варианты имён
+    # и история контактов (скрипты 28–29, create_order v9) и инструкция волны
+    'supabase/28_client_history.sql', 'supabase/29_client_card_v9.sql',
+    'docs/update/update-v0180.md',
 ] + ['assets/img/products/p00%d.webp' % i for i in range(1, 9)]
 
 # ---------- 1. обязательные файлы + реестр supabase/README.md ----------
@@ -394,6 +398,6 @@ if problems:
     for p in problems:
         print('  ✗ ' + p)
     sys.exit(1)
-print('✓ check-repo v2.6: все проверки пройдены (версия %s, страниц %d, SQL-скриптов %d, последний %s)'
+print('✓ check-repo v2.7: все проверки пройдены (версия %s, страниц %d, SQL-скриптов %d, последний %s)'
       % (ver, len(HTML_PAGES), len(on_disk), LAST_SQL))
 sys.exit(0)
