@@ -1,6 +1,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -45,7 +46,7 @@
 
 <!-- ======================= HERO ======================= -->
 <section class="hero">
-  <img class="hero-img" src="assets/img/hero.jpg" alt="Коллекция Sisku: пальто и парфюмерия в светлом интерьере">
+  <img class="hero-img" src="assets/img/hero.webp" alt="Коллекция Sisku: пальто и парфюмерия в светлом интерьере" width="1600" height="1600" fetchpriority="high">
   <div class="container hero-in">
     <div class="eyebrow" data-content="hero.eyebrow">Осень — зима 2026</div>
     <h1 data-content="hero.title">Одежда и ароматы, которые остаются с вами</h1>
@@ -68,7 +69,7 @@
         <p class="muted" data-content="about.text">Каждая вещь проходит ручной отбор.</p>
       </div>
       <div class="about-img">
-        <img id="about-img" src="assets/img/products/p001.jpg" alt="Пальто из коллекции Sisku">
+        <img id="about-img" src="assets/img/products/p001.webp" alt="Пальто из коллекции Sisku" width="1200" height="1200" loading="lazy">
       </div>
     </div>
     <div class="advantages reveal">
@@ -182,7 +183,7 @@
       <dl style="margin:0">
         <div class="contact-line"><dt>Телефон</dt><dd><a data-content-href="contacts.phone_href" data-content="contacts.phone_display" href="tel:+79991234567">+7 (999) 123-45-67</a></dd></div>
         <div class="contact-line"><dt>E-mail</dt><dd><a href="mailto:hello@sisku.example" data-content="contacts.email" data-content-href="contacts.email.href">hello@sisku.example</a></dd></div>
-        <div class="contact-line"><dt>Мессенджер</dt><dd><a data-content-href="contacts.messenger_url" data-content="contacts.messenger" href="https://t.me/sisku_shop">Написать в Telegram</a></dd></div>
+        <div class="contact-line"><dt>Мессенджер</dt><dd><a data-content-href="contacts.messenger_url" data-content="contacts.messenger">Написать в Telegram</a><!-- v0.17.0 (находка F3): хардкод-fallback URL убран — href только из site_content (правило: изменяемые тексты не хардкодить) --></dd></div>
         <div class="contact-line"><dt>Отслеживание</dt><dd><button class="btn accent" data-open="track-modal-backdrop" style="min-height:44px;padding:0 22px" data-content="order.track.cta">Статус заказа по номеру</button></dd></div>
       </dl>
       <dl style="margin:0">

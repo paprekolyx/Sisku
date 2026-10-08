@@ -1,6 +1,7 @@
 
 
 
+
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
@@ -143,7 +144,7 @@
               <button type="button" class="btn ghost small" id="pf-img-btn">Выбрать фото</button>
               <span class="muted" id="pf-img-name" style="font-size:12px">файл не выбран</span>
             </div>
-            <input id="pf-img-url" placeholder="или ссылка/путь: assets/img/products/p009.jpg">
+            <input id="pf-img-url" placeholder="или ссылка/путь: assets/img/products/p009.webp">
           </div>
           <div class="muted" style="font-size:12px;margin-top:6px">Файл сжимается в браузере до ~320px и хранится в записи товара (черновик). Ссылка/путь приоритетнее файла, если заполнить оба.</div>
         </div>
@@ -180,7 +181,7 @@
     <button class="modal-close" id="pvfull-modal-close" aria-label="Закрыть">×</button>
     <h2 style="font-size:22px;margin-bottom:6px">Полный предпросмотр: карточка товара витрины</h2>
     <p class="muted" style="font-size:13px;margin-bottom:18px">Модалка товара глазами покупателя: разметка и стили витрины переиспользуются (iframe со styles.css), данные — из текущей формы, включая несохранённые правки.</p>
-    <iframe class="pvfull-frame" id="pvfull-frame" title="Предпросмотр карточки товара на витрине"></iframe>
+    <iframe class="pvfull-frame" id="pvfull-frame" title="Предпросмотр карточки товара на витрине" sandbox=""></iframe><!-- v0.17.0 (находка A1): sandbox — скрипты в предпросмотре запрещены -->
   </div>
 </div>
 
