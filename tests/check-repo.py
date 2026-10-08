@@ -32,6 +32,15 @@ v2.4 (волна v0.16.0): в REQUIRED добавлены скрипты supabas
 docs/update/update-v0160.md, docs/priemka/priemka-v015.md и
 docs/viki-reestr.md (опубликованная редакция реестра документации —
 решение аналитика 06.10.2026); проверка последнего SQL-скрипта — 25.
+v2.5 (волна v0.17.0): консолидация SQL — REQUIRED приведён к baseline
+(01–05, 09) + инкременты 26–27 + исторический архив
+supabase/archive/sql-01-25-v0160.md; удалённые скрипты 06–08, 10–25 больше
+не требуются; изображения — WebP (hero.webp, products/*.webp); добавлены
+docs/review/review-v0160.md и docs/update/update-v0170.md; НОВЫЕ ПРОВЕРКИ
+(внешний ревью 06.10.2026, находки A1/E3): <iframe> только с sandbox,
+srcdoc в JS только при sandbox на странице, запрет инлайновых on*-обработчиков
+в HTML и в JS-строках (vendor не сканируется); проверка последнего
+SQL-скрипта — 27.
 
 Запуск из корня репозитория:  python3 tests/check-repo.py
 Проверяет (без сети и без базы):
@@ -98,7 +107,7 @@ REQUIRED = [
     'assets/vendor/supabase.min.js', 'assets/vendor/chart.umd.min.js',
     'assets/fonts/prata-cyrillic-400.woff2', 'assets/fonts/prata-latin-400.woff2',
     'assets/fonts/manrope-cyrillic-var.woff2', 'assets/fonts/manrope-latin-var.woff2',
-    'assets/img/hero.jpg',
+    'assets/img/hero.webp',
     # data/ — бэкап содержимого БД: с 06.10.2026 автовыгрузки Supabase (*_rows.csv);
     # мастер-источники brands/categories/products/variants.csv удалены из репозитория
     # (посев каталога новой базы — скрипт 05 или импорт бэкапов, setup-supabase шаг 3)
@@ -109,24 +118,24 @@ REQUIRED = [
     'data/brand_templates_rows.csv',
     'supabase/01_schema.sql', 'supabase/02_rls_and_access.sql', 'supabase/03_functions.sql',
     'supabase/04_seed_references_and_content.sql', 'supabase/05_seed_catalog.sql',
-    'supabase/06_remove_paid_status.sql', 'supabase/07_draft_v040.sql', 'supabase/08_text_fixes.sql', 'supabase/09_admin_bundles.sql',
-    'assets/img/hero-dark.jpg', 'docs/update/update-v050.md', 'docs/update/update-v060.md',
-    'shop.html', 'assets/js/shop.js', 'supabase/10_promo_and_tracking.sql', 'docs/update/update-v070.md',
-    'products.html', 'assets/js/products.js', 'supabase/11_product_management.sql', 'docs/update/update-v080.md',
+    'supabase/09_admin_bundles.sql',
+    'assets/img/hero-dark.webp', 'docs/update/update-v050.md', 'docs/update/update-v060.md',
+    'shop.html', 'assets/js/shop.js', 'docs/update/update-v070.md',
+    'products.html', 'assets/js/products.js', 'docs/update/update-v080.md',
     'categories.html', 'brands.html', 'manage.html', 'sitecontent.html', 'sitemap.html',
     'assets/js/categories.js', 'assets/js/brands.js', 'assets/js/manage.js', 'assets/js/sitecontent.js',
-    'supabase/12_manage_policies.sql', 'docs/update/update-v090.md', 'docs/update/update-v091.md',
-    'looks.html', 'assets/js/looks.js', 'supabase/13_reserve_and_looks.sql', 'docs/update/update-v100.md',
+    'docs/update/update-v090.md', 'docs/update/update-v091.md',
+    'looks.html', 'assets/js/looks.js', 'docs/update/update-v100.md',
     'brandbook.html', 'clients.html', 'assets/js/brandbook.js', 'assets/js/clients.js',
-    'assets/js/brandvars.js', 'supabase/14_brandbook.sql', 'docs/update/update-v110.md',
+    'assets/js/brandvars.js', 'docs/update/update-v110.md',
     'supabase/README.md', 'docs/update/update-v111.md',
     'privacy.html', 'offer.html', 'docs/update/update-v0120.md',
-    'supabase/15_clients_and_promo_stats.sql', 'docs/update/update-v0130.md', 'docs/update/update-v0131.md',
+    'docs/update/update-v0130.md', 'docs/update/update-v0131.md',
     'docs/setup/setup-repo-pages.md', 'docs/setup/setup-supabase.md', 'docs/update/update-v040.md',
     'docs/feature-proposals.md', 'docs/review/code-review-v040.md',
     'docs/tehpasport.md', 'tests/check-repo.py',
     # v0.14.0 — волна по независимому ревью (docs/review-v0131.md — отчёт ревьюера)
-    'supabase/16_race_and_integrity_fixes.sql', 'docs/update/update-v0140.md', 'docs/review/review-v0131.md',
+    'docs/update/update-v0140.md', 'docs/review/review-v0131.md',
     # v0.14.1 — патч по ревью волны v0.14.0 (docs/review-v0140.md); плановые
     # документы в репозитории (docs/plan/ — пункт ревью F37 закрыт)
     'docs/update/update-v0141.md', 'docs/review/review-v0140.md',
@@ -136,17 +145,19 @@ REQUIRED = [
     'docs/review/SISKU-REVIEW-v0140.md', 'docs/plan/matrica-dostupa.md',
     'data/site_content_rows.csv', 'data/brand_colors_rows.csv',
     # v0.15.0 — волна по запискам приёмки v0.14.x (скрипты 17–21)
-    'supabase/17_look_atomic_save.sql', 'supabase/18_set_paid_unlock.sql',
-    'supabase/19_client_name_policy.sql', 'supabase/20_site_content_wave_keys.sql',
-    'supabase/21_admin_users_phone.sql', 'docs/update/update-v0150.md',
+    'docs/update/update-v0150.md',
     # v2.4 (волна v0.16.0): возвраты + карантин (скрипты 22–25), инструкция
     # волны, обработка приёмки v0.15.0 и опубликованная редакция реестра
     # документации (docs/viki-reestr.md — решение аналитика 06.10.2026)
-    'supabase/22_return_reasons_and_requests.sql', 'supabase/23_quarantine.sql',
-    'supabase/24_return_content_keys.sql', 'supabase/25_delivery_seed_align.sql',
     'docs/update/update-v0160.md', 'docs/priemka/priemka-v015.md',
     'docs/viki-reestr.md',
-] + ['assets/img/products/p00%d.jpg' % i for i in range(1, 9)]
+    # v2.5 (волна v0.17.0): инкременты 26–27, обработка внешнего ревью,
+    # инструкция волны и исторический архив скриптов 01–25 (заморожен)
+    'supabase/26_field_limits_and_promo_timezone.sql',
+    'supabase/27_webp_image_paths.sql',
+    'supabase/archive/sql-01-25-v0160.md',
+    'docs/review/review-v0160.md', 'docs/update/update-v0170.md',
+] + ['assets/img/products/p00%d.webp' % i for i in range(1, 9)]
 
 # ---------- 1. обязательные файлы + реестр supabase/README.md ----------
 for f in REQUIRED:
@@ -261,6 +272,36 @@ for f in HTML_PAGES:
     if 'assets/js/util.js' not in io.open(f, encoding='utf-8').read():
         problems.append('%s: не подключён assets/js/util.js (общие утилиты, фикс F32)' % f)
 
+# ---------- 6.8. iframe/srcdoc — только с sandbox (v2.5, ревью A1/E3) ----------
+for f in HTML_PAGES:
+    html = io.open(f, encoding='utf-8').read()
+    for m in re.finditer(r'<iframe\b[^>]*>', html):
+        if 'sandbox' not in m.group(0):
+            problems.append('%s: <iframe> без атрибута sandbox (ревью A1 — скрипты в предпросмотре недопустимы)' % f)
+for js, page in JS_PAGE:
+    if not os.path.isfile(js):
+        continue
+    srcjs = io.open(js, encoding='utf-8').read()
+    if '.srcdoc' in srcjs:
+        phtml = io.open(page, encoding='utf-8').read() if os.path.isfile(page) else ''
+        if 'sandbox' not in phtml:
+            problems.append('%s: присваивается srcdoc, но на странице %s нет sandbox у iframe (ревью A1)' % (js, page))
+
+# ---------- 6.9. запрет инлайновых on*-обработчиков (v2.5, ревью E3) ----------
+INLINE_ON = re.compile(r'\bon(?:error|load|click|change|input|submit|focus|blur|mouseover|mouseout)\s*=\s*(?:\\?["\'])')
+for f in HTML_PAGES:
+    html = io.open(f, encoding='utf-8').read()
+    m = INLINE_ON.search(html)
+    if m:
+        problems.append('%s: инлайновый on*-обработчик «%s» (запрещено с v2.5 — делегирование, см. util.js)' % (f, m.group(0)[:30]))
+for f in sorted(os.listdir('assets/js')):
+    if not f.endswith('.js'):
+        continue
+    srcjs = io.open(os.path.join('assets/js', f), encoding='utf-8').read()
+    m = INLINE_ON.search(srcjs)
+    if m:
+        problems.append('assets/js/%s: инлайновый on*-обработчик в строке разметки «%s» (запрещено с v2.5)' % (f, m.group(0)[:30]))
+
 # ---------- 7. SQL (опционально) ----------
 try:
     import pglast
@@ -309,6 +350,6 @@ if problems:
     for p in problems:
         print('  ✗ ' + p)
     sys.exit(1)
-print('✓ check-repo v2.4: все проверки пройдены (версия %s, страниц %d, SQL-скриптов %d, последний %s)'
+print('✓ check-repo v2.5: все проверки пройдены (версия %s, страниц %d, SQL-скриптов %d, последний %s)'
       % (ver, len(HTML_PAGES), len(on_disk), LAST_SQL))
 sys.exit(0)
