@@ -41,6 +41,12 @@ docs/review/review-v0160.md и docs/update/update-v0170.md; НОВЫЕ ПРОВ�
 srcdoc в JS только при sandbox на странице, запрет инлайновых on*-обработчиков
 в HTML и в JS-строках (vendor не сканируется); проверка последнего
 SQL-скрипта — 27.
+v2.6 (волна v0.17.1): в REQUIRED добавлены docs/priemka/chek-list-priemki-
+funkcionala.md и docs/update/update-v0171.md (решение Д2а аналитика от
+08.10.2026); НОВЫЕ ПРОВЕРКИ (решения Д2б/Д2в): версии документов в перечне
+структуры README = версии в шапках документов (таблица пар «файл → регэксп
+шапки → маркер перечня», версии берутся из шапок живьём), README↔update-vXXX —
+последняя инструкция волны упомянута в README (АН-26).
 
 Запуск из корня репозитория:  python3 tests/check-repo.py
 Проверяет (без сети и без базы):
@@ -55,6 +61,10 @@ SQL-скрипта — 27.
        в каждом скрипте с create policy (правило 6, фикс F20);
   6.6. последний SQL-скрипт упомянут в tehpasport/setup-supabase/README;
   6.7. util.js подключён на всех страницах (фикс F32);
+  6.8. <iframe> только с sandbox; srcdoc в JS только при sandbox на странице (v2.5);
+  6.9. запрет инлайновых on*-обработчиков в HTML и JS-строках (v2.5);
+  6.10. версии документов в перечне структуры README = версии в шапках (v2.6, Д2б);
+  6.11. последняя инструкция update-vXXX упомянута в README (v2.6, Д2в/АН-26);
   7. SQL: синтаксис (если установлен pglast; иначе проверка пропускается);
   8. HTML: сбалансированность тегов (все страницы).
 
@@ -157,6 +167,9 @@ REQUIRED = [
     'supabase/27_webp_image_paths.sql',
     'supabase/archive/sql-01-25-v0160.md',
     'docs/review/review-v0160.md', 'docs/update/update-v0170.md',
+    # v2.6 (волна v0.17.1): универсальный чек-лист приёмки (регистрация — решение Д2а)
+    # и инструкция волны
+    'docs/priemka/chek-list-priemki-funkcionala.md', 'docs/update/update-v0171.md',
 ] + ['assets/img/products/p00%d.webp' % i for i in range(1, 9)]
 
 # ---------- 1. обязательные файлы + реестр supabase/README.md ----------
@@ -302,6 +315,37 @@ for f in sorted(os.listdir('assets/js')):
     if m:
         problems.append('assets/js/%s: инлайновый on*-обработчик в строке разметки «%s» (запрещено с v2.5)' % (f, m.group(0)[:30]))
 
+# ---------- 6.10. версии документов: перечень README = шапка (v2.6, Д2б) ----------
+# Таблица пар: файл → регэксп версии в шапке → маркер упоминания в перечне README.
+# Версии НЕ захардкожены: берутся из шапок живьём и сравниваются с перечнем
+# структуры README — при bump версии документа правка check-repo не нужна,
+# рассинхрон «документ обновлён, перечень README — нет» ловится автоматически.
+DOC_VERSIONS = [
+    ('docs/plan/migration-plan.md',    r'Версия документа:\*\*\s*([\d.]+)', 'v{}'),
+    ('docs/tz-proekta.md',             r'Версия документа:\*\*\s*([\d.]+)', 'v{}'),
+    ('docs/plan/otchet.md',            r'Версия документа:\*\*\s*([\d.]+)', 'v{}'),
+    ('docs/plan/matrica-dostupa.md',   r'Версия документа:\*\*\s*([\d.]+)', 'v{}'),
+    ('docs/plan/voprosy-vladeltsu.md', r'ред\.\s*(\d+\.\d+)',               'ред. {}'),
+]
+readme_full = io.open('README.md', encoding='utf-8').read()
+for path, rx, marker in DOC_VERSIONS:
+    src = io.open(path, encoding='utf-8').read()
+    m = re.search(rx, src)
+    if not m:
+        problems.append('%s: версия документа не найдена в шапке — регэксп таблицы DOC_VERSIONS устарел' % path)
+        continue
+    v = marker.format(m.group(1))
+    fname = os.path.basename(path)
+    if not any(fname in ln and v in ln for ln in readme_full.split('\n')):
+        problems.append('README.md: «%s» не упомянут в перечне с версией %s (версия в шапке документа) — рассинхрон перечня' % (fname, v))
+
+# ---------- 6.11. README ↔ update-vXXX: последняя инструкция упомянута (v2.6, Д2в/АН-26) ----------
+upd_files = [f for f in os.listdir('docs/update') if re.fullmatch(r'update-v\d+\.md', f)]
+if upd_files:
+    latest_upd = max(upd_files, key=lambda f: int(re.search(r'\d+', f).group(0)))
+    if latest_upd not in readme_full:
+        problems.append('README.md: последняя инструкция обновления %s не упомянута (сверка README↔update-vXXX, v2.6)' % latest_upd)
+
 # ---------- 7. SQL (опционально) ----------
 try:
     import pglast
@@ -350,6 +394,6 @@ if problems:
     for p in problems:
         print('  ✗ ' + p)
     sys.exit(1)
-print('✓ check-repo v2.5: все проверки пройдены (версия %s, страниц %d, SQL-скриптов %d, последний %s)'
+print('✓ check-repo v2.6: все проверки пройдены (версия %s, страниц %d, SQL-скриптов %d, последний %s)'
       % (ver, len(HTML_PAGES), len(on_disk), LAST_SQL))
 sys.exit(0)
