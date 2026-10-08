@@ -1,6 +1,4 @@
 
-
-
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
@@ -19,7 +17,7 @@
 </head>
 <body>
 
-<div class="warnbar"><b>Черновик:</b> клиентская база — реальные строки из таблицы clients (скрипт 15): клиенты выделяются из заказов автоматически, дедупликация по телефону и e-mail. База Supabase находится вне РФ — вводите <b>только тестовые данные</b>. История заказов в карточке клиента — следующая волна (docs/feature-proposals.md, пункт 1).</div>
+<div class="warnbar"><b>Черновик:</b> клиентская база — реальные строки из таблицы clients (скрипт 15): клиенты выделяются из заказов автоматически, дедупликация по телефону и e-mail. База Supabase находится вне РФ — вводите <b>только тестовые данные</b>. В карточке клиента — история заказов, варианты имён и история контактов (v0.18.0, fp №1).</div>
 
 <header class="topbar">
   <div class="container topbar-in">
@@ -83,10 +81,40 @@
 
 <!-- ========== карточка клиента ========== -->
 <div class="modal-backdrop" id="cl-modal-backdrop">
-  <div class="modal" style="width:min(640px,100%);padding:36px 38px" role="dialog" aria-modal="true" aria-label="Карточка клиента">
+  <div class="modal" style="width:min(720px,100%);padding:36px 38px" role="dialog" aria-modal="true" aria-label="Карточка клиента">
     <button class="modal-close" id="cl-modal-close" aria-label="Закрыть">×</button>
     <h2 id="clm-title" style="font-size:24px;margin-bottom:4px">Клиент</h2>
     <p class="client-note" id="clm-stats" style="margin-bottom:18px"></p>
+
+    <!-- v0.18.0 (fp №1): блоки карточки — история заказов, варианты имён,
+         история контактов. Данные — одним RPC draft_client_card_bundle
+         (решение Д5: один запрос на открытие, без N+1 — грабля №6) -->
+    <div id="clm-card-error" class="err-box" hidden style="margin-bottom:14px"></div>
+
+    <div style="margin-bottom:18px">
+      <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+        <span style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">История заказов</span>
+        <span class="muted" id="clm-orders-count" style="font-size:12px"></span>
+      </div>
+      <div id="clm-orders" style="font-size:13px"><span class="muted">Загружаем…</span></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:18px">
+      <div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px">
+          <span style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">Варианты имён</span>
+          <span id="clm-name-flag" hidden style="font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)">подтверждено</span>
+        </div>
+        <div id="clm-names" style="font-size:13px"><span class="muted">Загружаем…</span></div>
+      </div>
+      <div>
+        <div style="margin-bottom:8px">
+          <span style="font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)">История контактов</span>
+        </div>
+        <div id="clm-contacts" style="font-size:13px"><span class="muted">Загружаем…</span></div>
+      </div>
+    </div>
+
     <form id="cl-form" novalidate>
       <div class="field" style="margin-bottom:14px">
         <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="clm-fio">ФИО</label>
