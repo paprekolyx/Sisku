@@ -43,11 +43,19 @@
       /* применяем только к активной теме страницы */
       if (r.theme !== cur) return;
       var v = VAR_MAP[r.key];
-      if (v) el.style.setProperty(v, r.value);
-      if (r.key === 'accent') accent = r.value;
+      /* v0.17.0 (внешний ревью 06.10.2026, находка A1): значения из кэша
+         валидируются до применения — цвет только hex (CSS-инъекция из
+         localStorage-кэша токенов исключена; hex-валидация сохранения брендбука
+         v0.14.0 теперь продублирована на пути применения) */
+      var cv = String(r.value == null ? '' : r.value).trim();
+      if (v && /^#[0-9a-fA-F]{3,8}$/.test(cv)) {
+        el.style.setProperty(v, cv);
+        if (r.key === 'accent') accent = cv;
+      }
     });
-    if (typoBase) el.style.setProperty('--font-base', typoBase + 'px');
-    if (typoScale) el.style.setProperty('--type-scale', (Number(typoScale) / 100));
+    /* v0.17.0 (находка A1): типографика — только число */
+    if (typoBase && /^\d{1,3}$/.test(String(typoBase).trim())) el.style.setProperty('--font-base', String(typoBase).trim() + 'px');
+    if (typoScale && /^\d{2,3}$/.test(String(typoScale).trim())) el.style.setProperty('--type-scale', (Number(typoScale) / 100));
     /* производный токен: мягкая подложка акцента (плашки, warnbar, hover) —
        в той же пропорции, что базовые темы (тёмная 14%, светлая 10%) */
     if (accent) {

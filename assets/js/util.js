@@ -53,8 +53,14 @@
     return s;                                              /* относительный путь */
   }
 
+  /* v0.17.0 (внешний ревью 06.10.2026, находка D1): форматирование чисел
+     вынесено из money() — колбэки осей графиков админки используют fmtNum
+     вместо локальных копий Intl.NumberFormat */
+  function fmtNum(n) {
+    return new Intl.NumberFormat('ru-RU').format(Math.round(Number(n || 0)));
+  }
   function money(n) {
-    return new Intl.NumberFormat('ru-RU').format(Math.round(Number(n || 0))) + ' ₽';
+    return fmtNum(n) + ' ₽';
   }
   function fmtDate(iso) { return iso ? new Date(iso).toLocaleDateString('ru-RU') : '—'; }
   function fmtDateTime(iso) {
@@ -130,8 +136,26 @@
     return 'rgba(' + r + ',' + g + ',' + b + ',' + a + ')';
   }
 
+  /* ---------- заглушка изображений: делегирование вместо inline onerror ----
+     v0.17.0 (внешний ревью 06.10.2026, находка E3): инлайновые on*-обработчики
+     запрещены (check-repo v2.5). Событие error ресурса не всплывает, но
+     ловится в фазе capture на document: <img data-img-fallback="stub"> при
+     ошибке загрузки получает src заглушки от провайдера модуля страницы
+     (site.js/products.js регистрируют его через setStubProvider). */
+  var stubProvider = null;
+  function setStubProvider(fn) { stubProvider = fn; }
+  document.addEventListener('error', function (e) {
+    var t = e.target;
+    if (t && t.tagName === 'IMG' && t.getAttribute &&
+        t.getAttribute('data-img-fallback') === 'stub') {
+      t.removeAttribute('data-img-fallback');   /* защита от цикла подмен */
+      if (stubProvider) { try { t.src = stubProvider(); } catch (err) { /* тишина */ } }
+    }
+  }, true);
+
   window.SiskuUtil = {
-    esc: esc, safeUrl: safeUrl, money: money,
+    esc: esc, safeUrl: safeUrl, money: money, fmtNum: fmtNum,
+    setStubProvider: setStubProvider,
     fmtDate: fmtDate, fmtDateTime: fmtDateTime, dayKey: dayKey,
     maskPhone: maskPhone, maskEmail: maskEmail,
     phoneOk: phoneOk, emailOk: emailOk, phoneKey: phoneKey, emailKey: emailKey,

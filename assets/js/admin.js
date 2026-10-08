@@ -36,7 +36,26 @@
   function statusByid(id) { return state.statuses.filter(function (s) { return s.id === id; })[0] || {}; }
   function paymentByid(id) { return state.payments.filter(function (m) { return m.id === id; })[0] || {}; }
   function deliveryByid(id) { return state.deliveries.filter(function (m) { return m.id === id; })[0] || {}; }
-  function itemsOf(orderId) { return state.items.filter(function (i) { return i.order_id === orderId; }); }
+  /* v0.17.0 (внешний ревью 06.10.2026, находка B3): индекс order_id → позиции
+     (строится в loadAll) вместо O(N²) filter на каждую строку таблицы */
+  function itemsOf(orderId) {
+    if (state.itemsByOrder) return state.itemsByOrder[orderId] || [];
+    return state.items.filter(function (i) { return i.order_id === orderId; });
+  }
+
+  /* v0.17.0 (находка B2): после смены статуса/оплаты — точечное обновление:
+     заказ в state правится на месте, история этого заказа перезапрашивается одним
+     лёгким запросом, список/карточка/статистика пересчитываются локально —
+     полная перезагрузка draft_admin_bundle больше не дёргается */
+  function refreshOrderHistory(orderId) {
+    if (!db) return Promise.resolve();
+    return db.from('order_status_history').select('*').eq('order_id', orderId)
+      .then(function (res) {
+        if (res.error || !res.data) return;
+        state.history = state.history.filter(function (h) { return h.order_id !== orderId; })
+          .concat(res.data);
+      });
+  }
 
 
   /* ---------- загрузка ---------- */
@@ -53,6 +72,10 @@
       var d = res.data;
       state.orders = d.orders;
       state.items = d.items;
+      state.itemsByOrder = {};   /* v0.17.0 (находка B3) */
+      d.items.forEach(function (i) {
+        (state.itemsByOrder[i.order_id] = state.itemsByOrder[i.order_id] || []).push(i);
+      });
       state.statuses = d.statuses;
       state.transitions = d.transitions;
       state.payments = d.payments;
@@ -231,7 +254,12 @@
         db.rpc('admin_set_status', { p_order_id: o.id, p_status_code: code, p_changed_by: 'draft-admin' })
           .then(function (res) {
             if (res.error) { $('oc-error').textContent = res.error.message; $('oc-error').hidden = false; self.disabled = false; return; }
-            loadAll().then(function () { openOrder(o.id); });
+            /* v0.17.0 (находка B2): точечное обновление вместо loadAll() */
+            var ns = state.statuses.filter(function (s) { return s.code === code; })[0];
+            if (ns) o.status_id = ns.id;
+            refreshOrderHistory(o.id).then(function () {
+              renderOrders(); renderStatsActive(); openOrder(o.id);
+            });
           })
           .catch(function (e) {
             $('oc-error').textContent = 'Ошибка сети: ' + e.message;
@@ -248,7 +276,13 @@
         db.rpc('admin_set_paid', { p_order_id: o.id, p_is_paid: !o.is_paid, p_changed_by: 'draft-admin' })
           .then(function (res) {
             if (res && res.error) { $('oc-error').textContent = res.error.message; $('oc-error').hidden = false; self.disabled = false; return; }
-            loadAll().then(function () { openOrder(o.id); });
+            /* v0.17.0 (находка B2): признак оплаты — точечно; событие оплаты
+               в истории придёт лёгким запросом refreshOrderHistory */
+            o.is_paid = !o.is_paid;
+            o.paid_at = o.is_paid ? new Date().toISOString() : null;
+            refreshOrderHistory(o.id).then(function () {
+              renderOrders(); renderStatsActive(); openOrder(o.id);
+            });
           })
           .catch(function (e) {
             $('oc-error').textContent = 'Ошибка сети: ' + e.message;
@@ -371,7 +405,7 @@
         interaction: { mode: 'index', intersect: false },
         scales: {
           y: { ticks: { precision: 0 }, grid: { color: LINE } },
-          y1: { position: 'right', grid: { display: false }, ticks: { callback: function (v) { return new Intl.NumberFormat('ru-RU').format(v); } } }
+          y1: { position: 'right', grid: { display: false }, ticks: { callback: function (v) { return SiskuUtil.fmtNum(v); } } }
         },
         plugins: { legend: { labels: { color: MUTED, boxWidth: 14 } } }
       }
@@ -700,7 +734,7 @@
         interaction: { mode: 'index', intersect: false },
         scales: {
           y: { ticks: { precision: 0 }, grid: { color: LINE } },
-          y1: { position: 'right', grid: { display: false }, ticks: { callback: function (v) { return new Intl.NumberFormat('ru-RU').format(v); } } }
+          y1: { position: 'right', grid: { display: false }, ticks: { callback: function (v) { return SiskuUtil.fmtNum(v); } } }
         },
         plugins: { legend: { labels: { color: MUTED, boxWidth: 14 } } }
       }
@@ -1019,7 +1053,9 @@
             return;
           }
           /* при «Товар вернулся на склад» заказ переведён в «Возврат»,
-             остатки — в карантине: обновляем оба бандла и перерисовываем */
+             остатки — в карантине: обновляем оба бандла и перерисовываем
+             (v0.17.0, находка B2 — здесь полная перезагрузка ОПРАВДАНА:
+             переход заявки меняет заказ, остатки и карантин одновременно) */
           Promise.all([loadAll(), loadReturns(true)]).then(function () {
             renderReturns();
             openReturnRequest(r.id);
@@ -1376,7 +1412,13 @@
     $('s-period').addEventListener('change', renderStats);
     $('btn-refresh').addEventListener('click', function () {
       $('orders-loading').hidden = false;
-      loadAll();
+      /* v0.17.0 (находка D2): сетевая ошибка при обновлении — плашка,
+         а не вечный скелетон (unhandled rejection больше не теряется) */
+      loadAll().catch(function (err) {
+        $('orders-loading').hidden = true;
+        $('orders-error').hidden = false;
+        $('orders-error').textContent = 'Ошибка загрузки: ' + SiskuUtil.friendlyDbError(err);
+      });
     });
     $('btn-csv').addEventListener('click', exportCsv);
     $('orders-body').addEventListener('click', function (e) {
@@ -1399,7 +1441,8 @@
     loadAll().catch(function (err) {
       $('orders-loading').hidden = true;
       $('orders-error').hidden = false;
-      $('orders-error').textContent = 'Ошибка загрузки: ' + err.message;
+      /* v0.17.0 (находка D2): читаемое сообщение вместо сырого */
+      $('orders-error').textContent = 'Ошибка загрузки: ' + SiskuUtil.friendlyDbError(err);
     });
   });
 })();

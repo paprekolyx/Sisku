@@ -20,13 +20,19 @@
   function $(id) { return document.getElementById(id); }
   /* общие утилиты — assets/js/util.js (v0.14.0, фикс F32: одна копия на проект) */
   var esc = SiskuUtil.esc, money = SiskuUtil.money;
+  /* v0.17.0 (находка B4): dataURL заглушки кэшируется (раньше пересоздавался
+     на каждый рендер); находка E3: подмена битых src — делегированием util.js */
+  var stubCache = null;
   function stubSrc() {
+    if (stubCache) return stubCache;
     var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400">' +
       '<rect width="300" height="400" fill="#1D1D24"/>' +
       '<rect x="1" y="1" width="298" height="398" fill="none" stroke="#2A2A33"/>' +
       '<text x="150" y="215" font-family="Georgia,serif" font-size="64" fill="#C9A96A" text-anchor="middle">S</text></svg>';
-    return 'data:image/svg+xml,' + encodeURIComponent(svg);
+    stubCache = 'data:image/svg+xml,' + encodeURIComponent(svg);
+    return stubCache;
   }
+  if (window.SiskuUtil) SiskuUtil.setStubProvider(stubSrc);
   function catName(id) { var c = state.cats.filter(function (x) { return x.id === id; })[0]; return c ? c.name : '—'; }
   function brandName(id) { var b = state.brands.filter(function (x) { return x.id === id; })[0]; return b ? b.name : '—'; }
   function stockOf(productId) {
@@ -101,7 +107,7 @@
     $('prod-body').innerHTML = list.map(function (p) {
       var stock = stockOf(p.id);
       return '<tr>' +
-        '<td><img class="thumb" src="' + esc(p.image_url || stubSrc()) + '" alt="" onerror="this.onerror=null;this.src=\'' + stubSrc() + '\'"></td>' +
+        '<td><img class="thumb" src="' + esc(p.image_url || stubSrc()) + '" alt="" data-img-fallback="stub"></td>' +
         '<td class="tabular">' + esc(p.article) + '</td>' +
         '<td class="user-fio" data-edit="' + p.id + '" title="Открыть карточку">' + esc(p.name) + '</td>' +
         '<td class="muted" style="font-size:13px">' + esc(catName(p.category_id)) + '</td>' +
@@ -158,9 +164,45 @@
       isNew = !!(pr && pr.created_at && (Date.now() - new Date(pr.created_at).getTime()) < 30 * 864e5);
     }
     var theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
+    /* v0.17.0 (внешний ревью 06.10.2026, находка A1): токены брендбука для
+       предпросмотра — статическим инлайн-<style> из КЭША токенов
+       (window.brandCachedRows) со СТРОГОЙ валидацией каждого значения:
+       цвет — только hex (#RGB…#RRGGBBAA), типографика — только число.
+       Скриптов в iframe нет (sandbox="" в products.html) — путь исполнения
+       JS из неконтролируемого localStorage-кэша закрыт; CSS-инъекция через
+       подменённый кэш исключена валидацией (двойная защита: brandvars.js
+       валидирует и при применении к страницам витрины). */
+    var pvTokenCss = (function () {
+      var hexOk = /^#[0-9a-fA-F]{3,8}$/;
+      var numOk = /^\d{1,3}$/;
+      var VAR_MAP = { bg: '--bg', surface: '--surface', card: '--card',
+                      text: '--text', muted: '--muted', accent: '--accent',
+                      line: '--line', btn_bg: '--btn-bg', btn_text: '--btn-text' };
+      var css = ':root{', accent = '', typoBase = null, typoScale = null;
+      var rows = (typeof window.brandCachedRows === 'function') ? (window.brandCachedRows() || []) : [];
+      rows.forEach(function (r) {
+        if (!r || !r.key) return;
+        if (r.theme !== 'global' && r.theme !== theme) return;
+        var v = String(r.value == null ? '' : r.value).trim();
+        var name = VAR_MAP[r.key];
+        if (name && hexOk.test(v)) {
+          css += name + ':' + v + ';';
+          if (r.key === 'accent') accent = v;
+        }
+        if (r.theme === 'global') {
+          if (r.key === 'typo_base' && numOk.test(v)) typoBase = v;
+          if (r.key === 'typo_scale' && numOk.test(v) && Number(v) >= 50 && Number(v) <= 200) typoScale = v;
+        }
+      });
+      if (accent) css += '--accent-soft:color-mix(in srgb, ' + accent + ' ' +
+        (theme === 'dark' ? '14' : '10') + '%, transparent);';
+      if (typoBase) css += '--font-base:' + typoBase + 'px;';
+      if (typoScale) css += '--type-scale:' + (Number(typoScale) / 100) + ';';
+      return css + '}';
+    })();
     var card =
       '<div class="product-grid" style="max-width:920px;margin:0 auto;border:1px solid var(--line);background:var(--surface)">' +
-        '<div class="product-media"><img src="' + esc(img) + '" alt="" onerror="this.style.display=\'none\'"></div>' +
+        '<div class="product-media"><img src="' + esc(img) + '" alt=""></div>' +
         '<div class="product-info">' +
           (isNew ? '<div style="margin-bottom:12px"><span style="display:inline-block;background:var(--accent);color:var(--bg);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;padding:4px 10px;font-weight:600">New</span></div>' : '') +
           '<div class="brand">' + esc(brand) + '</div>' +
@@ -184,7 +226,7 @@
       '<!DOCTYPE html><html lang="ru" data-theme="' + theme + '"><head><meta charset="utf-8">' +
       '<link rel="stylesheet" href="assets/css/fonts.css">' +
       '<link rel="stylesheet" href="assets/css/styles.css">' +
-      '<script src="assets/js/brandvars.js"></' + 'script>' +
+      '<style>' + pvTokenCss + '</style>' +
       '</head><body style="margin:0;padding:28px 20px">' + card + '</body></html>';
     $('pvfull-modal-backdrop').classList.add('open');
   }
@@ -422,10 +464,23 @@
         var get = function (k) { return idx[k] !== undefined ? (r[idx[k]] || '').trim() : ''; };
         var article = get('article'), name = get('name'), price = Number(get('price'));
         if (!article || !name || !price) { errors.push('строка ' + (i + 2) + ': пропущены article/name/price'); return; }
+        /* v0.17.0 (находка A4): brand_id/category_id проверяются по загруженным
+           справочникам — битые/несуществующие id не летят в базу молча, строка
+           пропускается с читаемым отчётом */
+        var brandId = get('brand_id') ? Number(get('brand_id')) : null;
+        var catId = get('category_id') ? Number(get('category_id')) : null;
+        if (brandId !== null && (!isFinite(brandId) ||
+            !state.brands.some(function (b) { return b.id === brandId; }))) {
+          errors.push('строка ' + (i + 2) + ': brand_id «' + get('brand_id') + '» нет в справочнике'); return;
+        }
+        if (catId !== null && (!isFinite(catId) ||
+            !state.cats.some(function (c) { return c.id === catId; }))) {
+          errors.push('строка ' + (i + 2) + ': category_id «' + get('category_id') + '» нет в справочнике'); return;
+        }
         payload.push({
           article: article, name: name, price: price,
-          brand_id: get('brand_id') ? Number(get('brand_id')) : null,
-          category_id: get('category_id') ? Number(get('category_id')) : null,
+          brand_id: brandId,
+          category_id: catId,
           description: get('description') || null,
           image_url: get('image_url') || null,
           is_active: get('is_active').toLowerCase() !== 'false'

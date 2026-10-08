@@ -38,16 +38,24 @@
     clearTimeout(t._h);
     t._h = setTimeout(function () { t.classList.remove('show'); }, 2600);
   }
-  /* заглушка вместо отсутствующего фото (монограмма на градиенте) */
+  /* заглушка вместо отсутствующего фото (монограмма на градиенте)
+     v0.17.0 (внешний ревью 06.10.2026, находка B4): dataURL кэшируется —
+     раньше пересоздавался на каждый рендер */
+  var stubCache = null;
   function stubSrc() {
+    if (stubCache) return stubCache;
     var svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 400">' +
       '<rect width="300" height="400" fill="#1D1D24"/>' +
       '<rect x="1" y="1" width="298" height="398" fill="none" stroke="#2A2A33"/>' +
       '<text x="150" y="215" font-family="Georgia,serif" font-size="64" fill="#C9A96A" text-anchor="middle">S</text></svg>';
-    return 'data:image/svg+xml,' + encodeURIComponent(svg);
+    stubCache = 'data:image/svg+xml,' + encodeURIComponent(svg);
+    return stubCache;
   }
+  /* v0.17.0 (находка E3): вместо inline onerror — data-img-fallback +
+     делегирование в util.js; заглушка — провайдер подмены src */
+  if (window.SiskuUtil) SiskuUtil.setStubProvider(stubSrc);
   function imgTag(src, alt, cls) {
-    return '<img class="' + (cls || '') + '" src="' + esc(src || stubSrc()) + '" alt="' + esc(alt || '') + '" loading="lazy" onerror="this.onerror=null;this.src=\'' + stubSrc() + '\'">';
+    return '<img class="' + (cls || '') + '" src="' + esc(src || stubSrc()) + '" alt="' + esc(alt || '') + '" loading="lazy" data-img-fallback="stub">';
   }
 
   /* ---------- корзина (localStorage, паттерн учебного проекта) ---------- */
@@ -77,7 +85,7 @@
     var img = document.querySelector('.hero-img');
     if (!img) return;
     var dark = document.documentElement.getAttribute('data-theme') === 'dark';
-    img.src = dark ? 'assets/img/hero-dark.jpg' : 'assets/img/hero.jpg';
+    img.src = dark ? 'assets/img/hero-dark.webp' : 'assets/img/hero.webp';   /* v0.17.0 (находка B1): WebP */
   }
   /* v0.15.0 (записка 2, ключ about.img.dark): тёмная версия фото «О магазине» —
      путь из site_content; пусто — то же фото, что в светлой теме */
@@ -86,7 +94,7 @@
     if (!img) return;
     var dark = document.documentElement.getAttribute('data-theme') === 'dark';
     var custom = dark ? String(state.content['about.img.dark'] || '') : '';
-    img.src = custom || 'assets/img/products/p001.jpg';
+    img.src = custom || 'assets/img/products/p001.webp';   /* v0.17.0 (находка B1): WebP */
   }
   function initTheme() {
     setHeroImage();   /* герой зависит от темы: светлая — женский образ, тёмная — мужской */
@@ -1004,7 +1012,9 @@
     });
 
     loadAll().catch(function (err) {
-      $('product-grid').innerHTML = '<div class="cart-empty" style="grid-column:1/-1">Не удалось загрузить каталог: ' + esc(err.message) + '</div>';
+      /* v0.17.0 (находка D2): сообщение — через friendlyDbError (сырой код
+         ошибки покупателю не показывается) */
+      $('product-grid').innerHTML = '<div class="cart-empty" style="grid-column:1/-1">Не удалось загрузить каталог: ' + esc(SiskuUtil.friendlyDbError(err)) + '</div>';
     });
   });
 })();
