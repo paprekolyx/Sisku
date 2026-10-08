@@ -4,6 +4,8 @@
    признак оплаты, маскирование контактов, CSV) и статистика (KPI, графики).
    Паттерны учебного проекта: маска + «глазик», CSV с BOM и «;»,
    смена статусов только через серверную функцию с проверкой переходов.
+   v0.18.0 (Д6): диплинк admin.html?order=N&back=client:M — карточка заказа
+   из истории заказов карточки клиента, обратная навигация «← К клиенту».
    ========================================================================== */
 (function () {
   'use strict';
@@ -20,6 +22,7 @@
     rrPage: 1,               /* пагинация очереди (30 на страницу) */
     returnMode: 'table',     /* статистика причин: chart | table */
     revealed: {},            /* заказ, у которого раскрыты контакты */
+    orderBack: null,         /* v0.18.0 (Д6): контекст обратной навигации карточки заказа */
     methodsMode: 'table',    /* «Таблица» по умолчанию, «Диаграмма» — по переключателю */
     sort: { field: 'created', dir: 'desc' },   /* сортировка таблицы заказов */
     page: 1,                                    /* пагинация таблицы заказов */
@@ -185,9 +188,12 @@
   }
 
   /* ---------- карточка заказа ----------
-     backReturn (v0.16.0): id заявки на возврат, из которой открыт заказ —
-     в карточке появляется обратная ссылка «← К заявке № X» */
-  function openOrder(id, backReturn) {
+     back (v0.16.0 → v0.18.0 обобщён): контекст обратной навигации —
+     { kind: 'return', id } — заявка на возврат («← К заявке на возврат № X»);
+     { kind: 'client', id } — карточка клиента («← К карточке клиента»,
+     deep link clients.html?client=N — решение Д6 волны v0.18.0) */
+  function openOrder(id, back) {
+    state.orderBack = back || null;   /* повторное открытие после смены статуса/оплаты — с тем же контекстом */
     var o = state.orders.filter(function (x) { return x.id === id; })[0];
     if (!o) return;
     var items = itemsOf(id);
@@ -203,7 +209,8 @@
       var locked = st.code === 'cancelled';   /* отменённые: статусы заблокированы, оплата — нет (правка 2.2) */
 
       $('order-modal-body').innerHTML =
-        (backReturn ? '<div style="margin-bottom:10px"><button class="linklike" id="oc-back-return">← К заявке на возврат № ' + backReturn + '</button></div>' : '') +
+        (back && back.kind === 'return' ? '<div style="margin-bottom:10px"><button class="linklike" id="oc-back-return">← К заявке на возврат № ' + back.id + '</button></div>' : '') +
+        (back && back.kind === 'client' ? '<div style="margin-bottom:10px"><button class="linklike" id="oc-back-client">← К карточке клиента</button></div>' : '') +
         '<div class="modal-head-row"><h2>Заказ № ' + o.id + '</h2>' +
         '<span class="status-pill status-pill-lg" data-code="' + esc(st.code) + '">' + esc(st.name) + '</span></div>' +
         '<div class="muted" style="font-size:12.5px;margin-top:2px">создан ' + fmtDate(o.created_at) + '</div>' +
@@ -258,7 +265,7 @@
             var ns = state.statuses.filter(function (s) { return s.code === code; })[0];
             if (ns) o.status_id = ns.id;
             refreshOrderHistory(o.id).then(function () {
-              renderOrders(); renderStatsActive(); openOrder(o.id);
+              renderOrders(); renderStatsActive(); openOrder(o.id, state.orderBack);
             });
           })
           .catch(function (e) {
@@ -281,7 +288,7 @@
             o.is_paid = !o.is_paid;
             o.paid_at = o.is_paid ? new Date().toISOString() : null;
             refreshOrderHistory(o.id).then(function () {
-              renderOrders(); renderStatsActive(); openOrder(o.id);
+              renderOrders(); renderStatsActive(); openOrder(o.id, state.orderBack);
             });
           })
           .catch(function (e) {
@@ -291,10 +298,16 @@
           });
       });
 
-    if (backReturn) {
+    if (back && back.kind === 'return') {
       $('oc-back-return').addEventListener('click', function () {
         $('order-modal-backdrop').classList.remove('open');
-        openReturnRequest(backReturn);
+        openReturnRequest(back.id);
+      });
+    }
+    if (back && back.kind === 'client') {
+      /* v0.18.0 (Д6): возврат в карточку клиента — deep link clients.html */
+      $('oc-back-client').addEventListener('click', function () {
+        window.location.href = 'clients.html?client=' + encodeURIComponent(back.id);
       });
     }
     $('order-modal-backdrop').classList.add('open');
@@ -1036,7 +1049,7 @@
     var toOrder = $('ret-to-order');
     if (toOrder) toOrder.addEventListener('click', function () {
       $('ret-modal-backdrop').classList.remove('open');
-      openOrder(r.order_id, r.id);   /* обратная навигация: заказ → «← К заявке» */
+      openOrder(r.order_id, { kind: 'return', id: r.id });   /* обратная навигация: заказ → «← К заявке» */
     });
     $('ret-modal-body').querySelectorAll('button[data-rst]').forEach(function (b) {
       b.addEventListener('click', function () {
@@ -1438,7 +1451,22 @@
       if (e.target === $('order-modal-backdrop')) $('order-modal-backdrop').classList.remove('open');
     });
 
-    loadAll().catch(function (err) {
+    loadAll().then(function () {
+      /* v0.18.0 (Д6): диплинк admin.html?order=N&back=client:M — карточка
+         заказа из истории заказов карточки клиента; открывается строго после
+         загрузки бандла (гонка исключена); back=client:M — обратная навигация */
+      var params = new URLSearchParams(window.location.search);
+      var oid = parseInt(params.get('order'), 10);
+      if (!oid) return;
+      var m = /^client:(\d+)$/.exec(params.get('back') || '');
+      var found = state.orders.filter(function (x) { return x.id === oid; })[0];
+      if (!found) {
+        $('orders-error').hidden = false;
+        $('orders-error').textContent = 'Заказ № ' + oid + ' не найден — ссылка устарела.';
+        return;
+      }
+      openOrder(oid, m ? { kind: 'client', id: Number(m[1]) } : null);
+    }).catch(function (err) {
       $('orders-loading').hidden = true;
       $('orders-error').hidden = false;
       /* v0.17.0 (находка D2): читаемое сообщение вместо сырого */
