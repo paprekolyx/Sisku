@@ -23,6 +23,12 @@
     returnMode: 'table',     /* статистика причин: chart | table */
     revealed: {},            /* заказ, у которого раскрыты контакты */
     orderBack: null,         /* v0.18.0 (Д6): контекст обратной навигации карточки заказа */
+    clientsStats: null,      /* v0.19.0 (fp №7): строки + пороги сегментов (лениво — при первом открытии подвкладки) */
+    cstFilter: '',           /* фильтр сегментов: '' | new | repeat | vip | dormant */
+    cstSort: { field: 'sum', dir: 'desc' },
+    cstPage: 1,              /* пагинация таблицы сегментов (30 на страницу) */
+    cstRevealed: {},         /* клиент, у которого раскрыты контакты */
+    cstSaving: false,        /* блокировка повторной отправки «Сохранить» (пороги) */
     methodsMode: 'table',    /* «Таблица» по умолчанию, «Диаграмма» — по переключателю */
     sort: { field: 'created', dir: 'desc' },   /* сортировка таблицы заказов */
     page: 1,                                    /* пагинация таблицы заказов */
@@ -659,6 +665,16 @@
       b.setAttribute('aria-selected', on ? 'true' : 'false');
     });
     STATS_TABS.forEach(function (t) { $('stab-' + t).hidden = t !== tab; });
+    /* v0.19.0 (fp №7): «Клиенты» — сегменты из draft_clients_bundle v3
+       (ленивая загрузка — паттерн «Возвратов», грабля №6: один запрос) */
+    if (tab === 'clients') {
+      loadClientsStats(false).then(function () { renderClientsStats(); }).catch(function (e) {
+        $('cst-loading').hidden = true;
+        $('cst-error').textContent = 'Не удалось загрузить клиентов: ' + SiskuUtil.friendlyDbError(e);
+        $('cst-error').hidden = false;
+      });
+      return;
+    }
     /* v0.16.0: «Возвраты» — данные из отдельного бандла (ленивая загрузка) */
     if (tab === 'returns') {
       loadReturns(false).then(function () { renderReturnStats(); }).catch(function (e) {
@@ -674,7 +690,227 @@
     if (state.statsTab === 'orders') renderStats();
     else if (state.statsTab === 'promos') renderPromoStats();
     else if (state.statsTab === 'returns') renderReturnStats();
-    /* admins и clients — заглушки, рендер не нужен */
+    else if (state.statsTab === 'clients') { if (state.clientsStats) renderClientsStats(); }
+    /* admins — заглушка, рендер не нужен */
+  }
+
+  /* ---------- подвкладка «Клиенты»: сегменты (v0.19.0, fp №7) ----------
+     Данные — draft_clients_bundle v3 (скрипт 30): сегмент считает сервер
+     (new/repeat/vip, приоритет VIP > repeat > new) + независимый признак
+     is_dormant («уснувший VIP» виден в обоих фильтрах — решение Д2);
+     пороги — site_content segments.* (модальное окно — Д4).
+     Ленивая загрузка — паттерн «Возвратов» (грабля №6: один запрос). */
+  var SEG_LABEL = { 'new': 'Новый', 'repeat': 'Повторный', 'vip': 'VIP' };
+
+  function loadClientsStats(force) {
+    if (state.clientsStats && !force) return Promise.resolve();
+    if (!db) return Promise.reject({ message: dbError || 'нет БД' });
+    $('cst-loading').hidden = false;
+    $('cst-error').hidden = true;
+    return db.rpc('draft_clients_bundle').then(function (res) {
+      $('cst-loading').hidden = true;
+      if (res.error) throw res.error;
+      var d = res.data || {};
+      var stats = {};
+      (d.stats || []).forEach(function (s) { stats[s.client_id] = s; });
+      var rows = (d.clients || []).map(function (c) {
+        var st = stats[c.id] || {};
+        c.orders = Number(st.orders || 0);
+        c.sum = Number(st.sum || 0);
+        c.paidSum = Number(st.paid_sum || 0);
+        c.first = st.first_order || null;
+        c.last = st.last_order || null;
+        /* клиент без заказов (крайний случай, смоук S7): тракт как «новый» */
+        c.segment = st.segment || 'new';
+        c.dormant = !!st.is_dormant;
+        return c;
+      });
+      state.clientsStats = { rows: rows, thresholds: d.thresholds || {} };
+    });
+  }
+
+  function cstFiltered() {
+    var f = state.cstFilter;
+    var list = state.clientsStats.rows.filter(function (c) {
+      if (!f) return true;
+      return f === 'dormant' ? c.dormant : c.segment === f;
+    });
+    var s = state.cstSort, dir = s.dir === 'asc' ? 1 : -1;
+    list.sort(function (a, b) {
+      function ts(x) { return x ? new Date(x).getTime() : 0; }
+      if (s.field === 'name') return a.full_name.localeCompare(b.full_name, 'ru') * dir;
+      if (s.field === 'count') return (a.orders - b.orders) * dir;
+      if (s.field === 'sum') return (a.sum - b.sum) * dir;
+      if (s.field === 'first') return (ts(a.first) - ts(b.first)) * dir;
+      return (ts(a.last) - ts(b.last)) * dir;   /* 'last' — давность */
+    });
+    return list;
+  }
+
+  function renderClientsStats() {
+    if (!state.clientsStats) return;
+    var rows = state.clientsStats.rows;
+    var th = state.clientsStats.thresholds;
+    /* KPI — один проход (Д3): счётчики сегментов, доля выручки VIP, LTV, средний чек */
+    var nNew = 0, nRep = 0, nVip = 0, nDor = 0, sumAll = 0, ordAll = 0, sumVip = 0;
+    rows.forEach(function (c) {
+      if (c.segment === 'vip') { nVip += 1; sumVip += c.sum; }
+      else if (c.segment === 'repeat') nRep += 1;
+      else nNew += 1;
+      if (c.dormant) nDor += 1;
+      sumAll += c.sum; ordAll += c.orders;
+    });
+    $('cst-kpi').innerHTML =
+      kpi('Клиентов', rows.length, 'всего в базе') +
+      kpi('Новые', nNew, 'один заказ') +
+      kpi('Повторные', nRep, 'два и более заказа') +
+      kpi('VIP', nVip, 'заказов ≥ ' + (th.vip_orders_min != null ? th.vip_orders_min : 5) +
+        ' или сумма ≥ ' + SiskuUtil.fmtNum(th.vip_sum_min != null ? th.vip_sum_min : 100000) + ' ₽') +
+      kpi('Уснули', nDor, 'без заказов ' + (th.dormant_days != null ? th.dormant_days : 90) + '+ дней') +
+      kpi('Доля выручки VIP', sumAll ? Math.round(sumVip / sumAll * 100) + '%' : '0%', 'от суммы всех заказов') +
+      kpi('LTV', money(rows.length ? sumAll / rows.length : 0), 'средняя сумма на клиента') +
+      kpi('Средний чек', money(ordAll ? sumAll / ordAll : 0), 'сумма заказов / число заказов');
+    $('cst-filters').querySelectorAll('.seg-btn').forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-seg') === state.cstFilter);
+    });
+    var list = cstFiltered();
+    var PAGESIZE = 30;                                 /* пагинация: 30 на страницу (паттерн проекта) */
+    var pages = Math.max(1, Math.ceil(list.length / PAGESIZE));
+    if (state.cstPage > pages) state.cstPage = pages;
+    if (state.cstPage < 1) state.cstPage = 1;
+    var visible = list.slice((state.cstPage - 1) * PAGESIZE, state.cstPage * PAGESIZE);
+    if (rows.length === 0) {
+      $('cst-empty').hidden = false;
+      $('cst-empty').textContent = 'Клиентов пока нет. Оформите тестовый заказ на витрине — клиенты появятся здесь автоматически.';
+    } else if (list.length === 0) {
+      $('cst-empty').hidden = false;
+      $('cst-empty').textContent = 'В этом сегменте клиентов нет — измените фильтр.';
+    } else {
+      $('cst-empty').hidden = true;
+    }
+    $('cst-body').innerHTML = visible.map(function (c) {
+      /* Д5: контакты маскируются; после «глазика» — tel:/mailto: только для
+         валидных (паттерн users.js v0.15.0/v0.16.0), невалидные — текст */
+      var revealed = state.cstRevealed[c.id];
+      var phone = revealed
+        ? (c.phone
+            ? (SiskuUtil.phoneOk(c.phone)
+                ? '<a class="tel-link" href="tel:' + esc(String(c.phone).replace(/[^\d+]/g, '')) + '">' + esc(c.phone) + '</a>'
+                : esc(c.phone))
+            : '—')
+        : esc(maskPhone(c.phone));
+      var email = revealed
+        ? (c.email
+            ? (SiskuUtil.emailOk(c.email)
+                ? '<a class="mail-link" href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a>'
+                : esc(c.email))
+            : '—')
+        : esc(maskEmail(c.email));
+      return '<tr>' +
+        '<td class="user-fio">' + esc(c.full_name) + '</td>' +
+        '<td><span class="seg-pill" data-seg="' + esc(c.segment) + '">' + esc(SEG_LABEL[c.segment] || c.segment) + '</span>' +
+          (c.dormant ? '<span class="dormant-mark" title="Без заказов ' + (th.dormant_days != null ? th.dormant_days : 90) + '+ дней">уснул</span>' : '') +
+        '</td>' +
+        '<td class="tabular muted masked">' + phone +
+          '<button class="eye" data-cst-eye="' + c.id + '" title="Показать или скрыть контакты">' + (revealed ? 'скрыть' : 'показать') + '</button>' +
+        '</td>' +
+        '<td class="muted">' + email + '</td>' +
+        '<td class="tabular">' + c.orders + '</td>' +
+        '<td class="tabular">' + money(c.sum) + '</td>' +
+        '<td class="tabular">' + money(c.paidSum) + '</td>' +
+        '<td class="tabular muted">' + fmtDate(c.first) + '</td>' +
+        '<td class="tabular muted">' + fmtDate(c.last) + '</td>' +
+      '</tr>';
+    }).join('');
+    document.querySelectorAll('#stab-clients th.sortable').forEach(function (t) {
+      var active = t.getAttribute('data-cst-sort') === state.cstSort.field;
+      t.classList.toggle('active', active);
+      t.querySelector('.sort-ic').textContent = active ? (state.cstSort.dir === 'asc' ? '▲' : '▼') : '↕';
+    });
+    var pager = $('cst-pager');
+    if (pages > 1) {
+      pager.hidden = false;
+      $('cst-pg-info').textContent = 'Стр. ' + state.cstPage + ' из ' + pages +
+        ' (показано ' + ((state.cstPage - 1) * PAGESIZE + 1) + '–' +
+        Math.min(list.length, state.cstPage * PAGESIZE) + ' из ' + list.length + ')';
+      $('cst-pg-prev').disabled = state.cstPage <= 1;
+      $('cst-pg-next').disabled = state.cstPage >= pages;
+    } else {
+      pager.hidden = true;
+    }
+  }
+
+  function exportCstCsv() {
+    if (!state.clientsStats) return;
+    var list = cstFiltered();                          /* выгрузка текущего сегмента — «для рассылок» (fp №7) */
+    var head = ['ФИО', 'Сегмент', 'Уснул', 'Телефон', 'E-mail', 'Заказов', 'Сумма заказов, ₽', 'Оплачено, ₽', 'Первый заказ', 'Последний заказ', 'Комментарий'];
+    var lines = [head.join(';')];
+    list.forEach(function (c) {
+      var row = [
+        c.full_name, SEG_LABEL[c.segment] || c.segment, c.dormant ? 'да' : 'нет',
+        c.phone || '', c.email || '', c.orders, Math.round(c.sum), Math.round(c.paidSum),
+        fmtDate(c.first), fmtDate(c.last),
+        (c.note || '').replace(/;/g, ',').replace(/\n/g, ' ')
+      ];
+      lines.push(row.map(SiskuUtil.csvCell).join(';'));   /* фикс F06 (v0.14.0): анти-формульный префикс */
+    });
+    var blob = new Blob(['\uFEFF' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'sisku-clients-segments-' + dayKey(new Date()) + '.csv';   /* фикс F29: локальная дата */
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  /* Пороги VIP/«уснувших» — модальное окно (Д4): значения — site_content
+     segments.*, сохранение — три последовательных точечных update (паттерн
+     sitecontent.js; блокировка повторной отправки), затем бандл force */
+  function openThresholds() {
+    if (!state.clientsStats) return;
+    var th = state.clientsStats.thresholds;
+    $('cstm-vip-orders').value = th.vip_orders_min != null ? th.vip_orders_min : 5;
+    $('cstm-vip-sum').value = th.vip_sum_min != null ? th.vip_sum_min : 100000;
+    $('cstm-days').value = th.dormant_days != null ? th.dormant_days : 90;
+    $('cstm-error').hidden = true;
+    $('cstm-backdrop').classList.add('open');
+  }
+  function thError(msg) { $('cstm-error').textContent = msg; $('cstm-error').hidden = false; }
+  function saveThresholds(e) {
+    e.preventDefault();
+    if (state.cstSaving) return;                       /* защита от повторных кликов */
+    var vo = parseInt($('cstm-vip-orders').value, 10);
+    var vs = parseInt($('cstm-vip-sum').value, 10);
+    var vd = parseInt($('cstm-days').value, 10);
+    if (!(vo >= 1)) { thError('VIP (заказов): целое число не менее 1'); return; }
+    if (!(vs >= 0)) { thError('VIP (сумма): число не менее 0'); return; }
+    if (!(vd >= 1)) { thError('«Уснул» (дней): целое число не менее 1'); return; }
+    state.cstSaving = true;
+    $('cstm-save').disabled = true;
+    var vals = [
+      { key: 'segments.vip_orders_min', v: vo },
+      { key: 'segments.vip_sum_min', v: vs },
+      { key: 'segments.dormant_days', v: vd }
+    ];
+    var chain = Promise.resolve();
+    vals.forEach(function (it) {
+      chain = chain.then(function () {
+        return db.from('site_content')
+          .update({ value: String(it.v), updated_at: new Date().toISOString() })
+          .eq('key', it.key)
+          .then(function (res) { if (res.error) throw res.error; });
+      });
+    });
+    chain.then(function () {
+      $('cstm-backdrop').classList.remove('open');
+      return loadClientsStats(true);                   /* пороги применились — пересчёт сегментов */
+    }).then(function () {
+      renderClientsStats();
+    }).catch(function (err) {
+      thError(SiskuUtil.friendlyDbError(err));
+    }).then(function () {
+      state.cstSaving = false;
+      $('cstm-save').disabled = false;
+    });
   }
 
   /* ---------- подвкладка «Акции»: статистика промокодов (v0.13.0) ---------- */
@@ -1308,6 +1544,48 @@
     });
     $('p-period').addEventListener('change', renderPromoStats);
     $('btn-promos-csv').addEventListener('click', exportPromosCsv);
+    /* v0.19.0 (fp №7): подвкладка «Клиенты» — сегменты */
+    $('cst-filters').addEventListener('click', function (e) {
+      var b = e.target.closest('.seg-btn');
+      if (!b) return;
+      state.cstFilter = b.getAttribute('data-seg') || '';
+      state.cstPage = 1;
+      renderClientsStats();
+    });
+    $('cst-refresh').addEventListener('click', function () {
+      loadClientsStats(true).then(function () { renderClientsStats(); }).catch(function (e2) {
+        $('cst-error').textContent = 'Ошибка загрузки: ' + SiskuUtil.friendlyDbError(e2);
+        $('cst-error').hidden = false;
+      });
+    });
+    $('cst-csv').addEventListener('click', exportCstCsv);
+    $('cst-thresholds').addEventListener('click', openThresholds);
+    document.querySelectorAll('#stab-clients th.sortable').forEach(function (t) {
+      t.addEventListener('click', function () {
+        var f = t.getAttribute('data-cst-sort');
+        if (state.cstSort.field === f) {
+          state.cstSort.dir = state.cstSort.dir === 'asc' ? 'desc' : 'asc';
+        } else {
+          state.cstSort = { field: f, dir: f === 'name' ? 'asc' : 'desc' };
+        }
+        state.cstPage = 1;
+        renderClientsStats();
+      });
+    });
+    $('cst-pg-prev').addEventListener('click', function () { state.cstPage -= 1; renderClientsStats(); });
+    $('cst-pg-next').addEventListener('click', function () { state.cstPage += 1; renderClientsStats(); });
+    $('cst-body').addEventListener('click', function (e) {
+      var eye = e.target.closest('button[data-cst-eye]');
+      if (!eye) return;
+      var cid = Number(eye.getAttribute('data-cst-eye'));
+      state.cstRevealed[cid] = !state.cstRevealed[cid];
+      renderClientsStats();
+    });
+    $('cstm-close').addEventListener('click', function () { $('cstm-backdrop').classList.remove('open'); });
+    $('cstm-backdrop').addEventListener('click', function (e) {
+      if (e.target === $('cstm-backdrop')) $('cstm-backdrop').classList.remove('open');
+    });
+    $('cstm-form').addEventListener('submit', saveThresholds);
     $('promocodes-seg').addEventListener('click', function (e) {
       var b = e.target.closest('.seg-btn');
       if (!b) return;
