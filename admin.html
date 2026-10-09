@@ -223,28 +223,51 @@
   </div>
 
   <!-- ========== подвкладка «Клиенты»: заглушка (v0.13.0) ========== -->
+  <!-- ========== подвкладка «Клиенты»: сегменты (v0.19.0, fp №7) ==========
+       данные — draft_clients_bundle v3 (скрипт 30): сегменты считает сервер
+       (new/repeat/vip + признак is_dormant — кросс-фильтр, решение Д2);
+       пороги — site_content segments.* (правка — модальное окно, решение Д4);
+       без селектора периода (Д7 — отдельный fp №26, заморожен) -->
   <div id="stab-clients" hidden>
-    <div class="stub-card">
-      <div class="stub-badge">Заглушка · планируется</div>
-      <h3>Статистика по клиентам</h3>
-      <p class="muted" style="font-size:14px">Аналитика клиентской базы
-      (docs/feature-proposals.md, пункт 7 «Клиентская база и сегменты (CRM-light)»).
-      Сам список реальных клиентов уже работает: «Пользователи → Клиенты» (v0.13.0).</p>
-      <div class="subhead-sm">Что здесь появится</div>
-      <ul class="stub-list">
-        <li><b>Повторные продажи:</b> доля клиентов со вторым и последующими заказами,
-          динамика по месяцам, средний промежуток между покупками.</li>
-        <li><b>VIP-сегмент:</b> клиенты с суммой заказов выше порога (порог задаёт владелец)
-          и их доля в выручке.</li>
-        <li><b>«Уснувшие» клиенты:</b> не заказывали 90+ дней — список для точечной
-          коммуникации (возвращающий промокод, персональное предложение).</li>
-        <li><b>Сегменты-фильтры:</b> новый / повторный / VIP / уснул — переключатели
-          поверх всех блоков этой подвкладки.</li>
-        <li><b>LTV и средний чек по сегментам</b> + выгрузка сегмента в CSV для рассылок.</li>
-      </ul>
-      <p class="muted stub-note">Данные для отчёта уже собираются: таблица <code>clients</code>
-      связана с заказами через <code>orders.client_id</code> (скрипт 15) — останутся
-      агрегаты, пороги сегментов и графики.</p>
+    <div class="toolbar">
+      <div class="seg" id="cst-filters" role="group" aria-label="Фильтр сегментов клиентов">
+        <button class="seg-btn active" data-seg="">Все</button>
+        <button class="seg-btn" data-seg="new">Новые</button>
+        <button class="seg-btn" data-seg="repeat">Повторные</button>
+        <button class="seg-btn" data-seg="vip">VIP</button>
+        <button class="seg-btn" data-seg="dormant">Уснули</button>
+      </div>
+      <span class="spacer"></span>
+      <button class="btn" id="cst-thresholds" title="Пороги VIP и «уснувших» — ключи site_content segments.*">Пороги</button>
+      <button class="btn" id="cst-refresh">Обновить</button>
+      <button class="btn" id="cst-csv">Выгрузить CSV</button>
+    </div>
+    <div class="kpi-grid" id="cst-kpi"></div>
+    <div class="loading" id="cst-loading" hidden>Загружаем клиентов…</div>
+    <div class="err-box" id="cst-error" hidden></div>
+    <div class="empty" id="cst-empty" hidden>Клиентов пока нет. Оформите тестовый заказ на витрине — клиенты появятся здесь автоматически.</div>
+    <div class="table-wrap">
+      <table class="orders" style="min-width:1020px">
+        <thead>
+          <tr>
+            <th class="sortable" data-cst-sort="name">ФИО<span class="sort-ic">↕</span></th>
+            <th>Сегмент</th>
+            <th>Телефон</th>
+            <th>E-mail</th>
+            <th class="sortable tabular" data-cst-sort="count">Заказов<span class="sort-ic">↕</span></th>
+            <th class="sortable tabular" data-cst-sort="sum">Сумма<span class="sort-ic">↕</span></th>
+            <th class="tabular">Оплачено</th>
+            <th class="sortable tabular" data-cst-sort="first">Первый заказ<span class="sort-ic">↕</span></th>
+            <th class="sortable tabular" data-cst-sort="last">Последний заказ<span class="sort-ic">↕</span></th>
+          </tr>
+        </thead>
+        <tbody id="cst-body"></tbody>
+      </table>
+    </div>
+    <div class="pager" id="cst-pager" hidden>
+      <button class="btn" id="cst-pg-prev" style="min-height:36px;padding:0 16px">← Ранее</button>
+      <span class="muted" id="cst-pg-info" style="font-size:13px"></span>
+      <button class="btn" id="cst-pg-next" style="min-height:36px;padding:0 16px">Далее →</button>
     </div>
   </div>
 
@@ -335,6 +358,31 @@
   <div class="modal" role="dialog" aria-modal="true" aria-label="Карточка заказа">
     <button class="modal-close" id="order-modal-close" aria-label="Закрыть">×</button>
     <div id="order-modal-body"></div>
+  </div>
+</div>
+
+<!-- ========== пороги VIP и «уснувших» (v0.19.0, fp №7, решение Д4: модалка на той же вкладке) ========== -->
+<div class="modal-backdrop" id="cstm-backdrop">
+  <div class="modal" style="width:min(460px,100%);padding:32px 34px" role="dialog" aria-modal="true" aria-label="Пороги VIP и уснувших">
+    <button class="modal-close" id="cstm-close" aria-label="Закрыть">×</button>
+    <h2 style="font-size:22px;margin-bottom:6px">Пороги VIP и «уснувших»</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:18px">Значения хранятся в <code>site_content</code> (ключи <code>segments.*</code>) и действуют сразу после сохранения. VIP — заказов не менее N <b>или</b> сумма не менее X; «уснул» — независимый признак (нет заказов указанное число дней).</p>
+    <form id="cstm-form" novalidate>
+      <div class="field" style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="cstm-vip-orders">VIP: заказов не менее</label>
+        <input id="cstm-vip-orders" type="number" min="1" step="1" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px">
+      </div>
+      <div class="field" style="margin-bottom:14px">
+        <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="cstm-vip-sum">VIP: сумма заказов не менее, ₽</label>
+        <input id="cstm-vip-sum" type="number" min="0" step="1000" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px">
+      </div>
+      <div class="field" style="margin-bottom:18px">
+        <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="cstm-days">«Уснул»: дней без заказов</label>
+        <input id="cstm-days" type="number" min="1" step="1" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px">
+      </div>
+      <div class="err-box" id="cstm-error" hidden style="margin-bottom:14px"></div>
+      <button class="btn primary" type="submit" id="cstm-save" style="width:100%">Сохранить</button>
+    </form>
   </div>
 </div>
 
