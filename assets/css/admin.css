@@ -1,6 +1,7 @@
 
 
 
+
 /* ==========================================================================
    SISKU — админ-панель (черновик) · v0.14.0-draft
    Оформление: темы «Noir & Champagne» (тёмная, по умолчанию) и «Ivoire»
@@ -622,3 +623,21 @@ button.seg-btn { font-family: var(--font-body); }
 
 /* 2.13 — статистика промокодов: колонка «Скидки, ₽» прячется на узких экранах */
 @media (max-width: 1100px) { .col-promo-disc { display: none; } }
+
+/* v0.19.0 (fp №7): сегменты клиентов — пилюли тем же приёмом, что .status-pill
+   (v0.15.0: залитая пилюля, фон 14% цвета; в светлой теме текст затемнён
+   подмешиванием --text до контраста WCAG AA) */
+.seg-pill {
+  display: inline-block; padding: 4px 10px; border-radius: 999px;
+  font-size: 12px; font-weight: 600; letter-spacing: .04em; white-space: nowrap;
+  color: var(--muted); background: color-mix(in srgb, var(--muted) 14%, transparent);
+}
+.seg-pill[data-seg="repeat"] { color: var(--ok); background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.seg-pill[data-seg="vip"]    { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+[data-theme="light"] .seg-pill[data-seg="repeat"] { color: color-mix(in srgb, var(--ok) 92%, var(--text)); }
+[data-theme="light"] .seg-pill[data-seg="vip"]    { color: color-mix(in srgb, var(--accent) 92%, var(--text)); }
+.dormant-mark {
+  display: inline-block; margin-left: 6px; padding: 3px 8px; border-radius: 999px;
+  font-size: 11px; letter-spacing: .04em; white-space: nowrap;
+  color: var(--muted); border: 1px solid var(--line);
+}
