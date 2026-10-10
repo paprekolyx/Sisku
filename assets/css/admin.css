@@ -641,3 +641,82 @@ button.seg-btn { font-family: var(--font-body); }
   font-size: 11px; letter-spacing: .04em; white-space: nowrap;
   color: var(--muted); border: 1px solid var(--line);
 }
+
+/* ==========================================================================
+   v0.20.0 — волна «Инвентаризация и списания» (fp №9)
+   ========================================================================== */
+
+/* пилюли статусов сессии инвентаризации (приём v0.15.0 — color-mix, WCAG AA:
+   в светлой теме текст затемняется/подмешивается до контраста 4.5:1) */
+.status-pill[data-code="inv_planned"]     { color: var(--muted);  background: color-mix(in srgb, var(--muted) 14%, transparent); }
+.status-pill[data-code="inv_in_progress"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.status-pill[data-code="inv_done"]        { color: var(--ok);     background: color-mix(in srgb, var(--ok) 14%, transparent); }
+.status-pill[data-code="inv_cancelled"]   { color: var(--danger); background: color-mix(in srgb, var(--danger) 14%, transparent); }
+[data-theme="light"] .status-pill[data-code="inv_planned"]     { color: color-mix(in srgb, var(--muted) 85%, var(--text)); }
+[data-theme="light"] .status-pill[data-code="inv_in_progress"] { color: color-mix(in srgb, var(--accent) 92%, var(--text)); }
+[data-theme="light"] .status-pill[data-code="inv_done"]        { color: color-mix(in srgb, var(--ok) 92%, var(--text)); }
+[data-theme="light"] .status-pill[data-code="inv_cancelled"]   { color: color-mix(in srgb, var(--danger) 80%, var(--text)); }
+
+/* расхождения листа (Д4): знаки «+»/«−» и подсветка строк — минус danger-фон
+   8%, плюс ok-фон 8% (Д5) */
+.wo-neg { color: var(--danger); font-weight: 700; }
+.wo-pos { color: var(--ok); font-weight: 700; }
+[data-theme="light"] .wo-neg { color: color-mix(in srgb, var(--danger) 80%, var(--text)); }
+[data-theme="light"] .wo-pos { color: color-mix(in srgb, var(--ok) 92%, var(--text)); }
+tr.inv-row-neg > td { background: color-mix(in srgb, var(--danger) 8%, transparent); }
+tr.inv-row-pos > td { background: color-mix(in srgb, var(--ok) 8%, transparent); }
+.inv-reserved { color: var(--accent); font-weight: 600; }
+.inv-disc {
+  display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px;
+  font-size: 11.5px; font-weight: 600; letter-spacing: .04em; white-space: nowrap;
+  color: var(--danger); background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+[data-theme="light"] .inv-disc { color: color-mix(in srgb, var(--danger) 80%, var(--text)); }
+
+/* лист инвентаризации: sticky-заголовок при прокрутке, компактный ввод факта;
+   строки таблиц панели не кликабельны (действия — кнопки) */
+.inv-sheet-wrap { max-height: 540px; overflow: auto; }
+.inv-sheet-wrap thead th { position: sticky; top: 0; z-index: 5; background: var(--card); }
+#panel-inventory table.orders tbody tr { cursor: default; }
+input.inv-fact {
+  width: 92px; min-height: 36px; padding: 4px 10px; text-align: right;
+  background: var(--surface); color: var(--text); border: 1px solid var(--line);
+  border-radius: var(--radius); font-family: var(--font-body); font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+input.inv-fact:focus { border-color: var(--accent); outline: none; }
+
+/* мультивыборы (категории/участники) и поиск варианта в модалках */
+.inv-pick-list {
+  display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow: auto;
+  margin-top: 8px; padding: 8px; border: 1px solid var(--line); border-radius: var(--radius);
+  background: var(--surface);
+}
+.inv-pick {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left;
+  padding: 8px 12px; min-height: 36px; background: transparent; color: var(--text);
+  border: 1px solid var(--line); border-radius: var(--radius);
+  font-family: var(--font-body); font-size: 13.5px; cursor: pointer;
+}
+.inv-pick:hover { border-color: var(--accent); }
+.inv-pick.picked { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); }
+.inv-check { display: flex; align-items: center; gap: 8px; padding: 4px 2px; font-size: 13.5px; color: var(--text); cursor: pointer; }
+.inv-check input { width: 16px; height: 16px; accent-color: var(--accent); }
+
+/* отметка системной причины списаний (не деактивируется — Д6) */
+.inv-sys-mark {
+  display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 600; letter-spacing: .04em; vertical-align: middle;
+  color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+[data-theme="light"] .inv-sys-mark { color: color-mix(in srgb, var(--accent) 92%, var(--text)); }
+
+/* минусовой/нулевой остаток на сборке (Д5/7.1 — АН-21 вариант (б): после
+   проведения инвентаризации минус/ноль — штатное состояние, подсвечивается;
+   сигнал «<3 шт» (.low-stock) сохранён — не конфликтует) */
+.stock-negative { color: var(--danger); font-weight: 700; }
+[data-theme="light"] .stock-negative { color: color-mix(in srgb, var(--danger) 80%, var(--text)); }
+
+/* опасное действие в модалке (отмена сессии) */
+.btn.danger { border-color: var(--danger); color: var(--danger); }
+.btn.danger:hover { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
