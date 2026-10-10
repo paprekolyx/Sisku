@@ -96,6 +96,7 @@
     <button class="seg-btn" data-stab="admins" role="tab" aria-selected="false">Администраторы</button>
     <button class="seg-btn" data-stab="clients" role="tab" aria-selected="false">Клиенты</button>
     <button class="seg-btn" data-stab="returns" role="tab" aria-selected="false" id="stab-returns-btn">Возвраты</button>
+    <button class="seg-btn" data-stab="writeoffs" role="tab" aria-selected="false">Списания</button>
   </div>
 
   <!-- ========== подвкладка «Заказы» (статистика v0.1–v0.12 без изменений) ========== -->
@@ -299,6 +300,52 @@
         <h3>Заявки по дням</h3>
         <canvas id="chart-return-days" height="220"></canvas>
         <div class="empty" id="return-days-empty" hidden>За выбранный период заявок на возврат нет.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== подвкладка «Списания»: статистика списаний и излишков (v0.20.0, fp №9, Д8) ========== -->
+  <div id="stab-writeoffs" hidden>
+    <div class="toolbar">
+      <select id="wo-period" aria-label="Период статистики списаний">
+        <option value="7">Последние 7 дней</option>
+        <option value="30">Последние 30 дней</option>
+        <option value="90">Последние 90 дней</option>
+        <option value="all" selected>Всё время</option>
+      </select>
+      <button class="btn" id="btn-writeoffs-csv">Выгрузить CSV</button>
+      <span class="muted" style="font-size:13px">Суммы — по текущей цене товара (в бою — закупочная и цена продажи на момент инвентаризации, fp №28). Журнал и ручные списания — «Магазин → Инвентаризация».</span>
+    </div>
+    <div class="kpi-grid" id="wo-kpi"></div>
+    <div class="loading" id="wo-loading" hidden>Загружаем списания…</div>
+    <div class="err-box" id="wo-error" hidden></div>
+    <div class="charts-grid">
+      <div class="chart-box">
+        <h3>Причины списаний</h3>
+        <div class="seg" id="wo-reasons-seg" role="group" aria-label="Вид причин списаний">
+          <button class="seg-btn" data-mode="chart">Диаграмма</button>
+          <button class="seg-btn active" data-mode="table">Таблица</button>
+        </div>
+        <div id="wo-reasons-chart" hidden><canvas id="chart-wo-reasons" height="220"></canvas></div>
+        <div id="wo-reasons-table"><table class="mini-table" id="table-wo-reasons"></table></div>
+        <div class="empty" id="wo-reasons-empty" hidden>За выбранный период списаний нет.</div>
+      </div>
+      <div class="chart-box">
+        <h3>Топ списываемых товаров</h3>
+        <table class="mini-table" id="table-wo-top"></table>
+        <div class="empty" id="wo-top-empty" hidden>За выбранный период списаний нет.</div>
+      </div>
+    </div>
+    <div class="charts-grid">
+      <div class="chart-box">
+        <h3>Администраторы (кто чаще списывает)</h3>
+        <table class="mini-table" id="table-wo-admins"></table>
+        <div class="empty" id="wo-admins-empty" hidden>За выбранный период списаний нет.</div>
+      </div>
+      <div class="chart-box">
+        <h3>Проведённые инвентаризации</h3>
+        <table class="mini-table" id="table-wo-sessions"></table>
+        <div class="empty" id="wo-sessions-empty" hidden>Проведённых инвентаризаций пока нет.</div>
       </div>
     </div>
   </div>

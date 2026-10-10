@@ -47,7 +47,7 @@
     <a class="seg-btn" href="brands.html">Бренды</a>
     <a class="seg-btn active" href="products.html">Товары</a>
     <a class="seg-btn" href="looks.html">Комплекты</a>
-    <a class="seg-btn" href="products.html#inventory" title="Заглушка: планируется (M5)">Инвентаризация</a>
+    <a class="seg-btn" href="products.html#inventory">Инвентаризация</a>
   </div>
   <div class="toolbar">
     <input type="search" id="p-search" placeholder="Поиск: артикул или название" aria-label="Поиск товаров">
@@ -76,7 +76,7 @@
   <div class="err-box" id="prod-error" hidden></div>
 </main>
 
-<!-- ========== «Магазин → Инвентаризация»: заглушка (v0.15.0, правка 2.11; П30/№9 — M5) ========== -->
+<!-- ========== «Магазин → Инвентаризация»: рабочая панель (v0.20.0, fp №9; вместо заглушки v0.15.0) ========== -->
 <main class="panel container" id="panel-inventory" hidden>
   <div class="seg subseg">
     <a class="seg-btn" href="categories.html">Категории</a>
@@ -85,36 +85,186 @@
     <a class="seg-btn" href="looks.html">Комплекты</a>
     <a class="seg-btn active" href="products.html#inventory">Инвентаризация</a>
   </div>
-  <div class="stub-card">
-    <div class="stub-badge">Заглушка · планируется</div>
-    <h3>Инвентаризация и закупки</h3>
-    <p class="muted" style="font-size:14px">Сверка фактических остатков с системными и планирование закупок
-    (docs/feature-proposals.md, пункт 9 «Инвентаризация и списания»;
-    docs/plan/matrica-dostupa.md, строка «ПЛАН: Закупки, инвентаризация» —
-    доступ сборщика «± только изменение кол-ва товаров»; план —
-    docs/priemka/priemka-v014.md, П30; боевая волна M5).</p>
-    <div class="subhead-sm">Что здесь появится</div>
-    <ul class="stub-list">
-      <li><b>Лист инвентаризации:</b> таблица «товар — остаток в системе —
-        ввели факт», расхождения списком, применение одной кнопкой
-        (корректировки без заказа — с журналом).</li>
-      <li><b>Товар без варианта, но в наличии</b> (П30, записка 30): позиция
-        с единственным размером/объёмом хранит остаток на товаре —
-        связано с инвентаризацией общей схемой остатков.</li>
-      <li><b>Списания:</b> брак, повреждение при доставке, возвраты
-        «требует осмотра» (карантин returned-товаров, фикс F51) —
-        отдельные от продаваемых остатков.</li>
-      <li><b>Закупки:</b> минимальные остатки и список «что заказать»
-        (ответ владельца 2.3: остатки минимальные, закупки под заказ).</li>
-      <li><b>Хранилище фото:</b> загрузка изображений в файловое хранилище
-        вместо dataURL в записи товара — готова схема, появится в M5
-        (сообщение о подключении хранилища — отдельным письмом).</li>
-    </ul>
-    <p class="muted stub-note">Почему заглушка: черновик работает на тестовых остатках, а инвентаризация
-    имеет смысл на реальном складе — волна M5 боевого переноса
-    (docs/plan/migration-plan.md).</p>
+
+  <!-- ===== секция «Планирование» (Д12): сессии и создание ===== -->
+  <div class="toolbar">
+    <span class="muted" style="font-size:13px">Сессии инвентаризации: создание → «Начать» → лист с вводом факта → «Завершить» (расхождения становятся списаниями и излишками в журнале). Параллельные идущие сессии — штатно. Переходы статусов — только ручные.</span>
+    <span class="spacer"></span>
+    <button class="btn" id="inv-refresh">Обновить</button>
+    <button class="btn primary" id="inv-new">Новая инвентаризация</button>
+  </div>
+  <div class="table-wrap">
+    <table class="orders" style="min-width:1060px">
+      <thead>
+        <tr>
+          <th>№</th><th>Область</th><th>План-дата</th><th>Статус</th>
+          <th class="tabular">Позиций / посчитано</th><th>Участники</th><th>Создана</th><th>Действия</th>
+        </tr>
+      </thead>
+      <tbody id="inv-sessions-body"></tbody>
+    </table>
+  </div>
+  <div class="loading" id="inv-loading" hidden>Загружаем инвентаризацию…</div>
+  <div class="empty" id="inv-sessions-empty" hidden>Сессий инвентаризации пока нет — создайте первую («Новая инвентаризация»).</div>
+  <div class="err-box" id="inv-error" hidden></div>
+
+  <!-- ===== секция «Лист» (Д4/Д5): открывается для конкретной сессии ===== -->
+  <div id="inv-sheet-section" hidden>
+    <div class="subhead-sm" id="inv-sheet-title" style="margin-top:26px">Лист инвентаризации</div>
+    <div class="toolbar">
+      <span class="muted" style="font-size:13px" id="inv-sheet-hint">Ожидаемо физически = остаток в системе + резерв + карантин (snapshot на момент старта сессии; продажи во время сессии лист не меняют). Расхождение = факт − ожидаемо: «+» излишек, «−» недостача.</span>
+      <span class="spacer"></span>
+      <button class="btn" id="inv-sheet-close">Закрыть лист</button>
+      <button class="btn" id="inv-save-facts">Сохранить факт</button>
+      <button class="btn primary" id="inv-finish">Завершить…</button>
+    </div>
+    <div class="table-wrap inv-sheet-wrap">
+      <table class="orders zebra" style="min-width:1120px">
+        <thead>
+          <tr>
+            <th>Товар</th><th>Вариант</th>
+            <th class="tabular">В системе</th><th class="tabular">В резерве</th>
+            <th class="tabular">В карантине</th><th class="tabular">Ожидаемо физически</th>
+            <th class="tabular">Факт</th><th class="tabular">Расхождение</th>
+          </tr>
+        </thead>
+        <tbody id="inv-sheet-body"></tbody>
+      </table>
+    </div>
+    <div class="loading" id="inv-sheet-loading" hidden>Загружаем лист…</div>
+    <div class="empty" id="inv-sheet-empty" hidden>В листе нет позиций: в области сессии нет активных вариантов товаров.</div>
+    <div class="err-box" id="inv-sheet-error" hidden></div>
+  </div>
+
+  <!-- ===== секция «Журнал списаний» (Д7; движение карантина — fp №3b, v0.29.0) ===== -->
+  <div class="subhead-sm" style="margin-top:26px">Журнал списаний</div>
+  <div class="toolbar">
+    <select id="inv-j-reason" aria-label="Фильтр журнала по причине">
+      <option value="">Все причины</option>
+    </select>
+    <select id="inv-j-session" aria-label="Фильтр журнала по сессии">
+      <option value="">Все записи</option>
+      <option value="manual">Ручные (вне сессий)</option>
+    </select>
+    <input type="search" id="inv-j-search" placeholder="Поиск: товар или артикул" aria-label="Поиск по журналу списаний">
+    <span class="spacer"></span>
+    <button class="btn" id="inv-j-manual">Ручное списание</button>
+    <button class="btn" id="inv-j-csv">Выгрузить CSV</button>
+  </div>
+  <div class="table-wrap">
+    <table class="orders zebra" style="min-width:1060px">
+      <thead>
+        <tr>
+          <th>Дата</th><th>Товар</th><th>Вариант</th><th class="tabular">Кол-во</th>
+          <th>Причина</th><th>Автор</th><th class="col-comment">Комментарий</th><th>Сессия</th>
+        </tr>
+      </thead>
+      <tbody id="inv-j-body"></tbody>
+    </table>
+  </div>
+  <div class="loading" id="inv-j-loading" hidden>Загружаем журнал…</div>
+  <div class="empty" id="inv-j-empty" hidden>Списаний пока нет. Записи появляются при проведении инвентаризаций и через кнопку «Ручное списание».</div>
+  <div class="err-box" id="inv-j-error" hidden></div>
+  <div class="pager" id="inv-j-pager" hidden>
+    <button class="btn" id="inv-j-prev" style="min-height:36px;padding:0 16px">← Ранее</button>
+    <span class="muted" id="inv-j-info" style="font-size:13px"></span>
+    <button class="btn" id="inv-j-next" style="min-height:36px;padding:0 16px">Далее →</button>
   </div>
 </main>
+
+<!-- ========== модалка: новая инвентаризация (Д3/Д12) ========== -->
+<div class="modal-backdrop" id="inv-create-backdrop">
+  <div class="modal" style="width:min(680px,100%)" role="dialog" aria-modal="true" aria-label="Новая инвентаризация">
+    <button class="modal-close" id="inv-create-close" aria-label="Закрыть">×</button>
+    <h2 style="font-size:22px;margin-bottom:14px">Новая инвентаризация</h2>
+    <form id="inv-create-form" novalidate>
+      <div class="field">
+        <label for="inv-c-scope">Область</label>
+        <select id="inv-c-scope">
+          <option value="all" selected>Весь магазин (все активные товары)</option>
+          <option value="categories">Отдельные категории</option>
+        </select>
+      </div>
+      <div class="field" id="inv-c-cats-field" hidden>
+        <label>Категории (мультивыбор)</label>
+        <div class="inv-pick-list" id="inv-c-cats"></div>
+      </div>
+      <div class="field">
+        <label for="inv-c-date">План-дата (необязательно)</label>
+        <input type="date" id="inv-c-date">
+        <div class="muted" style="font-size:12px;margin-top:4px">Авто-старта по план-дате нет: сессию начинает человек кнопкой «Начать» (решение Д2).</div>
+      </div>
+      <div class="field">
+        <label>Привлекаемые администраторы (мультивыбор)</label>
+        <div class="inv-pick-list" id="inv-c-participants"></div>
+      </div>
+      <button class="btn primary" type="submit" id="inv-c-submit" style="width:100%">Создать сессию</button>
+      <div class="err-box" id="inv-c-error" style="margin-top:12px" hidden></div>
+    </form>
+  </div>
+</div>
+
+<!-- ========== модалка: предупреждение перед завершением (Д5, АН-21 вариант (б)) ========== -->
+<div class="modal-backdrop" id="inv-finish-backdrop">
+  <div class="modal" style="width:min(760px,100%)" role="dialog" aria-modal="true" aria-label="Завершение инвентаризации">
+    <button class="modal-close" id="inv-finish-close" aria-label="Закрыть">×</button>
+    <h2 style="font-size:22px;margin-bottom:6px" id="inv-f-title">Завершение инвентаризации</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:14px">По каждому ненулевому расхождению в журнал будет записана строка («−» списание / «+» излишек), остаток изменится на величину расхождения. Позиции без введённого факта не затрагиваются.</p>
+    <div class="table-wrap" id="inv-f-list-wrap" style="max-height:260px;overflow:auto;margin-bottom:14px">
+      <table class="mini-table" id="inv-f-list"></table>
+    </div>
+    <div class="err-box" id="inv-f-warn" style="margin-bottom:14px">Внимание: после проведения остатки могут стать нулевыми или отрицательными — это допустимое состояние (решение владельца 10.10.2026, вариант (б)). Единицы зарезервированы под открытые заказы — проверьте страницу «Сборка»: минус/ноль подсвечивается, сообщите владельцу. Новый заказ с нулевым остатком не создаётся («Недостаточно остатка»).</div>
+    <button class="btn primary" type="button" id="inv-f-submit" style="width:100%">Провести инвентаризацию</button>
+    <div class="err-box" id="inv-f-error" style="margin-top:12px" hidden></div>
+  </div>
+</div>
+
+<!-- ========== модалка: подтверждение отмены сессии (Д2) ========== -->
+<div class="modal-backdrop" id="inv-cancel-backdrop">
+  <div class="modal" style="width:min(520px,100%)" role="dialog" aria-modal="true" aria-label="Отмена инвентаризации">
+    <button class="modal-close" id="inv-cancel-close" aria-label="Закрыть">×</button>
+    <h2 style="font-size:22px;margin-bottom:10px">Отменить инвентаризацию?</h2>
+    <p class="muted" style="font-size:14px;margin-bottom:16px" id="inv-cancel-text"></p>
+    <div style="display:flex;gap:10px">
+      <button class="btn" type="button" id="inv-cancel-back" style="flex:1;justify-content:center">Вернуться</button>
+      <button class="btn danger" type="button" id="inv-cancel-submit" style="flex:1;justify-content:center">Отменить сессию</button>
+    </div>
+    <div class="err-box" id="inv-cancel-error" style="margin-top:12px" hidden></div>
+  </div>
+</div>
+
+<!-- ========== модалка: ручное списание / излишек (Д7) ========== -->
+<div class="modal-backdrop" id="inv-wo-backdrop">
+  <div class="modal" style="width:min(680px,100%)" role="dialog" aria-modal="true" aria-label="Ручное списание">
+    <button class="modal-close" id="inv-wo-close" aria-label="Закрыть">×</button>
+    <h2 style="font-size:22px;margin-bottom:14px">Ручное списание / излишек</h2>
+    <form id="inv-wo-form" novalidate>
+      <div class="field">
+        <label for="inv-w-search">Вариант товара (поиск: название, артикул, размер/объём)</label>
+        <input type="search" id="inv-w-search" placeholder="Начните вводить…" autocomplete="off">
+        <div class="inv-pick-list" id="inv-w-list" style="max-height:180px"></div>
+        <div class="muted" style="font-size:12px;margin-top:4px" id="inv-w-picked">Вариант не выбран</div>
+      </div>
+      <div class="field-row2">
+        <div class="field">
+          <label for="inv-w-qty">Количество («−» списание / «+» излишек)</label>
+          <input type="number" id="inv-w-qty" step="1" min="-99999" max="99999" placeholder="-1">
+        </div>
+        <div class="field">
+          <label for="inv-w-reason">Причина</label>
+          <select id="inv-w-reason"><option value="">— выберите —</option></select>
+        </div>
+      </div>
+      <div class="field">
+        <label for="inv-w-comment">Комментарий (необязательно)</label>
+        <input id="inv-w-comment" maxlength="1000" placeholder="Например: бой при примерке">
+        <div class="muted" style="font-size:12px;margin-top:4px">Списание возможно только из свободных единиц (зарезервированные не затрагиваются); уход остатка в минус — только через проведение инвентаризации.</div>
+      </div>
+      <button class="btn primary" type="submit" id="inv-w-submit" style="width:100%">Записать в журнал</button>
+      <div class="err-box" id="inv-w-error" style="margin-top:12px" hidden></div>
+    </form>
+  </div>
+</div>
 
 <!-- ========== модалка товара: форма + предпросмотр ========== -->
 <div class="modal-backdrop" id="prod-modal-backdrop">
@@ -189,5 +339,6 @@
 <script src="assets/js/admintheme.js"></script>
 <script src="assets/js/mockauth.js"></script>
 <script src="assets/js/products.js"></script>
+<script src="assets/js/inventory.js"></script>
 </body>
 </html>
