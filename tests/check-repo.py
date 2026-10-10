@@ -47,6 +47,13 @@ funkcionala.md и docs/update/update-v0171.md (решение Д2а аналит
 структуры README = версии в шапках документов (таблица пар «файл → регэксп
 шапки → маркер перечня», версии берутся из шапок живьём), README↔update-vXXX —
 последняя инструкция волны упомянута в README (АН-26).
+v2.9 (волна v0.20.0): в REQUIRED добавлены supabase/31_inventory_schema.sql,
+supabase/32_inventory_rpc.sql, assets/js/inventory.js (панель
+«Инвентаризация» — отдельный модуль, решение Д14 от 10.10.2026) и
+docs/update/update-v0200.md; новая пара JS↔страница inventory.js↔
+products.html; проверка последнего SQL-скрипта — 32; бэкап
+data/writeoff_reasons_rows.csv создаётся волной, но в REQUIRED не входит
+(Д13 — живой источник справочника база; CSV-проверка п.5 его сканирует).
 
 Запуск из корня репозитория:  python3 tests/check-repo.py
 Проверяет (без сети и без базы):
@@ -96,6 +103,7 @@ JS_PAGE = [
     ('assets/js/categories.js', 'categories.html'),
     ('assets/js/brands.js', 'brands.html'),
     ('assets/js/products.js', 'products.html'),
+    ('assets/js/inventory.js', 'products.html'),   # v2.9 (Д14): панель «Инвентаризация» — отдельный модуль страницы товаров
     ('assets/js/looks.js', 'looks.html'),
     ('assets/js/manage.js', 'manage.html'),
     ('assets/js/sitecontent.js', 'sitecontent.html'),
@@ -177,6 +185,12 @@ REQUIRED = [
     # v2.8 (волна v0.19.0): сегменты клиентов (скрипт 30, draft_clients_bundle
     # v3, подвкладка «Статистика → Клиенты») и инструкция волны
     'supabase/30_client_segments.sql', 'docs/update/update-v0190.md',
+    # v2.9 (волна v0.20.0): инвентаризация и списания (скрипты 31–32, модуль
+    # панели inventory.js — пара с products.html, решение Д14) и инструкция
+    # волны; бэкап data/writeoff_reasons_rows.csv создаётся, но в REQUIRED
+    # не добавляется (Д13 — рекомендация разработчика, живой источник — база)
+    'supabase/31_inventory_schema.sql', 'supabase/32_inventory_rpc.sql',
+    'assets/js/inventory.js', 'docs/update/update-v0200.md',
 ] + ['assets/img/products/p00%d.webp' % i for i in range(1, 9)]
 
 # ---------- 1. обязательные файлы + реестр supabase/README.md ----------
@@ -401,6 +415,6 @@ if problems:
     for p in problems:
         print('  ✗ ' + p)
     sys.exit(1)
-print('✓ check-repo v2.8: все проверки пройдены (версия %s, страниц %d, SQL-скриптов %d, последний %s)'
+print('✓ check-repo v2.9: все проверки пройдены (версия %s, страниц %d, SQL-скриптов %d, последний %s)'
       % (ver, len(HTML_PAGES), len(on_disk), LAST_SQL))
 sys.exit(0)
