@@ -3,7 +3,10 @@
    (v0.9.0-draft; переименован с «Оплата и доставка» в v0.16.0 — решение
    владельца 06.10.2026: сюда же добавляются справочники других выпадающих
    списков; первый — причины возврата, fp №3).
-   Список и редактирование delivery_methods / payment_methods / return_reasons:
+   Список и редактирование delivery_methods / payment_methods / return_reasons /
+   writeoff_reasons (v0.20.0, fp №9 — причины списаний; ответ владельца 7.2
+   от 10.10.2026: справочник здесь, посев без «Уценки», системные причины
+   не деактивируются):
    название, код, цены (вилка), активность. История заказов не страдает:
    способы отключаются (is_active), а удаление (с v0.14.0 — настоящие
    DELETE-политики скрипта 16, фикс F09) блокирует FK, если способ уже
@@ -13,16 +16,19 @@
   'use strict';
 
   var state = {
-    deliveries: [], payments: [], reasons: [],
-    kind: 'delivery',          /* какой справочник правим в модалке: delivery | payment | reason */
+    deliveries: [], payments: [], reasons: [], writeoffs: [],
+    kind: 'delivery',          /* какой справочник правим в модалке: delivery | payment | reason | writeoff */
     editingId: null, saving: false
   };
   /* v0.16.0 (fp №3): причины возврата — третий справочник страницы;
      удаление — только деактивацией (DELETE-политики нет: причина может
-     быть использована в заявках, скрипт 22) */
+     быть использована в заявках, скрипт 22)
+     v0.20.0 (fp №9, ответ 7.2): причины списаний — четвёртый справочник;
+     удаление — только деактивацией; системные (is_system) не деактивируются */
   function kindMeta(kind) {
-    if (kind === 'reason')  return { list: state.reasons,   table: 'return_reasons' };
-    if (kind === 'payment') return { list: state.payments,  table: 'payment_methods' };
+    if (kind === 'reason')   return { list: state.reasons,   table: 'return_reasons' };
+    if (kind === 'writeoff') return { list: state.writeoffs, table: 'writeoff_reasons' };
+    if (kind === 'payment')  return { list: state.payments,  table: 'payment_methods' };
     return { list: state.deliveries, table: 'delivery_methods' };
   }
 
@@ -44,6 +50,11 @@
          страница при этом работает (два справочника как раньше) */
       db.from('return_reasons').select('*').order('sort_order').order('id').then(function (r) {
         return r.error ? [] : (r.data || []);
+      }),
+      /* v0.20.0 (fp №9): причины списаний — если скрипт 31 ещё не выполнен,
+         справочник пуст, страница работает (три справочника как раньше) */
+      db.from('writeoff_reasons').select('*').order('sort_order').order('id').then(function (r) {
+        return r.error ? [] : (r.data || []);
       })
     ]).then(function (res) {
       if (res[0].error) throw res[0].error;
@@ -51,6 +62,7 @@
       state.deliveries = res[0].data || [];
       state.payments = res[1].data || [];
       state.reasons = res[2] || [];
+      state.writeoffs = res[3] || [];
       render();
     }).catch(function (e) {
       $('mng-error').hidden = false;
@@ -90,6 +102,20 @@
         '<td></td>' +
       '</tr>';
     }).join('') || '<tr><td colspan="4" class="muted">Причин пока нет — добавьте первую (форма заявки на возврат витрины берёт список отсюда).</td></tr>';
+    /* v0.20.0 (fp №9, ответ 7.2): причины списаний — системные не правятся
+       и не деактивируются (подставляются проведением инвентаризации, Д6) */
+    $('wrn-body').innerHTML = state.writeoffs.map(function (m) {
+      return '<tr>' +
+        '<td class="user-fio"' + (m.is_system ? '' : ' data-edit="' + m.id + '" data-kind="writeoff" title="Открыть редактирование"') + '>' +
+          esc(m.name) + (m.is_system ? ' <span class="inv-sys-mark" title="Системная причина: подставляется проведением инвентаризации, не деактивируется">системная</span>' : '') + '</td>' +
+        '<td class="muted" style="font-size:13px">' + esc(m.code) + '</td>' +
+        '<td class="tabular muted">' + m.sort_order + '</td>' +
+        '<td><button class="btn" data-toggle="' + m.id + '" data-kind="writeoff" style="min-height:32px;padding:0 12px"' +
+          (m.is_system ? ' disabled title="Системная причина — не деактивируется"' : '') + '>' +
+          (m.is_active ? 'активна' : 'отключена') + '</button></td>' +
+        '<td></td>' +
+      '</tr>';
+    }).join('') || '<tr><td colspan="5" class="muted">Причин пока нет — посев скрипта 31: Брак, Витринный образец, Недостача, Излишек, Прочее (без «Уценки» — ответ 7.2).</td></tr>';
   }
 
   function openModal(kind, id) {
@@ -106,6 +132,16 @@
       $('mm-sort').value = m ? m.sort_order : (state.reasons.length + 1);
       $('mm-active').checked = m ? m.is_active : true;
       $('mm-active-label').textContent = 'Причина активна (видна в форме заявки на возврат)';
+    } else if (kind === 'writeoff') {
+      /* v0.20.0 (fp №9): причина списания — название + код (только при создании)
+         + порядок + активность; системные причины в модалку не попадают */
+      $('mm-title').textContent = m ? 'Правка причины: ' + m.name : 'Новая причина списания';
+      $('mm-name').value = m ? m.name : '';
+      $('mm-code').value = m ? m.code : '';
+      $('mm-code').disabled = !!m;           /* код не меняем задним числом */
+      $('mm-sort').value = m ? m.sort_order : (state.writeoffs.length + 1);
+      $('mm-active').checked = m ? m.is_active : true;
+      $('mm-active-label').textContent = 'Причина активна (видна в формах списаний)';
     } else {
       $('mm-title').textContent = (m ? 'Правка: ' : 'Новый способ ') + (kind === 'delivery' ? 'доставки' : 'оплаты') + (m ? m.name : '');
       $('mm-name').value = m ? m.name : '';
@@ -118,7 +154,7 @@
     }
     $('mm-code-field').hidden = kind === 'reason';
     $('mm-prices').hidden = kind !== 'delivery';
-    $('mm-sort-field').hidden = kind !== 'reason';
+    $('mm-sort-field').hidden = kind !== 'reason' && kind !== 'writeoff';
     ['mm-name-err', 'mm-code-err', 'mm-error'].forEach(function (x) { $(x).hidden = true; });
     $('mng-modal-backdrop').classList.add('open');
     if (window.enhanceNumbers) enhanceNumbers(document.getElementById('mng-form'));
@@ -148,7 +184,7 @@
       row.price_max = $('mm-max').value ? Number($('mm-max').value) : null;
       if (row.price_max != null && row.price_max < row.base_price) row.price_max = row.base_price;
     }
-    if (state.kind === 'reason') {
+    if (state.kind === 'reason' || state.kind === 'writeoff') {
       row.sort_order = Math.max(1, Number($('mm-sort').value || 1));
     }
     if (state.kind !== 'reason' && !state.editingId) row.code = code;
@@ -186,6 +222,7 @@
     $('btn-new-delivery').addEventListener('click', function () { openModal('delivery', null); });
     $('btn-new-payment').addEventListener('click', function () { openModal('payment', null); });
     $('btn-new-reason').addEventListener('click', function () { openModal('reason', null); });   /* v0.16.0 */
+    $('btn-new-writeoff').addEventListener('click', function () { openModal('writeoff', null); });   /* v0.20.0 (fp №9) */
     $('mng-modal-close').addEventListener('click', closeModal);
     $('mng-modal-backdrop').addEventListener('click', function (e) { if (e.target === $('mng-modal-backdrop')) closeModal(); });
     $('mng-form').addEventListener('submit', save);
@@ -199,6 +236,12 @@
           var meta = kindMeta(kind);
           var m = meta.list.filter(function (x) { return x.id === id; })[0];
           if (!m) return;
+          /* v0.20.0 (Д6): системные причины списаний не деактивируются
+             (кнопка disabled; guard — вторая страховка от гонки) */
+          if (kind === 'writeoff' && m.is_system) {
+            alert('Системная причина («' + m.name + '») не деактивируется: её подставляет проведение инвентаризации.');
+            return;
+          }
           tg.disabled = true;
           var table = meta.table;
           db.from(table).update({ is_active: !m.is_active }).eq('id', id).then(function (res) {

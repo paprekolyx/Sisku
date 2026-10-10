@@ -29,6 +29,9 @@
     cstPage: 1,              /* пагинация таблицы сегментов (30 на страницу) */
     cstRevealed: {},         /* клиент, у которого раскрыты контакты */
     cstSaving: false,        /* блокировка повторной отправки «Сохранить» (пороги) */
+    writeoffs: { rows: [], reasons: [], sessions: [] },   /* v0.20.0 (fp №9): журнал + итоги сессий */
+    writeoffsLoaded: false,  /* бандл списаний загружен (лениво — при первом открытии) */
+    woMode: 'table',         /* причины списаний: chart | table (по умолчанию таблица — правка 2.3) */
     methodsMode: 'table',    /* «Таблица» по умолчанию, «Диаграмма» — по переключателю */
     sort: { field: 'created', dir: 'desc' },   /* сортировка таблицы заказов */
     page: 1,                                    /* пагинация таблицы заказов */
@@ -655,7 +658,7 @@
   }
 
   /* ---------- подвкладки статистики (v0.13.0) ---------- */
-  var STATS_TABS = ['orders', 'promos', 'admins', 'clients', 'returns'];
+  var STATS_TABS = ['orders', 'promos', 'admins', 'clients', 'returns', 'writeoffs'];
   function switchStatsTab(tab) {
     if (STATS_TABS.indexOf(tab) === -1) tab = 'orders';
     state.statsTab = tab;
@@ -684,12 +687,24 @@
       });
       return;
     }
+    /* v0.20.0 (fp №9): «Списания» — данные из отдельного бандла (ленивая
+       загрузка — паттерн «Возвратов», грабля №6: один запрос) */
+    if (tab === 'writeoffs') {
+      loadWriteoffs(false).then(function () { renderWriteoffStats(); }).catch(function (e) {
+        $('wo-loading').hidden = true;
+        $('wo-kpi').innerHTML = '';
+        $('wo-error').textContent = 'Не удалось загрузить списания: ' + SiskuUtil.friendlyDbError(e);
+        $('wo-error').hidden = false;
+      });
+      return;
+    }
     renderStatsActive();
   }
   function renderStatsActive() {
     if (state.statsTab === 'orders') renderStats();
     else if (state.statsTab === 'promos') renderPromoStats();
     else if (state.statsTab === 'returns') renderReturnStats();
+    else if (state.statsTab === 'writeoffs') { if (state.writeoffsLoaded) renderWriteoffStats(); }
     else if (state.statsTab === 'clients') { if (state.clientsStats) renderClientsStats(); }
     /* admins — заглушка, рендер не нужен */
   }
@@ -1502,6 +1517,248 @@
     URL.revokeObjectURL(a.href);
   }
 
+  /* ---------- подвкладка «Списания» (v0.20.0, fp №9, Д8) ----------
+     Данные — draft_writeoffs_bundle (скрипт 32): журнал (товар/вариант,
+     qty ±, причина, автор, комментарий, сессия + текущая цена товара для
+     сумм), справочник причин, итоги проведённых сессий. Суммы — по ТЕКУЩЕЙ
+     цене товара (Д8; в бою — по закупочной и цене продажи на момент
+     инвентаризации, fp №28). Ленинвая загрузка — паттерн «Возвратов». */
+  var fmtNum = SiskuUtil.fmtNum;   /* формат «12 345» (ru-RU) — как в колбэках осей */
+  function loadWriteoffs(force) {
+    if (state.writeoffsLoaded && !force) return Promise.resolve();
+    if (!db) return Promise.reject({ message: dbError || 'нет БД' });
+    $('wo-loading').hidden = false;
+    $('wo-error').hidden = true;
+    return db.rpc('draft_writeoffs_bundle').then(function (res) {
+      $('wo-loading').hidden = true;
+      if (res.error) throw res.error;
+      var d = res.data || {};
+      state.writeoffs.rows = (d.writeoffs || []).map(function (w) {
+        w.qty = Number(w.qty);
+        w.price = Number(w.price || 0);
+        return w;
+      });
+      state.writeoffs.reasons = d.reasons || [];
+      state.writeoffs.sessions = d.sessions || [];
+      state.writeoffsLoaded = true;
+    });
+  }
+  function writeoffsInPeriod() {
+    var days = $('wo-period').value;
+    var list = state.writeoffs.rows.slice();
+    if (days !== 'all') {
+      var from = Date.now() - Number(days) * 864e5;
+      list = list.filter(function (w) { return new Date(w.created_at).getTime() >= from; });
+    }
+    return list;
+  }
+  function woAggregates(list) {
+    var a = { woLines: 0, woQty: 0, woSum: 0, suLines: 0, suQty: 0, suSum: 0, absQty: 0 };
+    list.forEach(function (w) {
+      var sum = Math.abs(w.qty) * w.price;
+      a.absQty += Math.abs(w.qty);
+      if (w.qty < 0) { a.woLines += 1; a.woQty += -w.qty; a.woSum += sum; }
+      else { a.suLines += 1; a.suQty += w.qty; a.suSum += sum; }
+    });
+    return a;
+  }
+  function woSigned(n) {
+    return n > 0 ? '+' + fmtNum(n) : (n < 0 ? '−' + fmtNum(Math.abs(n)) : '0');
+  }
+  function renderWriteoffStats() {
+    if (!state.writeoffsLoaded) return;
+    var list = writeoffsInPeriod();
+    var a = woAggregates(list);
+    $('wo-kpi').innerHTML =
+      kpi('Списания', a.woLines, 'строк · ' + fmtNum(a.woQty) + ' шт.') +
+      kpi('Сумма списаний', money(a.woSum), 'по текущим ценам') +
+      kpi('Излишки', a.suLines, 'строк · ' + fmtNum(a.suQty) + ' шт.') +
+      kpi('Сумма излишков', money(a.suSum), 'по текущим ценам') +
+      kpi('Среднее расхождение', list.length ? (a.absQty / list.length).toFixed(1) + ' шт.' : '—', 'на строку журнала');
+    drawWoReasons(list);
+    drawWoTop(list);
+    drawWoAdmins(list);
+    drawWoSessions(list);
+  }
+  function woReasonRows(list) {
+    var agg = {};
+    list.forEach(function (w) {
+      var k = w.reason_id;
+      if (!agg[k]) agg[k] = { name: w.reason || 'Причина №' + k, lines: 0, qty: 0, sum: 0 };
+      agg[k].lines += 1;
+      agg[k].qty += Math.abs(w.qty);
+      agg[k].sum += Math.abs(w.qty) * w.price;
+    });
+    var rows = Object.keys(agg).map(function (k) { return agg[k]; });
+    rows.sort(function (x, y) { return y.qty - x.qty; });
+    return rows;
+  }
+  function drawWoReasons(list) {
+    var rows = woReasonRows(list);
+    $('wo-reasons-empty').hidden = list.length !== 0;
+    if (state.woMode !== 'chart') {
+      destroyChart('woReasons');
+      $('wo-reasons-chart').hidden = true;
+      $('wo-reasons-table').hidden = false;
+      $('table-wo-reasons').innerHTML =
+        '<thead><tr><th>Причина</th><th style="text-align:right">Строк</th><th style="text-align:right">Единиц</th><th style="text-align:right">Сумма</th></tr></thead><tbody>' +
+        (rows.length
+          ? rows.map(function (r) {
+              return '<tr><td>' + esc(r.name) + '</td>' +
+                '<td class="tabular" style="text-align:right">' + r.lines + '</td>' +
+                '<td class="tabular" style="text-align:right">' + fmtNum(r.qty) + '</td>' +
+                '<td class="tabular" style="text-align:right">' + money(r.sum) + '</td></tr>';
+            }).join('')
+          : '<tr><td colspan="4" class="muted">Нет данных</td></tr>') +
+        '</tbody>';
+      return;
+    }
+    $('wo-reasons-table').hidden = true;
+    $('wo-reasons-chart').hidden = false;
+    chartDefaults(); destroyChart('woReasons');
+    var nz = rows.filter(function (r) { return r.qty > 0; });
+    $('chart-wo-reasons').style.display = nz.length ? '' : 'none';
+    if (!nz.length) return;
+    state.charts.woReasons = new Chart($('chart-wo-reasons'), {
+      type: 'bar',
+      data: {
+        labels: nz.map(function (r) { return r.name; }),
+        datasets: [{ label: 'Единиц', data: nz.map(function (r) { return r.qty; }),
+          backgroundColor: SiskuUtil.hexToRgba(GOLD, .45), borderColor: GOLD, borderWidth: 1 }]
+      },
+      options: {
+        indexAxis: 'y', responsive: true,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { precision: 0 }, grid: { color: LINE } },
+          y: { grid: { display: false } }
+        }
+      }
+    });
+  }
+  function drawWoTop(list) {
+    var agg = {};
+    list.filter(function (w) { return w.qty < 0; }).forEach(function (w) {
+      var k = w.product_id;
+      if (!agg[k]) agg[k] = { name: w.product, article: w.article, lines: 0, qty: 0, sum: 0 };
+      agg[k].lines += 1;
+      agg[k].qty += -w.qty;
+      agg[k].sum += -w.qty * w.price;
+    });
+    var rows = Object.keys(agg).map(function (k) { return agg[k]; });
+    rows.sort(function (x, y) { return y.qty - x.qty; });
+    rows = rows.slice(0, 10);
+    $('wo-top-empty').hidden = rows.length !== 0;
+    $('table-wo-top').innerHTML =
+      '<thead><tr><th>Товар</th><th style="text-align:right">Списаний</th><th style="text-align:right">Единиц</th><th style="text-align:right">Сумма</th></tr></thead><tbody>' +
+      (rows.length
+        ? rows.map(function (r) {
+            return '<tr><td>' + esc(r.name) + ' <span class="muted" style="font-size:12px">' + esc(r.article) + '</span></td>' +
+              '<td class="tabular" style="text-align:right">' + r.lines + '</td>' +
+              '<td class="tabular" style="text-align:right">' + fmtNum(r.qty) + '</td>' +
+              '<td class="tabular" style="text-align:right">' + money(r.sum) + '</td></tr>';
+          }).join('')
+        : '<tr><td colspan="4" class="muted">Списаний за период нет (излишки — в причинах и сводке)</td></tr>') +
+      '</tbody>';
+  }
+  function drawWoAdmins(list) {
+    var agg = {};
+    list.forEach(function (w) {
+      var k = w.changed_by || '—';
+      if (!agg[k]) agg[k] = { name: k, lines: 0, qty: 0, sum: 0 };
+      agg[k].lines += 1;
+      agg[k].qty += Math.abs(w.qty);
+      agg[k].sum += Math.abs(w.qty) * w.price;
+    });
+    var rows = Object.keys(agg).map(function (k) { return agg[k]; });
+    rows.sort(function (x, y) { return y.lines - x.lines; });
+    $('wo-admins-empty').hidden = rows.length !== 0;
+    $('table-wo-admins').innerHTML =
+      '<thead><tr><th>Автор</th><th style="text-align:right">Строк</th><th style="text-align:right">Единиц</th><th style="text-align:right">Сумма</th></tr></thead><tbody>' +
+      (rows.length
+        ? rows.map(function (r) {
+            return '<tr><td>' + esc(r.name) + '</td>' +
+              '<td class="tabular" style="text-align:right">' + r.lines + '</td>' +
+              '<td class="tabular" style="text-align:right">' + fmtNum(r.qty) + '</td>' +
+              '<td class="tabular" style="text-align:right">' + money(r.sum) + '</td></tr>';
+          }).join('')
+        : '<tr><td colspan="4" class="muted">Нет данных</td></tr>') +
+      '</tbody>';
+  }
+  function drawWoSessions(list) {
+    var byId = {};
+    list.forEach(function (w) {
+      if (w.session_id == null) return;
+      var g = byId[w.session_id] || (byId[w.session_id] = { wl: 0, wq: 0, wsum: 0, sl: 0, sq: 0, ssum: 0 });
+      if (w.qty < 0) { g.wl += 1; g.wq += -w.qty; g.wsum += -w.qty * w.price; }
+      else { g.sl += 1; g.sq += w.qty; g.ssum += w.qty * w.price; }
+    });
+    var rows = state.writeoffs.sessions.map(function (s) {
+      var g = byId[s.id] || { wl: 0, wq: 0, wsum: 0, sl: 0, sq: 0, ssum: 0 };
+      return { id: s.id, finished: s.finished_at, g: g };
+    });
+    $('wo-sessions-empty').hidden = rows.length !== 0;
+    $('table-wo-sessions').innerHTML =
+      '<thead><tr><th>Сессия</th><th>Завершена</th><th style="text-align:right">Списания</th><th style="text-align:right">Излишки</th><th style="text-align:right">Сумма списаний</th></tr></thead><tbody>' +
+      (rows.length
+        ? rows.map(function (r) {
+            return '<tr><td>№ ' + r.id + '</td>' +
+              '<td class="tabular muted">' + (r.finished ? SiskuUtil.fmtDate(r.finished) : '—') + '</td>' +
+              '<td class="tabular" style="text-align:right">' + r.g.wl + ' стр. · ' + fmtNum(r.g.wq) + ' шт.</td>' +
+              '<td class="tabular" style="text-align:right">' + r.g.sl + ' стр. · ' + fmtNum(r.g.sq) + ' шт.</td>' +
+              '<td class="tabular" style="text-align:right">' + money(r.g.wsum) + '</td></tr>';
+          }).join('')
+        : '<tr><td colspan="5" class="muted">Проведённых инвентаризаций нет</td></tr>') +
+      '</tbody>';
+  }
+  function exportWriteoffsCsv() {
+    var list = writeoffsInPeriod();
+    var a = woAggregates(list);
+    var periodLabel = $('wo-period').selectedOptions[0].textContent;
+    var R = [];
+    R.push(['Статистика списаний — период «' + periodLabel + '»']);
+    R.push(['Суммы — по текущим ценам товаров (в бою — исторические цены, fp №28)']);
+    R.push([]);
+    R.push(['1. Сводка'], ['Метрика', 'Значение']);
+    R.push(['Списаний, строк', a.woLines]);
+    R.push(['Списано, единиц', a.woQty]);
+    R.push(['Сумма списаний, ₽', a.woSum]);
+    R.push(['Излишков, строк', a.suLines]);
+    R.push(['Излишков, единиц', a.suQty]);
+    R.push(['Сумма излишков, ₽', a.suSum]);
+    R.push(['Среднее расхождение, единиц', list.length ? (a.absQty / list.length).toFixed(1) : '—']);
+    R.push([]);
+    R.push(['2. Причины'], ['Причина', 'Строк', 'Единиц', 'Сумма, ₽']);
+    woReasonRows(list).forEach(function (r) { R.push([r.name, r.lines, r.qty, r.sum]); });
+    R.push([]);
+    R.push(['3. Авторы'], ['Автор', 'Строк', 'Единиц', 'Сумма, ₽']);
+    (function () {
+      var agg = {};
+      list.forEach(function (w) {
+        var k = w.changed_by || '—';
+        if (!agg[k]) agg[k] = { lines: 0, qty: 0, sum: 0 };
+        agg[k].lines += 1; agg[k].qty += Math.abs(w.qty); agg[k].sum += Math.abs(w.qty) * w.price;
+      });
+      Object.keys(agg).forEach(function (k) { R.push([k, agg[k].lines, agg[k].qty, agg[k].sum]); });
+    })();
+    R.push([]);
+    R.push(['4. Журнал'], ['Дата', 'Артикул', 'Товар', 'Вариант', 'Кол-во', 'Причина', 'Автор', 'Комментарий', 'Сессия']);
+    list.forEach(function (w) {
+      R.push([fmtDate(w.created_at), w.article, w.product, w.variant, woSigned(w.qty),
+        w.reason || '', w.changed_by || '', (w.comment || '').replace(/;/g, ',').replace(/\n/g, ' '),
+        w.session_id ? '№ ' + w.session_id : 'ручное']);
+    });
+    var csv = R.map(function (row) {
+      return row.map(SiskuUtil.csvCell).join(';');   /* анти-формульный префикс (фикс F06) */
+    }).join('\r\n');
+    var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+    var a2 = document.createElement('a');
+    a2.href = URL.createObjectURL(blob);
+    a2.download = 'sisku-writeoffs-stats-' + $('wo-period').value + '-' + dayKey(new Date()) + '.csv';   /* локальная дата (фикс F29) */
+    a2.click();
+    URL.revokeObjectURL(a2.href);
+  }
+
   /* ---------- вкладки и события ---------- */
   /* v0.16.0 (fp №3): «Заказы → Возвраты» — полноценная очередь заявок
      (вместо заглушки v0.15.0); данные — draft_returns_bundle одним RPC */
@@ -1673,6 +1930,17 @@
       state.returnMode = b.getAttribute('data-mode') === 'chart' ? 'chart' : 'table';
       $('reasons-seg').querySelectorAll('.seg-btn').forEach(function (x) { x.classList.toggle('active', x === b); });
       drawReasons(returnsInPeriod());
+    });
+
+    /* статистика «Списания» (v0.20.0, fp №9): период, CSV, вид причин */
+    $('wo-period').addEventListener('change', renderWriteoffStats);
+    $('btn-writeoffs-csv').addEventListener('click', exportWriteoffsCsv);
+    $('wo-reasons-seg').addEventListener('click', function (e) {
+      var b = e.target.closest('.seg-btn');
+      if (!b) return;
+      state.woMode = b.getAttribute('data-mode') === 'chart' ? 'chart' : 'table';
+      $('wo-reasons-seg').querySelectorAll('.seg-btn').forEach(function (x) { x.classList.toggle('active', x === b); });
+      drawWoReasons(writeoffsInPeriod());
     });
 
     /* ссылка admin.html#stats открывает сразу вкладку статистики;

@@ -4,6 +4,9 @@
    с позициями и остатками склада (данные клиента и доставки не читаются).
    v0.5.0: один запрос-сборка draft_assembly_bundle(); кнопка перевода
    заказа в следующий статус («Отправлен»); сигнализация остатка < 3 шт.
+   v0.20.0 (Д5/7.1, АН-21 вариант (б)): минус/ноль остатка после проведения
+   инвентаризации — штатное состояние: выводится как есть, подсвечивается
+   (.stock-negative), статичная подсказка сборщику — в warnbar страницы.
    ========================================================================== */
 (function () {
   'use strict';
@@ -66,6 +69,10 @@
         var st = stock[i.variant_id];
         var short = st != null && st < i.quantity;
         var lowStock = st != null && st < 3;
+        /* v0.20.0 (Д5/7.1, АН-21 вариант (б)): после проведения инвентаризации
+           минус/ноль остатка — штатное состояние: число выводится как есть,
+           подсвечивается (.stock-negative), сборщик сообщает владельцу */
+        var negative = st != null && st <= 0;
         html += '<tr data-order="' + o.id + '">' +
           (idx === 0
             ? '<td rowspan="' + list.length + '"><b>№ ' + o.id + '</b>' +
@@ -75,9 +82,10 @@
           '<td>' + esc(i.title_snapshot) + '</td>' +
           '<td class="muted">' + esc(i.variant_snapshot || '—') + '</td>' +
           '<td class="tabular">' + i.quantity + '</td>' +
-          '<td class="tabular' + (lowStock ? ' low-stock' : '') + '"' +
-            (short ? ' title="Остатка меньше, чем нужно в заказе"' : (lowStock ? ' title="Остаток менее 3 шт"' : '')) + '>' +
-            (st != null ? st + (lowStock ? ' ⚠' : '') : '—') +
+          '<td class="tabular' + (negative ? ' stock-negative' : (lowStock ? ' low-stock' : '')) + '"' +
+            (negative ? ' title="Нулевой или отрицательный остаток — расхождение с резервом (проведённая инвентаризация): сообщите владельцу"'
+              : (short ? ' title="Остатка меньше, чем нужно в заказе"' : (lowStock ? ' title="Остаток менее 3 шт"' : ''))) + '>' +
+            (st != null ? st + (negative ? ' ‼' : (lowStock ? ' ⚠' : '')) : '—') +
             /* v0.16.0 (фикс F51): единицы в карантине — не продаются, ждут осмотра */
             (quarantine && quarantine[i.variant_id]
               ? ' <span class="asm-quarantine" title="В карантине, требует осмотра (возврат)">+' + quarantine[i.variant_id] + ' кар.</span>'
