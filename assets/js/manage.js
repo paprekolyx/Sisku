@@ -6,7 +6,9 @@
    Список и редактирование delivery_methods / payment_methods / return_reasons /
    writeoff_reasons (v0.20.0, fp №9 — причины списаний; ответ владельца 7.2
    от 10.10.2026: справочник здесь, посев без «Уценки», системные причины
-   не деактивируются):
+   не деактивируются) / badges (v0.21.0, fp №16 — бейджи карточки товара;
+   состав утверждён владельцем 05.10.2026, системный «New» не деактивируется,
+   удаление — только деактивацией):
    название, код, цены (вилка), активность. История заказов не страдает:
    способы отключаются (is_active), а удаление (с v0.14.0 — настоящие
    DELETE-политики скрипта 16, фикс F09) блокирует FK, если способ уже
@@ -16,18 +18,22 @@
   'use strict';
 
   var state = {
-    deliveries: [], payments: [], reasons: [], writeoffs: [],
-    kind: 'delivery',          /* какой справочник правим в модалке: delivery | payment | reason | writeoff */
+    deliveries: [], payments: [], reasons: [], writeoffs: [], badges: [],
+    kind: 'delivery',          /* какой справочник правим в модалке: delivery | payment | reason | writeoff | badge */
     editingId: null, saving: false
   };
   /* v0.16.0 (fp №3): причины возврата — третий справочник страницы;
      удаление — только деактивацией (DELETE-политики нет: причина может
      быть использована в заявках, скрипт 22)
      v0.20.0 (fp №9, ответ 7.2): причины списаний — четвёртый справочник;
-     удаление — только деактивацией; системные (is_system) не деактивируются */
+     удаление — только деактивацией; системные (is_system) не деактивируются
+     v0.21.0 (fp №16): бейджи — пятый справочник; удаление — только
+     деактивацией (назначения могут существовать); системный «New» —
+     не деактивируется и не редактируется (значок в списке) */
   function kindMeta(kind) {
     if (kind === 'reason')   return { list: state.reasons,   table: 'return_reasons' };
     if (kind === 'writeoff') return { list: state.writeoffs, table: 'writeoff_reasons' };
+    if (kind === 'badge')    return { list: state.badges,    table: 'badges' };
     if (kind === 'payment')  return { list: state.payments,  table: 'payment_methods' };
     return { list: state.deliveries, table: 'delivery_methods' };
   }
@@ -55,6 +61,11 @@
          справочник пуст, страница работает (три справочника как раньше) */
       db.from('writeoff_reasons').select('*').order('sort_order').order('id').then(function (r) {
         return r.error ? [] : (r.data || []);
+      }),
+      /* v0.21.0 (fp №16): бейджи — если скрипт 33 ещё не выполнен,
+         справочник пуст, страница работает (четыре справочника как раньше) */
+      db.from('badges').select('*').order('sort_order').order('id').then(function (r) {
+        return r.error ? [] : (r.data || []);
       })
     ]).then(function (res) {
       if (res[0].error) throw res[0].error;
@@ -63,6 +74,7 @@
       state.payments = res[1].data || [];
       state.reasons = res[2] || [];
       state.writeoffs = res[3] || [];
+      state.badges = res[4] || [];
       render();
     }).catch(function (e) {
       $('mng-error').hidden = false;
@@ -116,6 +128,21 @@
         '<td></td>' +
       '</tr>';
     }).join('') || '<tr><td colspan="5" class="muted">Причин пока нет — посев скрипта 31: Брак, Витринный образец, Недостача, Излишек, Прочее (без «Уценки» — ответ 7.2).</td></tr>';
+    /* v0.21.0 (fp №16): бейджи — системный «New» не правится и не
+       деактивируется (назначается всем товарам по умолчанию, ответ 1.9);
+       удаление — только деактивацией (назначения могут существовать) */
+    $('bdg-body').innerHTML = state.badges.map(function (m) {
+      return '<tr>' +
+        '<td class="user-fio"' + (m.is_system ? '' : ' data-edit="' + m.id + '" data-kind="badge" title="Открыть редактирование"') + '>' +
+          esc(m.name) + (m.is_system ? ' <span class="inv-sys-mark" title="Системный бейдж: по умолчанию у всех товаров, не деактивируется; снятие с товара — вручную (ответ 7.4)">системный</span>' : '') + '</td>' +
+        '<td class="muted" style="font-size:13px">' + esc(m.code) + '</td>' +
+        '<td class="tabular muted">' + m.sort_order + '</td>' +
+        '<td><button class="btn" data-toggle="' + m.id + '" data-kind="badge" style="min-height:32px;padding:0 12px"' +
+          (m.is_system ? ' disabled title="Системный бейдж — не деактивируется"' : '') + '>' +
+          (m.is_active ? 'активен' : 'отключён') + '</button></td>' +
+        '<td></td>' +
+      '</tr>';
+    }).join('') || '<tr><td colspan="5" class="muted">Бейджей пока нет — посев скрипта 33: New (системный), Хит, Заканчивается, Скоро, % (состав утверждён владельцем 05.10.2026).</td></tr>';
   }
 
   function openModal(kind, id) {
@@ -142,6 +169,18 @@
       $('mm-sort').value = m ? m.sort_order : (state.writeoffs.length + 1);
       $('mm-active').checked = m ? m.is_active : true;
       $('mm-active-label').textContent = 'Причина активна (видна в формах списаний)';
+    } else if (kind === 'badge') {
+      /* v0.21.0 (fp №16): бейдж — название + код (только при создании)
+         + порядок + активность; системные бейджи в модалку не попадают
+         (в списке без data-edit). Название «%» — легально (1 символ):
+         минимальная длина для бейджей — 1 */
+      $('mm-title').textContent = m ? 'Правка бейджа: ' + m.name : 'Новый бейдж';
+      $('mm-name').value = m ? m.name : '';
+      $('mm-code').value = m ? m.code : '';
+      $('mm-code').disabled = !!m;           /* код не меняем задним числом */
+      $('mm-sort').value = m ? m.sort_order : (state.badges.length + 1);
+      $('mm-active').checked = m ? m.is_active : true;
+      $('mm-active-label').textContent = 'Бейдж активен (виден на карточках витрины, предлагается для назначения)';
     } else {
       $('mm-title').textContent = (m ? 'Правка: ' : 'Новый способ ') + (kind === 'delivery' ? 'доставки' : 'оплаты') + (m ? m.name : '');
       $('mm-name').value = m ? m.name : '';
@@ -154,7 +193,7 @@
     }
     $('mm-code-field').hidden = kind === 'reason';
     $('mm-prices').hidden = kind !== 'delivery';
-    $('mm-sort-field').hidden = kind !== 'reason' && kind !== 'writeoff';
+    $('mm-sort-field').hidden = kind !== 'reason' && kind !== 'writeoff' && kind !== 'badge';
     ['mm-name-err', 'mm-code-err', 'mm-error'].forEach(function (x) { $(x).hidden = true; });
     $('mng-modal-backdrop').classList.add('open');
     if (window.enhanceNumbers) enhanceNumbers(document.getElementById('mng-form'));
@@ -170,7 +209,8 @@
     var code = state.kind === 'reason' ? '' : $('mm-code').value.trim().toLowerCase();
     var ok = true;
     $('mm-name-err').hidden = true; $('mm-code-err').hidden = true;
-    if (name.length < 3) { $('mm-name-err').textContent = 'Укажите название'; $('mm-name-err').hidden = false; ok = false; }
+    /* v0.21.0: название бейджа — от 1 символа (посевной «%» — легален) */
+    if (name.length < (state.kind === 'badge' ? 1 : 3)) { $('mm-name-err').textContent = 'Укажите название'; $('mm-name-err').hidden = false; ok = false; }
     if (state.kind !== 'reason' && !state.editingId && !/^[a-z0-9_-]{2,30}$/.test(code)) {
       $('mm-code-err').textContent = 'Код: латиница/цифры/дефис, 2–30 символов'; $('mm-code-err').hidden = false; ok = false;
     }
@@ -184,7 +224,7 @@
       row.price_max = $('mm-max').value ? Number($('mm-max').value) : null;
       if (row.price_max != null && row.price_max < row.base_price) row.price_max = row.base_price;
     }
-    if (state.kind === 'reason' || state.kind === 'writeoff') {
+    if (state.kind === 'reason' || state.kind === 'writeoff' || state.kind === 'badge') {
       row.sort_order = Math.max(1, Number($('mm-sort').value || 1));
     }
     if (state.kind !== 'reason' && !state.editingId) row.code = code;
@@ -223,6 +263,7 @@
     $('btn-new-payment').addEventListener('click', function () { openModal('payment', null); });
     $('btn-new-reason').addEventListener('click', function () { openModal('reason', null); });   /* v0.16.0 */
     $('btn-new-writeoff').addEventListener('click', function () { openModal('writeoff', null); });   /* v0.20.0 (fp №9) */
+    $('btn-new-badge').addEventListener('click', function () { openModal('badge', null); });          /* v0.21.0 (fp №16) */
     $('mng-modal-close').addEventListener('click', closeModal);
     $('mng-modal-backdrop').addEventListener('click', function (e) { if (e.target === $('mng-modal-backdrop')) closeModal(); });
     $('mng-form').addEventListener('submit', save);
@@ -237,9 +278,14 @@
           var m = meta.list.filter(function (x) { return x.id === id; })[0];
           if (!m) return;
           /* v0.20.0 (Д6): системные причины списаний не деактивируются
-             (кнопка disabled; guard — вторая страховка от гонки) */
+             (кнопка disabled; guard — вторая страховка от гонки)
+             v0.21.0 (fp №16): системный бейдж «New» — тем же порядком */
           if (kind === 'writeoff' && m.is_system) {
             alert('Системная причина («' + m.name + '») не деактивируется: её подставляет проведение инвентаризации.');
+            return;
+          }
+          if (kind === 'badge' && m.is_system) {
+            alert('Системный бейдж («' + m.name + '») не деактивируется: он назначается всем товарам по умолчанию (снятие с товара — вручную в карточке).');
             return;
           }
           tg.disabled = true;

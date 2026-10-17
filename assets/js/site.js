@@ -2,6 +2,10 @@
    SISKU · site.js — логика витрины (черновик v0.4.0-draft)
    Паттерны учебного проекта: подстановка site_content, корзина в localStorage,
    скелетоны, экранирование вывода, заказ только через серверную функцию.
+   v0.21.0 (fp №16 — бейджи): карточки и модалка товара — пилюли бейджей
+   из справочника (бандл витрины v3, скрипт 33) вместо хардкода «New по
+   created_at»; универсальный стиль — токены брендбука (решение владельца
+   05.10.2026); снятие «New» — только вручную (ответ 7.4).
    ========================================================================== */
 (function () {
   'use strict';
@@ -24,7 +28,9 @@
     brandRows: [],
     lastOrderId: null,      /* для кнопки «Отследить заказ» на экране успеха */
     returnReasons: [],      /* v0.16.0 (fp №3): активные причины возврата из справочника */
-    lastTrack: null         /* v0.16.0: результат отслеживания — вход в форму возврата */
+    lastTrack: null,        /* v0.16.0: результат отслеживания — вход в форму возврата */
+    badges: [],             /* v0.21.0 (fp №16): активный справочник бейджей (бандл v3) */
+    productBadges: {}       /* v0.21.0: назначения product_id → [product_badges] (sort_order) */
   };
 
   /* ---------- утилиты ---------- */
@@ -229,6 +235,15 @@
        ещё не обновлена (бандл v1) — отдельный запрос ниже подстрахует */
     state.returnReasons = d.return_reasons || [];
     if (!state.returnReasons.length) loadReturnReasons();
+    /* v0.21.0 (fp №16, Д6): бейджи — из справочника (бандл v3, скрипт 33);
+       если ключей нет (скрипт не выполнен) — запасное чтение отдельными
+       запросами, витрина не падает (паттерн loadReturnReasons) */
+    state.badges = d.badges || [];
+    state.productBadges = {};
+    (d.product_badges || []).forEach(function (pb) {
+      (state.productBadges[pb.product_id] = state.productBadges[pb.product_id] || []).push(pb);
+    });
+    if (!d.badges) loadBadges();
     buildFilters();
     buildOrderSelects();
     buildReturnReasons();
@@ -239,6 +254,7 @@
   }
   function loadAllLegacy() {
     loadReturnReasons();   /* v0.16.0: отдельным запросом, ошибка не блокирует витрину */
+    loadBadges();          /* v0.21.0 (fp №16): тем же паттерном — ошибка не блокирует */
     return Promise.all([
       db.from('brands').select('*').eq('is_active', true).order('name'),
       db.from('categories').select('*').order('id'),
@@ -290,6 +306,39 @@
       buildReturnReasons();
       if (window.enhanceSelects) enhanceSelects($('return-modal-backdrop'));
     }).catch(function () {});
+  }
+  /* v0.21.0 (fp №16, Д6): запасное чтение бейджей, если бандл витрины
+     без ключей badges/product_badges (скрипт 33 не выполнен) — два отдельных
+     запроса, ошибка не блокирует витрину (бейджи просто не рисуются) */
+  function loadBadges() {
+    if (!db) return;
+    db.from('badges').select('*').eq('is_active', true).order('sort_order').order('id').then(function (res) {
+      if (res.error || !res.data) return;
+      state.badges = res.data;
+      db.from('product_badges').select('*').order('sort_order').order('id').then(function (r2) {
+        if (r2.error || !r2.data) return;
+        state.productBadges = {};
+        r2.data.forEach(function (pb) {
+          (state.productBadges[pb.product_id] = state.productBadges[pb.product_id] || []).push(pb);
+        });
+        renderCatalog();   /* перерисовать карточки — пилюли бейджей */
+      });
+    }).catch(function () {});
+  }
+  /* v0.21.0 (fp №16, Д6): бейджи карточки — рендер по справочнику вместо
+     хардкода «New по created_at < 30 дней» (v0.1.0). Универсальная пилюля
+     из токенов брендбука (.badge, styles.css); несколько бейджей — стопкой
+     со сдвигом через --bi; состав и порядок — из данных (активные, sort_order) */
+  function renderBadges(productId) {
+    var pbs = (state.productBadges || {})[productId] || [];
+    if (!pbs.length || !(state.badges || []).length) return '';
+    var byId = {};
+    state.badges.forEach(function (b) { byId[b.id] = b; });
+    return pbs.map(function (pb, i) {
+      var b = byId[pb.badge_id];
+      if (!b) return '';   /* неактивный бейдж — не в справочнике бандла, пропускаем */
+      return '<span class="badge" style="--bi:' + i + '">' + esc(b.name) + '</span>';
+    }).join('');
   }
   function buildReturnReasons() {
     var sel = $('rr-reason');
@@ -360,7 +409,7 @@
       var stock = productStock(p);
       return '<article class="card" data-id="' + p.id + '" tabindex="0">' +
         '<div class="card-media">' + imgTag(p.image_url, p.name) +
-          (p.created_at && (Date.now() - new Date(p.created_at).getTime()) < 30 * 864e5 ? '<span class="badge">New</span>' : '') +
+          renderBadges(p.id) +
           '<button class="quick" data-id="' + p.id + '">Быстрый просмотр</button>' +
         '</div>' +
         '<div class="card-brand">' + esc(brandName(p.brand_id)) + '</div>' +
@@ -521,6 +570,7 @@
     $('pm-img').src = p.image_url || stubSrc();
     $('pm-img').alt = p.name;
     $('pm-brand').textContent = brandName(p.brand_id);
+    $('pm-badges').innerHTML = renderBadges(p.id);   /* v0.21.0 (fp №16): бейджи из справочника */
     $('pm-name').textContent = p.name;
     $('pm-price').textContent = money(p.price);
     $('pm-desc').textContent = p.description || '';
