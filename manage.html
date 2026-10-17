@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
@@ -109,6 +110,21 @@
         <tr><th>Название</th><th>Код</th><th>Порядок</th><th>Активна</th><th></th></tr>
       </thead>
       <tbody id="wrn-body"></tbody>
+    </table>
+  </div>
+
+  <!-- ================== БЕЙДЖИ (v0.21.0, fp №16; состав справочника утверждён владельцем 05.10.2026) ================== -->
+  <div class="toolbar" style="margin-top:36px">
+    <span class="muted" style="font-size:13px">Бейджи карточек товара: пилюли на карточках витрины (только активные; стиль универсальный — из токенов брендбука). Назначение и снятие — вручную в карточке товара («Магазин → Товары»), в т.ч. «New» — без авто-снятия. Удаление — отключением: бейдж может быть назначен товарам. Системный «New» назначается всем товарам по умолчанию и не деактивируется.</span>
+    <span class="spacer"></span>
+    <button class="btn primary" id="btn-new-badge">Новый бейдж</button>
+  </div>
+  <div class="table-wrap">
+    <table class="orders" style="min-width:640px">
+      <thead>
+        <tr><th>Название</th><th>Код</th><th>Порядок</th><th>Активен</th><th></th></tr>
+      </thead>
+      <tbody id="bdg-body"></tbody>
     </table>
   </div>
   <div class="err-box" id="mng-error" hidden></div>

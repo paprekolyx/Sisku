@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
@@ -300,6 +301,11 @@
           <div id="pf-variants"></div>
           <button type="button" class="btn ghost small" id="pf-var-add">+ вариант</button>
         </div>
+        <div class="field"><!-- v0.21.0 (fp №16, Д2/Д3/Д4): бейджи карточки -->
+          <label>Бейджи на карточке витрины</label>
+          <div id="pf-badges" class="badge-picks"><span class="muted" style="font-size:12px">загрузка…</span></div>
+          <div class="muted" style="font-size:12px;margin-top:6px">Назначение и снятие — только вручную (в т.ч. «New» — без авто-снятия). Новый товар — «New» предвыбран. Справочник бейджей — «Управление → Справочники».</div>
+        </div>
         <div class="field" style="display:flex;align-items:center;gap:10px">
           <input id="pf-active" type="checkbox" checked style="width:18px;height:18px;accent-color:var(--accent)">
           <label for="pf-active" style="font-size:13px;color:var(--text)">Товар активен (виден на витрине)</label>
@@ -310,7 +316,7 @@
       <aside class="prod-preview">
         <div class="subhead-sm">Предпросмотр на витрине</div>
         <div class="pv-card">
-          <div class="pv-media"><img id="pv-img" src="" alt="Предпросмотр товара"></div>
+          <div class="pv-media"><img id="pv-img" src="" alt="Предпросмотр товара"><div id="pv-badges"></div></div><!-- v0.21.0: пилюли бейджей поверх фото -->
           <div class="pv-brand" id="pv-brand"></div>
           <div class="pv-name" id="pv-name">Название товара</div>
           <div class="pv-price" id="pv-price">0 ₽</div>
