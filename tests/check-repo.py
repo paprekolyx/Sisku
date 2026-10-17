@@ -54,6 +54,12 @@ docs/update/update-v0200.md; новая пара JS↔страница inventory
 products.html; проверка последнего SQL-скрипта — 32; бэкап
 data/writeoff_reasons_rows.csv создаётся волной, но в REQUIRED не входит
 (Д13 — живой источник справочника база; CSV-проверка п.5 его сканирует).
+v3.0 (волна v0.21.0): в REQUIRED добавлены supabase/33_badges.sql и
+docs/update/update-v0210.md (бейджи карточки товара, fp №16); проверка
+последнего SQL-скрипта — 33; бэкап data/badges_rows.csv создаётся волной,
+но в REQUIRED не входит (Д9/паттерн Д13 — живой источник справочника база;
+CSV-проверка п.5 его сканирует); новых пар JS↔страница нет (бейджи —
+в существующих модулях site.js/products.js/manage.js).
 
 Запуск из корня репозитория:  python3 tests/check-repo.py
 Проверяет (без сети и без базы):
@@ -191,6 +197,11 @@ REQUIRED = [
     # не добавляется (Д13 — рекомендация разработчика, живой источник — база)
     'supabase/31_inventory_schema.sql', 'supabase/32_inventory_rpc.sql',
     'assets/js/inventory.js', 'docs/update/update-v0200.md',
+    # v3.0 (волна v0.21.0): бейджи карточки товара (fp №16; скрипт 33 —
+    # справочник + назначения + RPC + бандл витрины v3) и инструкция волны;
+    # бэкап data/badges_rows.csv создаётся, но в REQUIRED не добавляется
+    # (Д9 — паттерн Д13, живой источник справочника — база)
+    'supabase/33_badges.sql', 'docs/update/update-v0210.md',
 ] + ['assets/img/products/p00%d.webp' % i for i in range(1, 9)]
 
 # ---------- 1. обязательные файлы + реестр supabase/README.md ----------
@@ -415,6 +426,6 @@ if problems:
     for p in problems:
         print('  ✗ ' + p)
     sys.exit(1)
-print('✓ check-repo v2.9: все проверки пройдены (версия %s, страниц %d, SQL-скриптов %d, последний %s)'
+print('✓ check-repo v3.0: все проверки пройдены (версия %s, страниц %d, SQL-скриптов %d, последний %s)'
       % (ver, len(HTML_PAGES), len(on_disk), LAST_SQL))
 sys.exit(0)
