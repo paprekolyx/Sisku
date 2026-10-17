@@ -3,4 +3,4 @@ id,code,name,is_system,is_active,sort_order,created_at
 2,hit,Хит,false,true,2,2026-10-17 20:47:56.578489+00
 3,ending,Заканчивается,false,true,3,2026-10-17 20:47:56.578489+00
 4,soon,Скоро,false,true,4,2026-10-17 20:47:56.578489+00
-5,percent,%,false,true,5,2026-10-17 20:47:56.578489+00
+5,percent,- %,false,true,5,2026-10-17 20:47:56.578489+00
