@@ -60,6 +60,19 @@ docs/update/update-v0210.md (бейджи карточки товара, fp №1
 но в REQUIRED не входит (Д9/паттерн Д13 — живой источник справочника база;
 CSV-проверка п.5 его сканирует); новых пар JS↔страница нет (бейджи —
 в существующих модулях site.js/products.js/manage.js).
+v3.1 (волна v0.21.1 — ревизия документации и консолидация SQL 2, 17.10.2026):
+REQUIRED приведён к консолидированному baseline ревизии 2 — записи
+инкрементов 26–33 исключены (файлы заморожены в архиве
+supabase/archive/sql-26-33-v0210.md — добавлен в REQUIRED), добавлен
+docs/update/update-v0211.md; SECURITY.md/LICENSE.md ИСКЛЮЧЕНЫ из сверки
+версии в шапке (решение аналитика 17.10.2026: вместо версионной шапки —
+отметка «Версия: смотреть в README.md», документы волнами не обновляются);
+проверка «последний SQL-скрипт» перестроена под модель консолидации 2:
+инкрементов на диске нет — сверяется число «Следующий инкрементный скрипт — N»
+из реестра supabase/README.md с упоминанием в техпаспорте и корневом README
+(setup-supabase исключён — решение 17.10.2026: изменчивые данные живут
+только в supabase/README.md); итоговый вывод — состав baseline и следующий
+номер скрипта.
 
 Запуск из корня репозитория:  python3 tests/check-repo.py
 Проверяет (без сети и без базы):
@@ -175,33 +188,33 @@ REQUIRED = [
     # документации (docs/viki-reestr.md — решение аналитика 06.10.2026)
     'docs/update/update-v0160.md', 'docs/priemka/priemka-v015.md',
     'docs/viki-reestr.md',
-    # v2.5 (волна v0.17.0): инкременты 26–27, обработка внешнего ревью,
-    # инструкция волны и исторический архив скриптов 01–25 (заморожен)
-    'supabase/26_field_limits_and_promo_timezone.sql',
-    'supabase/27_webp_image_paths.sql',
+    # v2.5 (волна v0.17.0): обработка внешнего ревью, инструкция волны и
+    # исторический архив скриптов 01–25 (заморожен); записи инкрементов 26–27
+    # исключены в v3.1 (консолидация ревизии 2 — файлы в архиве
+    # supabase/archive/sql-26-33-v0210.md)
     'supabase/archive/sql-01-25-v0160.md',
     'docs/review/review-v0160.md', 'docs/update/update-v0170.md',
     # v2.6 (волна v0.17.1): универсальный чек-лист приёмки (регистрация — решение Д2а)
     # и инструкция волны
     'docs/priemka/chek-list-priemki-funkcionala.md', 'docs/update/update-v0171.md',
-    # v2.7 (волна v0.18.0): карточка клиента — история заказов, варианты имён
-    # и история контактов (скрипты 28–29, create_order v9) и инструкция волны
-    'supabase/28_client_history.sql', 'supabase/29_client_card_v9.sql',
+    # v2.7 (волна v0.18.0): карточка клиента — инструкция волны (записи
+    # скриптов 28–29 исключены в v3.1 — архив sql-26-33-v0210.md)
     'docs/update/update-v0180.md',
-    # v2.8 (волна v0.19.0): сегменты клиентов (скрипт 30, draft_clients_bundle
-    # v3, подвкладка «Статистика → Клиенты») и инструкция волны
-    'supabase/30_client_segments.sql', 'docs/update/update-v0190.md',
-    # v2.9 (волна v0.20.0): инвентаризация и списания (скрипты 31–32, модуль
-    # панели inventory.js — пара с products.html, решение Д14) и инструкция
-    # волны; бэкап data/writeoff_reasons_rows.csv создаётся, но в REQUIRED
-    # не добавляется (Д13 — рекомендация разработчика, живой источник — база)
-    'supabase/31_inventory_schema.sql', 'supabase/32_inventory_rpc.sql',
+    # v2.8 (волна v0.19.0): сегменты клиентов — инструкция волны (запись
+    # скрипта 30 исключена в v3.1 — архив sql-26-33-v0210.md)
+    'docs/update/update-v0190.md',
+    # v2.9 (волна v0.20.0): инвентаризация и списания (модуль панели
+    # inventory.js — пара с products.html, решение Д14) и инструкция волны;
+    # бэкап data/writeoff_reasons_rows.csv в REQUIRED не входит (Д13);
+    # записи скриптов 31–32 исключены в v3.1 — архив sql-26-33-v0210.md
     'assets/js/inventory.js', 'docs/update/update-v0200.md',
-    # v3.0 (волна v0.21.0): бейджи карточки товара (fp №16; скрипт 33 —
-    # справочник + назначения + RPC + бандл витрины v3) и инструкция волны;
-    # бэкап data/badges_rows.csv создаётся, но в REQUIRED не добавляется
-    # (Д9 — паттерн Д13, живой источник справочника — база)
-    'supabase/33_badges.sql', 'docs/update/update-v0210.md',
+    # v3.0 (волна v0.21.0): бейджи карточки товара (fp №16) и инструкция
+    # волны; бэкап data/badges_rows.csv в REQUIRED не входит (Д9 — паттерн
+    # Д13); запись скрипта 33 исключена в v3.1 — архив sql-26-33-v0210.md
+    'docs/update/update-v0210.md',
+    # v3.1 (волна v0.21.1): консолидация ревизии 2 — архив инкрементов 26–33
+    # и инструкция ревизии документации
+    'supabase/archive/sql-26-33-v0210.md', 'docs/update/update-v0211.md',
 ] + ['assets/img/products/p00%d.webp' % i for i in range(1, 9)]
 
 # ---------- 1. обязательные файлы + реестр supabase/README.md ----------
@@ -221,8 +234,18 @@ for f in sorted(listed):
 for f in sorted(on_disk - listed):
     problems.append('supabase/README.md: скрипт %s отсутствует в реестре' % f)
 
-LAST_SQL = max(on_disk) if on_disk else None
-LAST_SQL_NN = LAST_SQL[:2] if LAST_SQL else '??'
+BASELINE_NAMES = {'01_schema.sql', '02_rls_and_access.sql', '03_functions.sql',
+                  '04_seed_references_and_content.sql', '05_seed_catalog.sql',
+                  '09_admin_bundles.sql'}
+increments = sorted(f for f in on_disk if f not in BASELINE_NAMES)
+LAST_SQL = increments[-1] if increments else None
+LAST_SQL_NN = LAST_SQL[:2] if LAST_SQL else None
+# v3.1 (консолидация ревизии 2): инкрементов на диске может не быть —
+# следующий номер берётся из реестра supabase/README.md
+m_next = re.search(r'Следующий инкрементный скрипт — \*{0,2}(\d+)', readme_sql)
+NEXT_SQL_NN = m_next.group(1) if m_next else None
+if not m_next:
+    problems.append('supabase/README.md: не найден маркер «Следующий инкрементный скрипт — N» (v3.1)')
 
 # ---------- 2. ссылки во всех HTML ----------
 for f in HTML_PAGES:
@@ -285,10 +308,15 @@ ver = ver_js.group(1) if ver_js else None
 if not ver:
     problems.append('config.js: не найден SITE_VERSION')
 else:
-    for f in ['README.md', 'SECURITY.md', 'LICENSE.md']:
-        head = io.open(f, encoding='utf-8').read()[:600]
-        if ver not in head:
-            problems.append('%s: версия в шапке не совпадает с SITE_VERSION (%s)' % (f, ver))
+    head = io.open('README.md', encoding='utf-8').read()[:600]
+    if ver not in head:
+        problems.append('README.md: версия в шапке не совпадает с SITE_VERSION (%s)' % ver)
+    # v3.1 (решение аналитика 17.10.2026): SECURITY.md/LICENSE.md не несут
+    # версионной шапки и волнами не обновляются — контролируется отметка
+    for f in ['SECURITY.md', 'LICENSE.md']:
+        head2 = io.open(f, encoding='utf-8').read()[:800]
+        if 'смотреть в README.md' not in head2:
+            problems.append('%s: нет отметки «Версия: смотреть в README.md» в шапке (v3.1)' % f)
 
 # ---------- 6.5. регламент SQL ----------
 for f in sorted(os.listdir('supabase')):
@@ -300,17 +328,31 @@ for f in sorted(os.listdir('supabase')):
     for n, line in enumerate(src.split('\n'), 1):
         if re.search(r'(?<!\$)\$(?!\$)', line.split('--')[0]):
             problems.append('supabase/%s: одиночный $ в строке %d (доллар-квоты только парные)' % (f, n))
-    # фикс F20 (v0.14.0): префлайт обязателен в каждом скрипте с политиками
-    if re.search(r'create policy\b', src, re.I) and 'to_regclass' not in src:
+    # фикс F20 (v0.14.0): префлайт обязателен в каждом скрипте с политиками.
+    # v3.1: DDL ищем вне доллар-квот и комментариев — упоминания «create policy»
+    # внутри тел функций/комментариев политикой не являются (ложные срабатывания
+    # на консолидированном baseline ревизии 2)
+    _ddl = re.sub(r'\$\$.*?\$\$', '', src, flags=re.S)
+    _ddl = re.sub(r'--[^\n]*', '', _ddl)
+    if re.search(r'create policy\b', _ddl, re.I) and 'to_regclass' not in src:
         problems.append('supabase/%s: скрипт создаёт политики, но без префлайта to_regclass (правило 6)' % f)
 
-# ---------- 6.6. последний SQL-скрипт упомянут в документации ----------
+# ---------- 6.6. реестр скриптов: последний/следующий номер в документации (v3.1) ----------
 if LAST_SQL:
+    # на диске есть инкременты — прежняя логика (без setup-supabase: изменчивые
+    # данные скриптов живут только в supabase/README.md — решение 17.10.2026)
     doc_pats = ['%s_' % LAST_SQL_NN, '01…%s' % LAST_SQL_NN, '01–%s' % LAST_SQL_NN, '01-%s' % LAST_SQL_NN]
-    for f in ['docs/tehpasport.md', 'docs/setup/setup-supabase.md', 'README.md']:
+    for f in ['docs/tehpasport.md', 'README.md']:
         src = io.open(f, encoding='utf-8').read()
         if not any(p in src for p in doc_pats):
             problems.append('%s: не упомянут последний SQL-скрипт (%s) — документация устарела' % (f, LAST_SQL))
+elif NEXT_SQL_NN:
+    # baseline-only: следующий номер из реестра supabase/README.md должен быть
+    # синхронизирован с техпаспортом и корневым README
+    for f in ['docs/tehpasport.md', 'README.md']:
+        src = io.open(f, encoding='utf-8').read()
+        if NEXT_SQL_NN not in src:
+            problems.append('%s: не упомянут следующий номер скрипта (%s) из реестра supabase/README.md — документация устарела' % (f, NEXT_SQL_NN))
 
 # ---------- 6.7. util.js подключён на всех страницах ----------
 for f in HTML_PAGES:
@@ -426,6 +468,10 @@ if problems:
     for p in problems:
         print('  ✗ ' + p)
     sys.exit(1)
-print('✓ check-repo v3.0: все проверки пройдены (версия %s, страниц %d, SQL-скриптов %d, последний %s)'
-      % (ver, len(HTML_PAGES), len(on_disk), LAST_SQL))
+if increments:
+    print('✓ check-repo v3.1: все проверки пройдены (версия %s, страниц %d, SQL: baseline 6 + инкременты, последний %s)'
+          % (ver, len(HTML_PAGES), LAST_SQL))
+else:
+    print('✓ check-repo v3.1: все проверки пройдены (версия %s, страниц %d, SQL: baseline ревизии 2 — 6 скриптов, следующий инкремент %s)'
+          % (ver, len(HTML_PAGES), NEXT_SQL_NN))
 sys.exit(0)
