@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
@@ -109,36 +110,12 @@
   <div class="empty" id="inv-sessions-empty" hidden>Сессий инвентаризации пока нет — создайте первую («Новая инвентаризация»).</div>
   <div class="err-box" id="inv-error" hidden></div>
 
-  <!-- ===== секция «Лист» (Д4/Д5): открывается для конкретной сессии ===== -->
-  <div id="inv-sheet-section" hidden>
-    <div class="subhead-sm" id="inv-sheet-title" style="margin-top:26px">Лист инвентаризации</div>
-    <div class="toolbar">
-      <span class="muted" style="font-size:13px" id="inv-sheet-hint">Ожидаемо физически = остаток в системе + резерв + карантин (snapshot на момент старта сессии; продажи во время сессии лист не меняют). Расхождение = факт − ожидаемо: «+» излишек, «−» недостача.</span>
-      <span class="spacer"></span>
-      <button class="btn" id="inv-sheet-close">Закрыть лист</button>
-      <button class="btn" id="inv-save-facts">Сохранить факт</button>
-      <button class="btn primary" id="inv-finish">Завершить…</button>
-    </div>
-    <div class="table-wrap inv-sheet-wrap">
-      <table class="orders zebra" style="min-width:1120px">
-        <thead>
-          <tr>
-            <th>Товар</th><th>Вариант</th>
-            <th class="tabular">В системе</th><th class="tabular">В резерве</th>
-            <th class="tabular">В карантине</th><th class="tabular">Ожидаемо физически</th>
-            <th class="tabular">Факт</th><th class="tabular">Расхождение</th>
-          </tr>
-        </thead>
-        <tbody id="inv-sheet-body"></tbody>
-      </table>
-    </div>
-    <div class="loading" id="inv-sheet-loading" hidden>Загружаем лист…</div>
-    <div class="empty" id="inv-sheet-empty" hidden>В листе нет позиций: в области сессии нет активных вариантов товаров.</div>
-    <div class="err-box" id="inv-sheet-error" hidden></div>
-  </div>
+  <!-- ===== v0.22.0 (П16): лист/итоги перенесены в модальное окно
+       (inv-sheet-backdrop — после main); подтабличная секция убрана:
+       страница не «подпрыгивает», не нужно скроллить ===== -->
 
-  <!-- ===== секция «Журнал списаний» (Д7; движение карантина — fp №3b, v0.29.0) ===== -->
-  <div class="subhead-sm" style="margin-top:26px">Журнал списаний</div>
+  <!-- ===== секция «Журнал списаний и излишков» (Д7; движение карантина — fp №3b, v0.29.0; переименование — П18) ===== -->
+  <div class="subhead-sm" style="margin-top:26px">Журнал списаний и излишков</div>
   <div class="toolbar">
     <select id="inv-j-reason" aria-label="Фильтр журнала по причине">
       <option value="">Все причины</option>
@@ -164,7 +141,7 @@
     </table>
   </div>
   <div class="loading" id="inv-j-loading" hidden>Загружаем журнал…</div>
-  <div class="empty" id="inv-j-empty" hidden>Списаний пока нет. Записи появляются при проведении инвентаризаций и через кнопку «Ручное списание».</div>
+  <div class="empty" id="inv-j-empty" hidden>Списаний и излишков пока нет. Записи появляются при проведении инвентаризаций и через кнопку «Ручное списание».</div>
   <div class="err-box" id="inv-j-error" hidden></div>
   <div class="pager" id="inv-j-pager" hidden>
     <button class="btn" id="inv-j-prev" style="min-height:36px;padding:0 16px">← Ранее</button>
@@ -173,33 +150,66 @@
   </div>
 </main>
 
-<!-- ========== модалка: новая инвентаризация (Д3/Д12) ========== -->
+<!-- ========== v0.22.0 (П16): лист/итоги инвентаризации — модальное окно ========== -->
+<div class="modal-backdrop" id="inv-sheet-backdrop">
+  <div class="modal" style="width:min(1180px,100%);padding:36px 38px" role="dialog" aria-modal="true" aria-label="Лист инвентаризации">
+    <button class="modal-close" id="inv-sheet-close" aria-label="Закрыть">×</button>
+    <h2 id="inv-sheet-title" style="font-size:22px;margin-bottom:6px">Лист инвентаризации</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:8px" id="inv-sheet-hint">Ожидаемо физически = остаток в системе + резерв + карантин (snapshot на момент старта сессии; продажи во время сессии лист не меняют). Расхождение = факт − ожидаемо: «+» излишек, «−» недостача.</p>
+    <!-- П18/Д5: примечание о закрытии без внесения факта -->
+    <p class="muted" style="font-size:12.5px;margin-bottom:14px">Если завершить инвентаризацию, не внося фактические остатки, она закрывается как «без расхождений»: остатки не меняются, списания и излишки не создаются.</p>
+    <div class="toolbar" style="margin-bottom:12px">
+      <span class="spacer"></span>
+      <button class="btn" id="inv-sheet-csv" title="Выгрузка листа/итогов в CSV (П19)">Скачать CSV</button>
+      <button class="btn" id="inv-save-facts">Сохранить факт</button>
+      <button class="btn primary" id="inv-finish">Завершить…</button>
+    </div>
+    <div class="table-wrap inv-sheet-wrap" style="max-height:52vh;overflow:auto">
+      <table class="orders zebra" style="min-width:1120px">
+        <thead>
+          <tr>
+            <th>Товар</th><th>Вариант</th>
+            <th class="tabular">В системе</th><th class="tabular">В резерве</th>
+            <th class="tabular">В карантине</th><th class="tabular">Ожидаемо физически</th>
+            <th class="tabular">Факт</th><th class="tabular">Расхождение</th>
+          </tr>
+        </thead>
+        <tbody id="inv-sheet-body"></tbody>
+      </table>
+    </div>
+    <div class="loading" id="inv-sheet-loading" hidden>Загружаем лист…</div>
+    <div class="empty" id="inv-sheet-empty" hidden>В листе нет позиций: в области сессии нет активных вариантов товаров.</div>
+    <div class="err-box" id="inv-sheet-error" hidden></div>
+  </div>
+</div>
+
+<!-- ========== модалка: новая инвентаризация (Д3/Д12; отступы блоков — П20) ========== -->
 <div class="modal-backdrop" id="inv-create-backdrop">
   <div class="modal" style="width:min(680px,100%)" role="dialog" aria-modal="true" aria-label="Новая инвентаризация">
     <button class="modal-close" id="inv-create-close" aria-label="Закрыть">×</button>
     <h2 style="font-size:22px;margin-bottom:14px">Новая инвентаризация</h2>
     <form id="inv-create-form" novalidate>
-      <div class="field">
+      <div class="field" style="margin-bottom:18px">
         <label for="inv-c-scope">Область</label>
         <select id="inv-c-scope">
           <option value="all" selected>Весь магазин (все активные товары)</option>
           <option value="categories">Отдельные категории</option>
         </select>
       </div>
-      <div class="field" id="inv-c-cats-field" hidden>
+      <div class="field" id="inv-c-cats-field" hidden style="margin-bottom:18px">
         <label>Категории (мультивыбор)</label>
         <div class="inv-pick-list" id="inv-c-cats"></div>
       </div>
-      <div class="field">
+      <div class="field" style="margin-bottom:18px">
         <label for="inv-c-date">План-дата (необязательно)</label>
         <input type="date" id="inv-c-date">
-        <div class="muted" style="font-size:12px;margin-top:4px">Авто-старта по план-дате нет: сессию начинает человек кнопкой «Начать» (решение Д2).</div>
+        <div class="muted" style="font-size:12px;margin-top:4px">Авто-старта по план-дате нет: сессию начинает человек кнопкой «Начать».</div>
       </div>
-      <div class="field">
+      <div class="field" style="margin-bottom:22px">
         <label>Привлекаемые администраторы (мультивыбор)</label>
         <div class="inv-pick-list" id="inv-c-participants"></div>
       </div>
-      <button class="btn primary" type="submit" id="inv-c-submit" style="width:100%">Создать сессию</button>
+      <button class="btn primary" type="submit" id="inv-c-submit" style="width:100%;margin-top:4px">Создать сессию</button>
       <div class="err-box" id="inv-c-error" style="margin-top:12px" hidden></div>
     </form>
   </div>
@@ -210,11 +220,11 @@
   <div class="modal" style="width:min(760px,100%)" role="dialog" aria-modal="true" aria-label="Завершение инвентаризации">
     <button class="modal-close" id="inv-finish-close" aria-label="Закрыть">×</button>
     <h2 style="font-size:22px;margin-bottom:6px" id="inv-f-title">Завершение инвентаризации</h2>
-    <p class="muted" style="font-size:13px;margin-bottom:14px">По каждому ненулевому расхождению в журнал будет записана строка («−» списание / «+» излишек), остаток изменится на величину расхождения. Позиции без введённого факта не затрагиваются.</p>
+    <p class="muted" style="font-size:13px;margin-bottom:14px">По каждому ненулевому расхождению в журнал будет записана строка («−» списание / «+» излишек), остаток изменится на величину расхождения. Позиции без введённого факта не затрагиваются. Если завершить инвентаризацию, не внося фактические остатки, она закрывается как «без расхождений»: остатки не меняются, списания и излишки не создаются.</p>
     <div class="table-wrap" id="inv-f-list-wrap" style="max-height:260px;overflow:auto;margin-bottom:14px">
       <table class="mini-table" id="inv-f-list"></table>
     </div>
-    <div class="err-box" id="inv-f-warn" style="margin-bottom:14px">Внимание: после проведения остатки могут стать нулевыми или отрицательными — это допустимое состояние (решение владельца 10.10.2026, вариант (б)). Единицы зарезервированы под открытые заказы — проверьте страницу «Сборка»: минус/ноль подсвечивается, сообщите владельцу. Новый заказ с нулевым остатком не создаётся («Недостаточно остатка»).</div>
+    <div class="err-box" id="inv-f-warn" style="margin-bottom:14px">Внимание: после проведения остатки могут стать нулевыми или отрицательными — это допустимое состояние. Единицы зарезервированы под открытые заказы — проверьте страницу «Сборка»: минус/ноль подсвечивается, сообщите владельцу. Новый заказ с нулевым остатком не создаётся («Недостаточно остатка»).</div>
     <button class="btn primary" type="button" id="inv-f-submit" style="width:100%">Провести инвентаризацию</button>
     <div class="err-box" id="inv-f-error" style="margin-top:12px" hidden></div>
   </div>
@@ -234,34 +244,42 @@
   </div>
 </div>
 
-<!-- ========== модалка: ручное списание / излишек (Д7) ========== -->
+<!-- ========== модалка: ручное списание / излишек (Д7, АН-34 — компоновка
+     приложения В черновика v0.22.0: единый стиль инпутов, отступы 18–22px,
+     причина ПОД количеством, знак операции — переключатель-сегмент,
+     нейтральные placeholder'ы) ========== -->
 <div class="modal-backdrop" id="inv-wo-backdrop">
-  <div class="modal" style="width:min(680px,100%)" role="dialog" aria-modal="true" aria-label="Ручное списание">
+  <div class="modal" style="width:min(560px,100%)" role="dialog" aria-modal="true" aria-label="Ручное списание">
     <button class="modal-close" id="inv-wo-close" aria-label="Закрыть">×</button>
-    <h2 style="font-size:22px;margin-bottom:14px">Ручное списание / излишек</h2>
+    <h2 style="font-size:22px;margin-bottom:6px">Ручное списание / излишек</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:20px">Списание или излишек без инвентаризации — попадёт в единый журнал.</p>
     <form id="inv-wo-form" novalidate>
-      <div class="field">
-        <label for="inv-w-search">Вариант товара (поиск: название, артикул, размер/объём)</label>
-        <input type="search" id="inv-w-search" placeholder="Начните вводить…" autocomplete="off">
+      <div class="field wo-block">
+        <label for="inv-w-search">Товар или вариант *</label>
+        <input type="search" id="inv-w-search" class="wo-input" placeholder="Поиск по названию или артикулу" autocomplete="off">
         <div class="inv-pick-list" id="inv-w-list" style="max-height:180px"></div>
-        <div class="muted" style="font-size:12px;margin-top:4px" id="inv-w-picked">Вариант не выбран</div>
+        <div class="muted" style="font-size:12px;margin-top:6px" id="inv-w-picked">Вариант не выбран</div>
       </div>
-      <div class="field-row2">
-        <div class="field">
-          <label for="inv-w-qty">Количество («−» списание / «+» излишек)</label>
-          <input type="number" id="inv-w-qty" step="1" min="-99999" max="99999" placeholder="-1">
+      <div class="field wo-block">
+        <label for="inv-w-qty">Количество, шт. *</label>
+        <div class="wo-qty-row">
+          <input type="number" id="inv-w-qty" class="wo-input" step="1" min="1" max="99999" placeholder="1">
+          <div class="wo-sign" id="inv-w-sign" role="group" aria-label="Знак операции">
+            <button type="button" class="wo-sign-btn active" data-sign="out">списание</button>
+            <button type="button" class="wo-sign-btn" data-sign="in">излишек</button>
+          </div>
         </div>
-        <div class="field">
-          <label for="inv-w-reason">Причина</label>
-          <select id="inv-w-reason"><option value="">— выберите —</option></select>
-        </div>
+        <div class="muted" style="font-size:12px;margin-top:6px">Списание возможно только из свободных единиц (зарезервированные не затрагиваются); уход остатка в минус — только через проведение инвентаризации.</div>
       </div>
-      <div class="field">
-        <label for="inv-w-comment">Комментарий (необязательно)</label>
-        <input id="inv-w-comment" maxlength="1000" placeholder="Например: бой при примерке">
-        <div class="muted" style="font-size:12px;margin-top:4px">Списание возможно только из свободных единиц (зарезервированные не затрагиваются); уход остатка в минус — только через проведение инвентаризации.</div>
+      <div class="field wo-block">
+        <label for="inv-w-reason">Причина *</label>
+        <select id="inv-w-reason" style="width:100%"><option value="">— выберите —</option></select>
       </div>
-      <button class="btn primary" type="submit" id="inv-w-submit" style="width:100%">Записать в журнал</button>
+      <div class="field wo-block">
+        <label for="inv-w-comment">Комментарий</label>
+        <textarea id="inv-w-comment" class="wo-input wo-comment" maxlength="1000" placeholder="Комментарий (необязательно)"></textarea>
+      </div>
+      <button class="btn primary" type="submit" id="inv-w-submit" style="width:100%;margin-top:22px">Списать</button>
       <div class="err-box" id="inv-w-error" style="margin-top:12px" hidden></div>
     </form>
   </div>
@@ -284,6 +302,14 @@
           <div class="field"><label for="pf-cat">Категория *</label><select id="pf-cat"><option value="">— выберите —</option></select><div class="err" id="pf-cat-err" hidden></div></div>
         </div>
         <div class="field"><label for="pf-desc">Описание</label><textarea id="pf-desc" placeholder="Состав, крой, особенности — без запятых не обязательно, CSV-импорт сам экранирует"></textarea></div>
+        <!-- v0.22.0 (fp №14): «Характеристики» — динамическая секция атрибутов
+             категории товара (text/number — инпут, enum — select); значения —
+             draft_attrs_bundle, сохранение — draft_save_product_attrs -->
+        <div class="field" id="pf-attrs-field" hidden>
+          <label>Характеристики</label>
+          <div id="pf-attrs" class="attrs-editor"></div>
+          <div class="muted" style="font-size:12px;margin-top:6px">Атрибуты настраиваются в «Магазин → Категории» (кнопка «Атрибуты»). Пустые значения не сохраняются. При смене категории секция перерисовывается; значения атрибутов прежней категории остаются в базе до правки.</div>
+        </div>
         <div class="field">
           <label for="pf-img-file">Фото (черновая загрузка)</label>
           <div class="img-row">
@@ -332,9 +358,8 @@
 <div class="modal-backdrop" id="pvfull-modal-backdrop">
   <div class="modal" style="width:min(1020px,100%);padding:36px 38px" role="dialog" aria-modal="true" aria-label="Полный предпросмотр карточки товара">
     <button class="modal-close" id="pvfull-modal-close" aria-label="Закрыть">×</button>
-    <h2 style="font-size:22px;margin-bottom:6px">Полный предпросмотр: карточка товара витрины</h2>
-    <p class="muted" style="font-size:13px;margin-bottom:18px">Модалка товара глазами покупателя: разметка и стили витрины переиспользуются (iframe со styles.css), данные — из текущей формы, включая несохранённые правки.</p>
-    <iframe class="pvfull-frame" id="pvfull-frame" title="Предпросмотр карточки товара на витрине" sandbox=""></iframe><!-- v0.17.0 (находка A1): sandbox — скрипты в предпросмотре запрещены -->
+    <h2 style="font-size:22px;margin-bottom:18px">Полный предпросмотр: карточка товара витрины</h2>
+    <iframe class="pvfull-frame" id="pvfull-frame" title="Предпросмотр карточки товара на витрине" sandbox=""></iframe><!-- v0.17.0 (находка A1): sandbox — скрипты в предпросмотре запрещены; v0.22.0 (П13): описание модалки убрано, в srcdoc — явный <base href> (относительные пути картинок) -->
   </div>
 </div>
 

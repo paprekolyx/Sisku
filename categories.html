@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
@@ -82,6 +83,66 @@
       </table>
     </div>
     <div class="empty" id="cp-empty" hidden>В этой категории товаров нет.</div>
+  </div>
+</div>
+
+<!-- ========== v0.22.0 (fp №14): конструктор атрибутов категории ========== -->
+<div class="modal-backdrop" id="attrs-modal-backdrop">
+  <div class="modal" style="width:min(880px,100%);padding:36px 38px" role="dialog" aria-modal="true" aria-label="Атрибуты категории">
+    <button class="modal-close" id="at-modal-close" aria-label="Закрыть">×</button>
+    <h2 id="at-title" style="font-size:22px;margin-bottom:6px">Атрибуты категории</h2>
+    <p class="muted" style="font-size:13px;margin-bottom:14px">Атрибуты сразу влияют на витрину: характеристики в модалке товара, чипы у карточек списка, фильтр каталога (фильтруемые). Удаление атрибута удаляет и его значения у товаров.</p>
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+      <button class="btn primary" id="at-new" style="min-height:38px;padding:0 16px">Новый атрибут</button>
+    </div>
+    <div class="table-wrap" style="max-height:38vh;overflow:auto">
+      <table class="orders" style="min-width:700px">
+        <thead><tr><th>Название</th><th>Код</th><th>Тип</th><th style="text-align:right">Порядок</th><th>Флаги</th><th>Активен</th><th></th></tr></thead>
+        <tbody id="at-body"></tbody>
+      </table>
+    </div>
+    <div class="empty" id="at-empty" hidden>В этой категории атрибутов пока нет — нажмите «Новый атрибут».</div>
+
+    <form id="at-form" novalidate hidden style="margin-top:18px;border-top:1px solid var(--line);padding-top:18px">
+      <h3 id="at-form-title" style="font-size:17px;margin-bottom:14px">Новый атрибут</h3>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="field">
+          <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="at-name">Название *</label>
+          <input id="at-name" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="Например, Состав">
+        </div>
+        <div class="field">
+          <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="at-code">Код *</label>
+          <input id="at-code" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px" placeholder="composition — строчная латиница, цифры, «_»">
+        </div>
+        <div class="field">
+          <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="at-type">Тип</label>
+          <select id="at-type" style="width:100%">
+            <option value="text">text — строка</option>
+            <option value="number">number — число</option>
+            <option value="enum">enum — список выбора</option>
+          </select>
+        </div>
+        <div class="field">
+          <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="at-sort">Порядок</label>
+          <input id="at-sort" type="number" min="1" step="1" value="1" style="width:100%;min-height:46px;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px">
+        </div>
+      </div>
+      <div class="field" id="at-enum-wrap" hidden style="margin-top:12px">
+        <label style="display:block;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:7px" for="at-enum">Значения enum — каждое с новой строки *</label>
+        <textarea id="at-enum" rows="4" placeholder="маломерит&#10;в размер&#10;большемерит" style="width:100%;padding:10px 14px;background:var(--card);color:var(--text);border:1px solid var(--line);border-radius:3px;font-family:var(--font-body);font-size:14px"></textarea>
+      </div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;margin-top:14px;font-size:13.5px">
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="at-list" style="width:18px;height:18px;accent-color:var(--accent)"> Показывать в списке (чипы витрины)</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="at-filter" style="width:18px;height:18px;accent-color:var(--accent)"> Фильтруемый (фильтр каталога)</label>
+        <label style="display:flex;align-items:center;gap:8px;cursor:pointer"><input type="checkbox" id="at-active" checked style="width:18px;height:18px;accent-color:var(--accent)"> Активен</label>
+      </div>
+      <div class="err" id="at-form-err" style="color:var(--danger);font-size:12.5px;margin-top:10px" hidden></div>
+      <div style="display:flex;gap:10px;margin-top:14px">
+        <button class="btn primary" type="submit" id="at-submit" style="flex:1">Сохранить атрибут</button>
+        <button class="btn" type="button" id="at-cancel" style="min-height:42px;padding:0 18px">Отмена</button>
+      </div>
+    </form>
+    <div class="err-box" id="at-error" style="margin-top:12px" hidden></div>
   </div>
 </div>
 

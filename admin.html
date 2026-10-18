@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
@@ -231,12 +232,19 @@
        без селектора периода (Д7 — отдельный fp №26, заморожен) -->
   <div id="stab-clients" hidden>
     <div class="toolbar">
-      <div class="seg" id="cst-filters" role="group" aria-label="Фильтр сегментов клиентов">
-        <button class="seg-btn active" data-seg="">Все</button>
-        <button class="seg-btn" data-seg="new">Новые</button>
-        <button class="seg-btn" data-seg="repeat">Повторные</button>
-        <button class="seg-btn" data-seg="vip">VIP</button>
-        <button class="seg-btn" data-seg="dormant">Уснули</button>
+      <!-- v0.22.0 (П6/Д4, скрипт 35): вместо табов — фильтр «Сегмент» с
+           выпадающим списком и множественным выбором (логика «И»: клиент
+           соответствует ВСЕМ выбранным признакам; пересечения допустимы —
+           «уснувший VIP» виден при любом из признаков) -->
+      <div class="cst-seg" id="cst-seg-wrap">
+        <button type="button" class="btn" id="cst-seg-btn" aria-expanded="false" title="Фильтр по сегментам — множественный выбор" style="min-height:38px;padding:0 16px">Сегмент: все</button>
+        <div class="cst-seg-pop" id="cst-seg-pop" role="group" aria-label="Сегменты клиентов" hidden>
+          <label class="cst-seg-item"><input type="checkbox" data-seg="new"> Новый (заказов ≤ 1)</label>
+          <label class="cst-seg-item"><input type="checkbox" data-seg="repeat"> Повторный (заказов ≥ 2)</label>
+          <label class="cst-seg-item"><input type="checkbox" data-seg="vip"> VIP (пороги — кнопка «Пороги»)</label>
+          <label class="cst-seg-item"><input type="checkbox" data-seg="dormant"> Уснувший (без заказов N+ дней)</label>
+          <button type="button" class="btn" id="cst-seg-clear" style="width:100%;min-height:34px;margin-top:8px">Сбросить фильтр</button>
+        </div>
       </div>
       <span class="spacer"></span>
       <button class="btn" id="cst-thresholds" title="Пороги VIP и «уснувших» — ключи site_content segments.*">Пороги</button>
@@ -246,13 +254,12 @@
     <div class="kpi-grid" id="cst-kpi"></div>
     <div class="loading" id="cst-loading" hidden>Загружаем клиентов…</div>
     <div class="err-box" id="cst-error" hidden></div>
-    <div class="empty" id="cst-empty" hidden>Клиентов пока нет. Оформите тестовый заказ на витрине — клиенты появятся здесь автоматически.</div>
     <div class="table-wrap">
       <table class="orders" style="min-width:1020px">
         <thead>
           <tr>
             <th class="sortable" data-cst-sort="name">ФИО<span class="sort-ic">↕</span></th>
-            <th>Сегмент</th>
+            <th>Сегменты</th>
             <th>Телефон</th>
             <th>E-mail</th>
             <th class="sortable tabular" data-cst-sort="count">Заказов<span class="sort-ic">↕</span></th>
@@ -265,6 +272,8 @@
         <tbody id="cst-body"></tbody>
       </table>
     </div>
+    <!-- П7 (записка 7): пустое состояние — НИЖЕ таблицы (страница не «скакает») -->
+    <div class="empty" id="cst-empty" hidden>Клиентов пока нет. Оформите тестовый заказ на витрине — клиенты появятся здесь автоматически.</div>
     <div class="pager" id="cst-pager" hidden>
       <button class="btn" id="cst-pg-prev" style="min-height:36px;padding:0 16px">← Ранее</button>
       <span class="muted" id="cst-pg-info" style="font-size:13px"></span>
@@ -346,6 +355,21 @@
         <h3>Проведённые инвентаризации</h3>
         <table class="mini-table" id="table-wo-sessions"></table>
         <div class="empty" id="wo-sessions-empty" hidden>Проведённых инвентаризаций пока нет.</div>
+      </div>
+    </div>
+    <!-- v0.22.0 (П10, записка 10): две новые таблицы — «Топ товаров с
+         излишком» (зеркально топу списаний) и «Проведённые ручные списания»
+         (записи журнала без сессии) -->
+    <div class="charts-grid">
+      <div class="chart-box">
+        <h3>Топ товаров с излишком</h3>
+        <table class="mini-table" id="table-wo-surplus"></table>
+        <div class="empty" id="wo-surplus-empty" hidden>Излишков за выбранный период нет.</div>
+      </div>
+      <div class="chart-box">
+        <h3>Проведённые ручные списания</h3>
+        <table class="mini-table" id="table-wo-manual"></table>
+        <div class="empty" id="wo-manual-empty" hidden>Ручных списаний за выбранный период нет.</div>
       </div>
     </div>
   </div>

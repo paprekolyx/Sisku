@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
@@ -48,7 +49,7 @@
     <a class="seg-btn" href="sitecontent.html">Сайт</a>
     <a class="seg-btn" href="sitemap.html">Карта сайта</a>
     <a class="seg-btn active" href="brandbook.html">Брендбук</a>
-    <a class="seg-btn" href="manage.html#audit" title="Заглушка: планируется (M1/M2)">Журнал действий</a>
+    <!-- v0.22.0 (П23): «Журнал действий» перенесён в «Пользователи» (users.html#audit) -->
   </div>
 
   <div class="toolbar">
@@ -179,12 +180,12 @@
   </div>
 </div>
 
-<!-- ========== сравнение палитр: сохранённая vs редактор (правка 2.18) ========== -->
+<!-- ========== сравнение палитр: сохранённая vs редактор (правка 2.18; П21 v0.22.0 — модалка уже и длиннее, темы вертикально) ========== -->
 <div class="modal-backdrop" id="bb-compare-backdrop">
-  <div class="modal" style="width:min(980px,100%);padding:36px 38px" role="dialog" aria-modal="true" aria-label="Сравнение палитр">
+  <div class="modal" style="width:min(600px,100%);padding:36px 38px" role="dialog" aria-modal="true" aria-label="Сравнение палитр">
     <button class="modal-close" data-close="bb-compare-backdrop" aria-label="Закрыть">×</button>
     <h2 style="font-size:24px;margin-bottom:6px">Сравнение палитр</h2>
-    <p class="muted" style="font-size:13px;margin-bottom:20px">Слева — текущая сохранённая палитра (что видит сайт), справа — значения редактора (несохранённые или переключённые шаблоном). Отличия подсвечены.</p>
+    <p class="muted" style="font-size:13px;margin-bottom:20px">Для каждой темы: слева — текущая сохранённая палитра (что видит сайт), справа — значения редактора (несохранённые или переключённые шаблоном). Отличия подсвечены. Тёмная тема — под светлой (вертикальная прокрутка).</p>
     <div class="bbc-themes" id="bb-compare-body"></div>
   </div>
 </div>

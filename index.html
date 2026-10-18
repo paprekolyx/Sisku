@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="ru">
 <head>
@@ -114,6 +115,9 @@
         <option value="desc">Сначала дороже</option>
       </select>
       <button class="chip" id="stock-filter">Только в наличии</button>
+      <!-- v0.22.0 (fp №14, Д9): фильтры по характеристикам — видны только при
+           выбранной одной категории; мультивыбор, «ИЛИ» внутри / «И» между -->
+      <div class="af-row" id="attr-filters" hidden></div>
     </div>
     <div class="grid" id="product-grid" aria-live="polite"></div>
     <div style="text-align:center;margin-top:44px">
@@ -232,6 +236,9 @@
         <h3 id="pm-name"></h3>
         <div class="price" id="pm-price"></div>
         <p class="desc" id="pm-desc"></p>
+        <!-- v0.22.0 (fp №14): характеристики товара — заполненные активные
+             атрибуты категории (порядок sort_order), из бандла витрины v4 -->
+        <div class="pm-attrs" id="pm-attrs" hidden></div>
         <div class="variant-label" id="pm-variant-label">Размер</div>
         <div class="variants" id="pm-variants"></div>
         <div style="margin-top:26px;display:flex;gap:12px;align-items:center">
@@ -274,7 +281,10 @@
             <input type="checkbox" id="of-consent">
             <span data-content="checkout.consent.text">Согласен(на) на обработку персональных данных и ознакомлен(а) с условиями публичной оферты</span>
           </label>
-          <span class="consent-links"><a href="privacy.html" target="_blank" rel="noopener">Политика обработки ПДн</a> · <a href="offer.html" target="_blank" rel="noopener">Публичная оферта</a></span>
+          <!-- v0.22.0 (П1): ссылки ПДн/оферты — кликабельный текст ВНУТРИ уведомления
+               чек-бокса (site.js linkifyConsent оборачивает вхождения); fallback —
+               отдельная строка, показывается только если вхождений в тексте нет -->
+          <span class="consent-links" id="consent-fallback" hidden><a href="privacy.html" target="_blank" rel="noopener">Политика обработки ПДн</a> · <a href="offer.html" target="_blank" rel="noopener">Публичная оферта</a></span>
           <div class="err" id="of-consent-err" hidden></div>
         </div>
         <button class="btn accent" type="submit" id="of-submit" style="width:100%">Отправить заказ</button>
