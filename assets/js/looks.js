@@ -12,6 +12,8 @@
    поле URL + выбор файла + превью (как загрузка фото товара), БЕЗ сохранения
    в БД; пометка «на витрине — фото первого товара комплекта»; реализация
    сохранения — fp №6 (v0.24.0).
+   v0.22.1 (грабля №6): стартовая загрузка — ОДИН RPC draft_looks_bundle
+   (скрипт 36) вместо 4 параллельных select'ов; поведение не изменилось.
    ========================================================================== */
 (function () {
   'use strict';
@@ -39,21 +41,20 @@
       $('look-error').textContent = 'База не подключена: ' + (dbError || 'заполните assets/js/config.js');
       return;
     }
-    Promise.all([
-      db.from('looks').select('*').order('id', { ascending: false }),
-      db.from('look_items').select('*').order('sort_order'),
-      db.from('products').select('*').order('name'),
-      db.from('product_variants').select('*').order('sort_order')
-    ]).then(function (res) {
-      res.forEach(function (r) { if (r.error) throw r.error; });
-      state.looks = res[0].data || [];
+    /* v0.22.1 (грабля №6): вся страница — ОДИН RPC draft_looks_bundle
+       (скрипт 36) вместо 4 параллельных запросов; ключи бандла 1:1
+       с прежними полями state */
+    db.rpc('draft_looks_bundle').then(function (r) {
+      if (r.error) throw r.error;
+      var d = r.data || {};
+      state.looks = d.looks || [];
       state.items = {};
-      (res[1].data || []).forEach(function (i) {
+      (d.items || []).forEach(function (i) {
         (state.items[i.look_id] = state.items[i.look_id] || []).push(i);
       });
-      state.products = res[2].data || [];
+      state.products = d.products || [];
       state.variants = {};
-      (res[3].data || []).forEach(function (v) {
+      (d.variants || []).forEach(function (v) {
         (state.variants[v.product_id] = state.variants[v.product_id] || []).push(v);
       });
       render();

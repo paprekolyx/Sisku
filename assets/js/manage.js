@@ -13,6 +13,8 @@
    способы отключаются (is_active), а удаление (с v0.14.0 — настоящие
    DELETE-политики скрипта 16, фикс F09) блокирует FK, если способ уже
    использован в заказах.
+   v0.22.1 (грабля №6): стартовая загрузка — ОДИН RPC draft_manage_bundle
+   (скрипт 36) вместо 5 параллельных select'ов; поведение не изменилось.
    ========================================================================== */
 (function () {
   'use strict';
@@ -49,32 +51,20 @@
       $('mng-error').textContent = 'База не подключена: ' + (dbError || 'заполните assets/js/config.js');
       return;
     }
-    Promise.all([
-      db.from('delivery_methods').select('*').order('id'),
-      db.from('payment_methods').select('*').order('id'),
-      /* таблица причин может отсутствовать, если скрипт 22 ещё не выполнен —
-         страница при этом работает (два справочника как раньше) */
-      db.from('return_reasons').select('*').order('sort_order').order('id').then(function (r) {
-        return r.error ? [] : (r.data || []);
-      }),
-      /* v0.20.0 (fp №9): причины списаний — если скрипт 31 ещё не выполнен,
-         справочник пуст, страница работает (три справочника как раньше) */
-      db.from('writeoff_reasons').select('*').order('sort_order').order('id').then(function (r) {
-        return r.error ? [] : (r.data || []);
-      }),
-      /* v0.21.0 (fp №16): бейджи — если скрипт 33 ещё не выполнен,
-         справочник пуст, страница работает (четыре справочника как раньше) */
-      db.from('badges').select('*').order('sort_order').order('id').then(function (r) {
-        return r.error ? [] : (r.data || []);
-      })
-    ]).then(function (res) {
-      if (res[0].error) throw res[0].error;
-      if (res[1].error) throw res[1].error;
-      state.deliveries = res[0].data || [];
-      state.payments = res[1].data || [];
-      state.reasons = res[2] || [];
-      state.writeoffs = res[3] || [];
-      state.badges = res[4] || [];
+    /* v0.22.1 (грабля №6): пять справочников — ОДИН RPC draft_manage_bundle
+       (скрипт 36) вместо пяти прямых select'ов; ключи бандла — имена
+       таблиц. Допустимость «скрипт 22/31/33 ещё не выполнен» ушла в
+       историю — таблицы в baseline ревизии 2. Волна v0.23.0:
+       «Уведомления» — отдельная страница (Д2 v0230); бандл остаётся
+       в составе 5 ключей. */
+    db.rpc('draft_manage_bundle').then(function (r) {
+      if (r.error) throw r.error;
+      var d = r.data || {};
+      state.deliveries = d.deliveries || [];
+      state.payments = d.payments || [];
+      state.reasons = d.return_reasons || [];
+      state.writeoffs = d.writeoff_reasons || [];
+      state.badges = d.badges || [];
       render();
     }).catch(function (e) {
       $('mng-error').hidden = false;

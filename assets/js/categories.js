@@ -12,6 +12,9 @@
    порядок, «показывать в списке», «фильтруемый», активен), удаление с
    подтверждением (значения товаров — каскадом); запись — RPC
    admin_save_category_attr / admin_delete_category_attr (скрипт 34).
+   v0.22.1 (грабля №6): стартовое чтение — ОДИН RPC draft_categories_bundle
+   (скрипт 36) вместо 3 параллельных select'ов; конструктор атрибутов —
+   прежний ленивый прямой select category_attrs.
    ========================================================================== */
 (function () {
   'use strict';
@@ -32,17 +35,18 @@
         esc(dbError || 'заполните assets/js/config.js') + '</td></tr>';
       return;
     }
-    Promise.all([
-      db.from('categories').select('*').order('id'),
-      /* правка 2.14 (v0.15.0): поля товаров и варианты — для модалки связей */
-      db.from('products').select('id,article,name,price,is_active,category_id'),
-      db.from('product_variants').select('product_id,label,stock')
-    ]).then(function (res) {
-      res.forEach(function (r) { if (r.error) throw r.error; });
-      state.cats = res[0].data || [];
-      state.products = res[1].data || [];
+    /* v0.22.1 (грабля №6): стартовое чтение — ОДИН RPC
+       draft_categories_bundle (скрипт 36) вместо 3 параллельных select'ов;
+       товары и варианты — прежние подмножества колонок (модалка связей
+       правки 2.14). Конструктор атрибутов — прежний ленивый прямой select
+       category_attrs (включая неактивные — для повторной активации). */
+    db.rpc('draft_categories_bundle').then(function (r) {
+      if (r.error) throw r.error;
+      var d = r.data || {};
+      state.cats = d.categories || [];
+      state.products = d.products || [];
       state.variants = {};
-      (res[2].data || []).forEach(function (v) {
+      (d.variants || []).forEach(function (v) {
         (state.variants[v.product_id] = state.variants[v.product_id] || []).push(v);
       });
       state.catCounts = {};

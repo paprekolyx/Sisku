@@ -19,6 +19,9 @@
    предпросмотр — явный <base href> в srcdoc (П13: относительные пути
    картинок), блок характеристик, описание модалки убрано; чек-бокс бейджа —
    стандартного размера, пилюля «системный» убрана (П12а/б).
+   v0.22.1 (грабля №6, находка 4 ревью v0.22.0): стартовая загрузка —
+   ОДИН RPC draft_products_bundle (скрипт 36) вместо 8 параллельных
+   запросов; состав данных и поведение страницы не изменились.
    ========================================================================== */
 (function () {
   'use strict';
@@ -26,7 +29,7 @@
   var state = {
     products: [], variants: {}, brands: [], cats: [], reserved: {},
     badges: [], prodBadges: {},   /* v0.21.0 (fp №16): справочник и назначения */
-    attrs: [], attrValues: {},    /* v0.22.0 (fp №14): активные атрибуты и значения товаров (draft_attrs_bundle) */
+    attrs: [], attrValues: {},    /* v0.22.0 (fp №14): активные атрибуты и значения товаров (с v0.22.1 — ключи attrs/attr_values бандла draft_products_bundle) */
     editingId: null, saving: false, imgData: null
   };
 
@@ -88,48 +91,33 @@
       $('prod-error').textContent = 'База не подключена: ' + (dbError || 'заполните assets/js/config.js');
       return;
     }
-    Promise.all([
-      db.from('products').select('*').order('article'),
-      db.from('product_variants').select('*').order('sort_order'),
-      db.from('brands').select('*').order('name'),
-      db.from('categories').select('*').order('id'),
-      db.rpc('draft_reserved_map'),
-      /* v0.21.0 (fp №16): справочник бейджей и назначения — если скрипт 33
-         ещё не выполнен, оба списка пусты, страница работает (паттерн
-         справочников manage.js); ошибка запроса не роняет загрузку */
-      db.from('badges').select('*').order('sort_order').order('id').then(function (r) {
-        return r.error ? [] : (r.data || []);
-      }),
-      db.from('product_badges').select('*').order('sort_order').order('id').then(function (r) {
-        return r.error ? [] : (r.data || []);
-      }),
-      /* v0.22.0 (fp №14): атрибуты и значения — если скрипт 34 не выполнен
-         (42883), бандл пуст, секция «Характеристики» не рисуется (паттерн
-         бейджей); ошибка запроса не роняет загрузку */
-      db.rpc('draft_attrs_bundle').then(function (r) {
-        return (r.error || !r.data) ? { attrs: [], values: [] } : r.data;
-      })
-    ]).then(function (res) {
-      [res[0], res[1], res[2], res[3], res[4]].forEach(function (r) { if (r && r.error) throw r.error; });
-      state.products = res[0].data || [];
+    /* v0.22.1 (грабля №6; находка 4 ревью v0.22.0, Д1а): вся страница —
+       один RPC draft_products_bundle (скрипт 36) вместо 8 параллельных
+       запросов; ключи бандла 1:1 с прежними полями state. Допустимость
+       «скрипт 33/34 ещё не выполнен» для бейджей и атрибутов ушла в
+       историю — таблицы в baseline ревизии 2, состав бандла фиксирован. */
+    db.rpc('draft_products_bundle').then(function (r) {
+      if (r.error) throw r.error;
+      var d = r.data || {};
+      state.products = d.products || [];
       state.variants = {};
-      (res[1].data || []).forEach(function (v) {
+      (d.variants || []).forEach(function (v) {
         (state.variants[v.product_id] = state.variants[v.product_id] || []).push(v);
       });
-      state.brands = res[2].data || [];
-      state.cats = res[3].data || [];
+      state.brands = d.brands || [];
+      state.cats = d.categories || [];
       state.reserved = {};
-      (res[4].data || []).forEach(function (r) { state.reserved[r.variant_id] = Number(r.reserved) || 0; });
-      state.badges = res[5] || [];
+      (d.reserved || []).forEach(function (rr) { state.reserved[rr.variant_id] = Number(rr.reserved) || 0; });
+      state.badges = d.badges || [];
       state.prodBadges = {};
-      (res[6] || []).forEach(function (pb) {
+      (d.product_badges || []).forEach(function (pb) {
         (state.prodBadges[pb.product_id] = state.prodBadges[pb.product_id] || []).push(pb);
       });
       /* v0.22.0 (fp №14): attrs — активные атрибуты (порядок sort_order),
          attrValues — product_id → { attr_id: value } */
-      state.attrs = res[7].attrs || [];
+      state.attrs = d.attrs || [];
       state.attrValues = {};
-      (res[7].values || []).forEach(function (v) {
+      (d.attr_values || []).forEach(function (v) {
         (state.attrValues[v.product_id] = state.attrValues[v.product_id] || {})[v.attr_id] = v.value;
       });
       $('p-cat').innerHTML = '<option value="">Все категории</option>' +
@@ -458,8 +446,9 @@
 
   /* ---------- атрибуты карточки товара (v0.22.0, fp №14) ----------
      Динамическая секция «Характеристики» по категории из формы: text/number —
-     инпут, enum — select из enum_values; значения — draft_attrs_bundle
-     (state.attrs/attrValues); сохранение — RPC draft_save_product_attrs
+     инпут, enum — select из enum_values; значения — из стартового бандла
+     (с v0.22.1 — draft_products_bundle, ключи attrs/attr_values;
+     state.attrs/attrValues); сохранение — RPC draft_save_product_attrs
      вместе с сохранением карточки (пустые значения удаляются). При смене
      категории в форме секция перерисовывается: значения другой категории не
      показываются; сохранённые остаются в БД до правки (бандлы витрины их

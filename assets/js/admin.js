@@ -15,6 +15,11 @@
    «Списания» — «стр.» убрано (П9), новые таблицы «Топ товаров с излишком» и
    «Проведённые ручные списания» (П10); «Акции» — строка «использовано»
    убрана, лимит отдельной строкой (П25).
+   v0.22.1 (Д2/Д3, диагностика загрузки 18.10.2026): chart.umd.min.js
+   (202 КБ) — ЛЕНИВАЯ загрузка (ensureChart: инъекция при первой отрисовке
+   графиков вкладки «Статистика», тег из admin.html убран; ошибка — плашка
+   #chart-error); kpi() — аргументы через SiskuUtil.esc (находка 6 ревью
+   v0.22.0 — ужесточение: все вызовы передают литералы/числа).
    ========================================================================== */
 (function () {
   'use strict';
@@ -365,7 +370,9 @@
   }
   function periodOrders() { return ordersInPeriod($('s-period')); }
 
-  function renderStats() {
+  /* v0.22.1 (Д2): отрисовка — после ленивой загрузки chart.umd.min.js */
+  function renderStats() { withChart(renderStatsNow); }
+  function renderStatsNow() {
     var list = periodOrders();
     var sum = list.reduce(function (s, o) { return s + o.total + o.delivery_cost; }, 0);
     var paidSum = list.filter(function (o) { return o.is_paid; })
@@ -387,7 +394,48 @@
     renderTiming(list);
   }
   function kpi(lbl, val, sub) {
-    return '<div class="kpi"><div class="lbl">' + lbl + '</div><div class="val">' + val + '</div><div class="sub">' + sub + '</div></div>';
+    /* v0.22.1 (Д3, находка 6 ревью v0.22.0): аргументы экранируются —
+       все 29 вызовов передают литералы и числа (HTML-вставок нет),
+       esc() безопасно приводит числа и null/undefined */
+    return '<div class="kpi"><div class="lbl">' + esc(lbl) + '</div><div class="val">' + esc(val) + '</div><div class="sub">' + esc(sub) + '</div></div>';
+  }
+
+  /* ---------- v0.22.1 (Д2): ленивая загрузка chart.umd.min.js ----------
+     Тег <script src="assets/vendor/chart.umd.min.js"> из admin.html убран
+     (−202 КБ при каждом входе в админку — «Заказы» графики не используют);
+     библиотека инжектируется однократно при ПЕРВОЙ отрисовке графиков
+     (вкладка «Статистика» и её подвкладки). Кэш-промис: повторные вызовы
+     не дублируют инъекцию; ошибка загрузки — плашка #chart-error, следующая
+     попытка — при следующем вызове (chartPromise сбрасывается).
+     Chart используется только подвкладками «Статистики»: Заказы, Акции,
+     Возвраты, Списания (Клиенты и очередь возвратов — без графиков);
+     при появлении графиков на других страницах — тот же ensureChart(). */
+  var chartPromise = null;
+  function ensureChart() {
+    if (window.Chart) return Promise.resolve();
+    if (chartPromise) return chartPromise;
+    chartPromise = new Promise(function (resolve, reject) {
+      var s = document.createElement('script');
+      s.src = 'assets/vendor/chart.umd.min.js';
+      s.onload = function () { resolve(); };
+      s.onerror = function () {
+        chartPromise = null;
+        reject(new Error('chart.umd.min.js'));
+      };
+      document.head.appendChild(s);
+    });
+    return chartPromise;
+  }
+  function chartFail() {
+    var el = $('chart-error');
+    if (el) el.hidden = false;
+  }
+  function withChart(fn) {
+    ensureChart().then(function () {
+      var el = $('chart-error');
+      if (el) el.hidden = true;
+      fn();
+    }).catch(chartFail);
   }
 
   var GOLD = '#C9A96A', MUTED = '#A79FB0', LINE = '#2A2A33', TEXT = '#F2EEE4';
@@ -710,6 +758,11 @@
     renderStatsActive();
   }
   function renderStatsActive() {
+    /* v0.22.1 (Д2): скрытая панель «Статистики» не рисуется — и
+       chart.umd.min.js при стартовом прогоне (вкладка «Заказы») НЕ
+       загружается; ленивая инъекция — при первом открытии вкладки
+       (switchTab → renderStatsActive) */
+    if ($('panel-stats').hidden) return;
     if (state.statsTab === 'orders') renderStats();
     else if (state.statsTab === 'promos') renderPromoStats();
     else if (state.statsTab === 'returns') renderReturnStats();
@@ -1001,7 +1054,9 @@
       sumWithout: sum(without, function (o) { return o.total + o.delivery_cost; })
     };
   }
-  function renderPromoStats() {
+  /* v0.22.1 (Д2): отрисовка — после ленивой загрузки chart.umd.min.js */
+  function renderPromoStats() { withChart(renderPromoStatsNow); }
+  function renderPromoStatsNow() {
     var agg = promoAggregates(promoPeriodOrders());
     var avgWith = agg.withP.length ? agg.sumWith / agg.withP.length : 0;
     var avgWithout = agg.without.length ? agg.sumWithout / agg.without.length : 0;
@@ -1433,7 +1488,9 @@
       : 0;
     return { verified: verified, rejected: rejected, sum: sum, allSum: allSum, paidN: paidN, avgDays: avgDays };
   }
-  function renderReturnStats() {
+  /* v0.22.1 (Д2): отрисовка — после ленивой загрузки chart.umd.min.js */
+  function renderReturnStats() { withChart(renderReturnStatsNow); }
+  function renderReturnStatsNow() {
     if (!state.returnsLoaded) return;
     var list = returnsInPeriod();
     var agg = returnAggregates(list);
@@ -1621,7 +1678,9 @@
   function woSigned(n) {
     return n > 0 ? '+' + fmtNum(n) : (n < 0 ? '−' + fmtNum(Math.abs(n)) : '0');
   }
-  function renderWriteoffStats() {
+  /* v0.22.1 (Д2): отрисовка — после ленивой загрузки chart.umd.min.js */
+  function renderWriteoffStats() { withChart(renderWriteoffStatsNow); }
+  function renderWriteoffStatsNow() {
     if (!state.writeoffsLoaded) return;
     var list = writeoffsInPeriod();
     var a = woAggregates(list);

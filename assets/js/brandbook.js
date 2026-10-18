@@ -13,6 +13,9 @@
      theme.light.name/role, theme.dark.name/role (скрипт 20), поля
      редактирования на этой странице; витрина и справка берут имена оттуда;
    • индикатор скорости применения темы на витрине (localStorage-замер).
+   v0.22.1 (грабля №6): стартовая загрузка — ОДИН RPC draft_brandbook_bundle
+   (скрипт 36) вместо 3 параллельных select'ов; список ключей названий тем
+   (NAME_KEYS) — точка синхронизации с комментарием функции.
    ========================================================================== */
 (function () {
   'use strict';
@@ -35,6 +38,9 @@
     names: {},                                    /* правка 2.17: theme.*.name / theme.*.role из site_content */
     templates: [], saving: false, savingNames: false
   };
+  /* v0.22.1: запрос по списку переехал в бандл draft_brandbook_bundle
+     (скрипт 36, ключ names); константа сохранена как видимая точка
+     синхронизации — список в комментарии функции и здесь должен совпадать */
   var NAME_KEYS = ['theme.light.name', 'theme.light.role', 'theme.dark.name', 'theme.dark.role'];
   var NAME_DEFAULTS = {
     'theme.light.name': 'Ivoire', 'theme.light.role': 'основная тема витрины',
@@ -61,31 +67,31 @@
       $('bb-error').textContent = 'База не подключена: ' + (dbError || 'заполните assets/js/config.js');
       return;
     }
-    Promise.all([
-      db.from('brand_colors').select('*'),
-      db.from('brand_templates').select('*').order('created_at', { ascending: false }),
-      /* правка 2.17: названия тем — из site_content (скрипт 20) */
-      db.from('site_content').select('key,value').in('key', NAME_KEYS)
-    ]).then(function (res) {
-      if (res[0].error) throw res[0].error;
-      if (res[2] && !res[2].error) {
-        state.names = {};
-        (res[2].data || []).forEach(function (r) { state.names[r.key] = r.value; });
-      }
-      (res[0].data || []).forEach(function (r) {
-        state.values[r.theme] = state.values[r.theme] || {};
+    /* v0.22.1 (грабля №6): вся страница — ОДИН RPC draft_brandbook_bundle
+       (скрипт 36) вместо 3 параллельных запросов. Точка синхронизации:
+       список ключей names (NAME_KEYS) зафиксирован в комментарии функции
+       (скрипт 36) и должен совпадать с NAME_KEYS этого модуля. */
+    db.rpc('draft_brandbook_bundle').then(function (r) {
+      if (r.error) throw r.error;
+      var d = r.data || {};
+      /* правка 2.17: названия тем — из site_content (скрипт 20; в бандле —
+         ключ names, строки {key, value} по списку NAME_KEYS) */
+      state.names = {};
+      (d.names || []).forEach(function (nr) { state.names[nr.key] = nr.value; });
+      (d.colors || []).forEach(function (r2) {
+        state.values[r2.theme] = state.values[r2.theme] || {};
         /* фикс F05 (v0.14.0): значения из БД валидируются до попадания
            в редактор: цвета — строго #rrggbb, типографика — число;
            всё прочее заменяется безопасным дефолтом (stored-XSS закрыт) */
-        var v = r.value;
-        if (r.theme !== 'global') {
+        var v = r2.value;
+        if (r2.theme !== 'global') {
           if (!/^#[0-9a-fA-F]{6}$/.test(String(v || ''))) v = '#888888';
         } else if (!/^\d+(\.\d+)?$/.test(String(v || ''))) {
-          v = r.key === 'typo_base' ? '16' : '100';
+          v = r2.key === 'typo_base' ? '16' : '100';
         }
-        state.values[r.theme][r.key] = v;
+        state.values[r2.theme][r2.key] = v;
       });
-      state.templates = res[1].data || [];
+      state.templates = d.templates || [];
       buildEditors();
       state.saved = copyVals();   /* правка 2.18: срез сохранённой палитры */
       renderNames();
