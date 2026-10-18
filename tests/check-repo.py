@@ -73,6 +73,13 @@ docs/update/update-v0211.md; SECURITY.md/LICENSE.md ИСКЛЮЧЕНЫ из св
 (setup-supabase исключён — решение 17.10.2026: изменчивые данные живут
 только в supabase/README.md); итоговый вывод — состав baseline и следующий
 номер скрипта.
+v3.2 (волна v0.22.0): в REQUIRED добавлены supabase/34_category_attrs.sql
+(атрибуты по категориям, fp №14), supabase/35_client_segment_flags.sql
+(кросс-сегменты клиентов, записка 6/Д4) и docs/update/update-v0220.md;
+бэкапы data/category_attrs_rows.csv и data/product_attrs_rows.csv создаются
+волной, но в REQUIRED не входят (паттерн Д13); новых пар JS↔страница нет
+(атрибуты — в существующих модулях categories.js/products.js/site.js);
+проверка последнего SQL-скрипта — 35 (инкременты снова на диске); в REQUIRED добавлен отчёт внутреннего ревью `docs/review/code-review-v0220.md` (задание аналитика 18.10.2026; шаблон — code-review-v040.md).
 
 Запуск из корня репозитория:  python3 tests/check-repo.py
 Проверяет (без сети и без базы):
@@ -215,6 +222,16 @@ REQUIRED = [
     # v3.1 (волна v0.21.1): консолидация ревизии 2 — архив инкрементов 26–33
     # и инструкция ревизии документации
     'supabase/archive/sql-26-33-v0210.md', 'docs/update/update-v0211.md',
+    # v3.2 (волна v0.22.0): атрибуты по категориям (fp №14 — скрипт 34) и
+    # кросс-сегменты клиентов (записка 6/Д4 — скрипт 35) + инструкция волны;
+    # бэкапы data/category_attrs_rows.csv и data/product_attrs_rows.csv
+    # создаются волной, но в REQUIRED не входят (паттерн Д13 — живой источник
+    # справочника/значений база; CSV-проверка п.5 их сканирует)
+    'supabase/34_category_attrs.sql', 'supabase/35_client_segment_flags.sql',
+    'docs/update/update-v0220.md',
+    # внутреннее ревью рабочей копии волны v0.22.0 (задание аналитика
+    # 18.10.2026; шаблон — code-review-v040.md)
+    'docs/review/code-review-v0220.md',
 ] + ['assets/img/products/p00%d.webp' % i for i in range(1, 9)]
 
 # ---------- 1. обязательные файлы + реестр supabase/README.md ----------
@@ -469,9 +486,9 @@ if problems:
         print('  ✗ ' + p)
     sys.exit(1)
 if increments:
-    print('✓ check-repo v3.1: все проверки пройдены (версия %s, страниц %d, SQL: baseline 6 + инкременты, последний %s)'
+    print('✓ check-repo v3.2: все проверки пройдены (версия %s, страниц %d, SQL: baseline 6 + инкременты, последний %s)'
           % (ver, len(HTML_PAGES), LAST_SQL))
 else:
-    print('✓ check-repo v3.1: все проверки пройдены (версия %s, страниц %d, SQL: baseline ревизии 2 — 6 скриптов, следующий инкремент %s)'
+    print('✓ check-repo v3.2: все проверки пройдены (версия %s, страниц %d, SQL: baseline ревизии 2 — 6 скриптов, следующий инкремент %s)'
           % (ver, len(HTML_PAGES), NEXT_SQL_NN))
 sys.exit(0)
