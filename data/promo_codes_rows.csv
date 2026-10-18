@@ -1,0 +1,4 @@
+id,code,discount_type,discount_value,min_order_amount,valid_from,valid_until,usage_limit,used_count,is_active,created_at
+1,SISKU10,percent,10.00,0.00,2026-09-20,2030-08-31,,6,true,2026-09-20 22:15:55.125431+00
+2,TEST10,percent,10.00,0.00,2026-10-03,2027-02-20,,4,true,2026-10-02 21:22:39.372728+00
+3,FIX5000,fixed,5000.00,10000.00,,2027-05-15,5,1,true,2026-10-04 01:56:47.957169+00

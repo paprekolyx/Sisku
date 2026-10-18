@@ -1,0 +1,5 @@
+id,name,is_active,sort_order
+1,Не подошёл размер,true,1
+2,Брак / дефект,true,2
+3,Не подошло,true,3
+4,Передумал(а),true,4

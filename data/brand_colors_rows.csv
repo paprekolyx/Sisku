@@ -4,7 +4,7 @@ id,theme,key,value
 3,light,card,#FFFFFF
 4,light,text,#1A1A1E
 5,light,muted,#6F6A60
-6,light,accent,#7A5C2E
+6,light,accent,#7a2e2e
 7,light,line,#E5E0D6
 8,light,btn_bg,#1A1A1E
 9,light,btn_text,#FAF7F2
@@ -12,10 +12,10 @@ id,theme,key,value
 11,dark,surface,#16161B
 12,dark,card,#1D1D24
 13,dark,text,#F2EEE4
-14,dark,muted,#A79FB0
-15,dark,accent,#C9A96A
+14,dark,muted,#b1a0a0
+15,dark,accent,#c96969
 16,dark,line,#2A2A33
-17,dark,btn_bg,#C9A96A
+17,dark,btn_bg,#c96969
 18,dark,btn_text,#0D0D10
 19,global,typo_base,16
 20,global,typo_scale,100
