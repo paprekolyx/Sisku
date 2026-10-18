@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html>
 <html lang="ru" data-theme="dark">
 <head>
@@ -90,6 +91,10 @@
 
 <!-- ======================= СТАТИСТИКА ======================= -->
 <main class="panel container" id="panel-stats" hidden>
+  <!-- v0.22.1 (Д2): ленивая загрузка chart.umd.min.js — плашка ошибки
+       инъекции библиотеки (графики не нарисованы; повтор — при следующем
+       открытии вкладки/подвкладки) -->
+  <div class="err-box" id="chart-error" hidden>Не удалось загрузить библиотеку графиков (assets/vendor/chart.umd.min.js). Проверьте подключение и обновите страницу.</div>
   <!-- v0.13.0: подвкладки статистики -->
   <div class="seg subseg" id="stats-subseg" role="tablist" aria-label="Разделы статистики">
     <button class="seg-btn active" data-stab="orders" role="tab" aria-selected="true">Заказы</button>
@@ -458,7 +463,9 @@
 </div>
 
 <script src="assets/vendor/supabase.min.js"></script>
-<script src="assets/vendor/chart.umd.min.js"></script>
+<!-- v0.22.1 (Д2): chart.umd.min.js (202 КБ) убран из синхронной загрузки —
+     библиотека инжектируется динамически (ensureChart в admin.js) при первом
+     открытии вкладки «Статистика»; файл остаётся в репозитории (REQUIRED) -->
 <script src="assets/js/config.js"></script>
 <script src="assets/js/util.js"></script>
 <script src="assets/js/ui.js"></script>
