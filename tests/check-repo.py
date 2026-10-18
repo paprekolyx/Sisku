@@ -80,6 +80,14 @@ v3.2 (волна v0.22.0): в REQUIRED добавлены supabase/34_category_a
 волной, но в REQUIRED не входят (паттерн Д13); новых пар JS↔страница нет
 (атрибуты — в существующих модулях categories.js/products.js/site.js);
 проверка последнего SQL-скрипта — 35 (инкременты снова на диске); в REQUIRED добавлен отчёт внутреннего ревью `docs/review/code-review-v0220.md` (задание аналитика 18.10.2026; шаблон — code-review-v040.md).
+v3.3 (волна v0.22.1): в REQUIRED добавлены supabase/36_admin_page_bundles.sql
+(бандлы чтения пяти админ-страниц — грабля №6, находка 4 ревью v0.22.0) и
+docs/update/update-v0221.md; НОВАЯ ПРОВЕРКА 6.12 (Д4, находка 9 ревью
+v0.22.0): число строк ACCESS_MATRIX (assets/js/users.js) = число строк
+данных таблиц раздела «Матрица доступа» (docs/plan/matrica-dostupa.md) —
+рассинхрон константы и документа ловится автоматически (сейчас 26 = 26);
+последний скрипт — 36; новых пар JS↔страница нет (бандлы — в существующих
+модулях products.js/manage.js/looks.js/categories.js/brandbook.js).
 
 Запуск из корня репозитория:  python3 tests/check-repo.py
 Проверяет (без сети и без базы):
@@ -98,6 +106,7 @@ v3.2 (волна v0.22.0): в REQUIRED добавлены supabase/34_category_a
   6.9. запрет инлайновых on*-обработчиков в HTML и JS-строках (v2.5);
   6.10. версии документов в перечне структуры README = версии в шапках (v2.6, Д2б);
   6.11. последняя инструкция update-vXXX упомянута в README (v2.6, Д2в/АН-26);
+  6.12. ACCESS_MATRIX (users.js) ↔ matrica-dostupa.md — число строк (v3.3, Д4);
   7. SQL: синтаксис (если установлен pglast; иначе проверка пропускается);
   8. HTML: сбалансированность тегов (все страницы).
 
@@ -232,6 +241,10 @@ REQUIRED = [
     # внутреннее ревью рабочей копии волны v0.22.0 (задание аналитика
     # 18.10.2026; шаблон — code-review-v040.md)
     'docs/review/code-review-v0220.md',
+    # v3.3 (волна v0.22.1): бандлы чтения пяти админ-страниц (скрипт 36 —
+    # грабля №6, находка 4 ревью v0.22.0) и инструкция волны; новых пар
+    # JS↔страница нет (бандлы — в существующих модулях)
+    'supabase/36_admin_page_bundles.sql', 'docs/update/update-v0221.md',
 ] + ['assets/img/products/p00%d.webp' % i for i in range(1, 9)]
 
 # ---------- 1. обязательные файлы + реестр supabase/README.md ----------
@@ -437,6 +450,31 @@ if upd_files:
     if latest_upd not in readme_full:
         problems.append('README.md: последняя инструкция обновления %s не упомянута (сверка README↔update-vXXX, v2.6)' % latest_upd)
 
+# ---------- 6.12. ACCESS_MATRIX (users.js) ↔ matrica-dostupa.md (v3.3, Д4/находка 9 ревью v0.22.0) ----------
+# Контроль по ЧИСЛУ СТРОК (предложение ревью): строки константы ACCESS_MATRIX
+# в users.js vs строки данных таблиц документа matrica-dostupa.md (все строки,
+# начинающиеся с «|», кроме заголовков «| Функционал» и разделителей «|---…» —
+# в документе только таблицы матрицы; при появлении иных таблиц контроль
+# потребует осознанной правки). Сверка текстов строк — кандидат боевого
+# блока M2 (серверные ACL).
+users_src = io.open('assets/js/users.js', encoding='utf-8').read()
+m_mx = re.search(r'var ACCESS_MATRIX = \[(.*?)\n  \];', users_src, re.S)
+if not m_mx:
+    problems.append('users.js: ACCESS_MATRIX не найден — регэксп контроля 6.12 устарел (v3.3)')
+else:
+    mx_rows = len(re.findall(r"^\s+\['", m_mx.group(1), re.M))
+    md_src = io.open('docs/plan/matrica-dostupa.md', encoding='utf-8').read()
+    md_rows = sum(1 for ln in md_src.split('\n')
+                  if ln.startswith('|') and not ln.startswith('| Функционал')
+                  and not re.match(r'^\|[\s\-|]+\|$', ln.strip()))
+    if mx_rows != md_rows:
+        problems.append('Д4 (v3.3): ACCESS_MATRIX (users.js) — %d строк, '
+                        'matrica-dostupa.md — %d строк данных: рассинхрон '
+                        '(изменение матрицы — только решением владельца, пара: '
+                        'документ + константа)' % (mx_rows, md_rows))
+    else:
+        notes.append('контроль Д4 (6.12): ACCESS_MATRIX = matrica-dostupa.md — %d строк' % mx_rows)
+
 # ---------- 7. SQL (опционально) ----------
 try:
     import pglast
@@ -486,9 +524,9 @@ if problems:
         print('  ✗ ' + p)
     sys.exit(1)
 if increments:
-    print('✓ check-repo v3.2: все проверки пройдены (версия %s, страниц %d, SQL: baseline 6 + инкременты, последний %s)'
+    print('✓ check-repo v3.3: все проверки пройдены (версия %s, страниц %d, SQL: baseline 6 + инкременты, последний %s)'
           % (ver, len(HTML_PAGES), LAST_SQL))
 else:
-    print('✓ check-repo v3.2: все проверки пройдены (версия %s, страниц %d, SQL: baseline ревизии 2 — 6 скриптов, следующий инкремент %s)'
+    print('✓ check-repo v3.3: все проверки пройдены (версия %s, страниц %d, SQL: baseline ревизии 2 — 6 скриптов, следующий инкремент %s)'
           % (ver, len(HTML_PAGES), NEXT_SQL_NN))
 sys.exit(0)
