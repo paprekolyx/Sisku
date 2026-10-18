@@ -8,6 +8,10 @@
    v0.15.0 (правка 2.1-Б): сохранение — ОДНИМ RPC draft_save_look (скрипт 17):
    комплект и состав в одной транзакции; при ошибке вставки позиций комплект
    больше не остаётся в таблице без состава (баг записки 1).
+   v0.22.0 (П15, записка 15): блок-заглушка «Фотокомплекта» в модалке —
+   поле URL + выбор файла + превью (как загрузка фото товара), БЕЗ сохранения
+   в БД; пометка «на витрине — фото первого товара комплекта»; реализация
+   сохранения — fp №6 (v0.24.0).
    ========================================================================== */
 (function () {
   'use strict';
@@ -111,6 +115,10 @@
     $('lk-desc').value = l ? (l.description || '') : '';
     $('lk-discount').value = l ? (l.discount_percent || 0) : 0;
     $('lk-active').checked = l ? l.is_active : true;
+    /* v0.22.0 (П15): «Фотокомплекта» — заглушка, при каждом открытии чистая */
+    $('lk-img-url').value = '';
+    $('lk-img-file').value = '';
+    lkShowPreview('');
     ['lk-title-err', 'lk-items-err', 'lk-error'].forEach(function (x) { $(x).hidden = true; });
     $('lk-items').innerHTML = '';
     var items = l ? (state.items[l.id] || []) : [];
@@ -119,6 +127,16 @@
     $('look-modal-backdrop').classList.add('open');
   }
   function closeModal() { $('look-modal-backdrop').classList.remove('open'); }
+
+  /* ---------- v0.22.0 (П15, записка 15): «Фотокомплекта» — заглушка ----------
+     Превью повторяет загрузку фото товара (URL-поле + выбор файла), но
+     НЕ сохраняется в БД: сейчас витрина показывает фото первого товара
+     комплекта; реальные фотокомплекты (коллажи/карусель) — fp №6 (v0.24.0) */
+  function lkShowPreview(src) {
+    var img = $('lk-img-preview');
+    if (src) { img.src = src; img.hidden = false; }
+    else { img.hidden = true; img.removeAttribute('src'); }
+  }
 
   function save(e) {
     e.preventDefault();
@@ -174,6 +192,16 @@
     $('lk-item-add').addEventListener('click', function () { addRow(null, null); });
     $('look-modal-close').addEventListener('click', closeModal);
     $('look-modal-backdrop').addEventListener('click', function (e) { if (e.target === $('look-modal-backdrop')) closeModal(); });
+    /* v0.22.0 (П15): «Фотокомплекта» — превью из URL или файла (без сохранения) */
+    $('lk-img-btn').addEventListener('click', function () { $('lk-img-file').click(); });
+    $('lk-img-file').addEventListener('change', function () {
+      var f = this.files && this.files[0];
+      if (!f) return;
+      var reader = new FileReader();
+      reader.onload = function () { lkShowPreview(reader.result); };
+      reader.readAsDataURL(f);
+    });
+    $('lk-img-url').addEventListener('input', function () { lkShowPreview(this.value.trim()); });
     $('look-form').addEventListener('submit', save);
     $('look-body').addEventListener('click', function (e) {
       var tg = e.target.closest('button[data-toggle]');

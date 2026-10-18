@@ -119,12 +119,13 @@
     $('cl-body').innerHTML = visible.map(function (c) {
       var revealed = state.revealed[c.id];
       return '<tr>' +
+        /* П5 (v0.22.0, записка 5): кнопка «показать контакты»/«скрыть
+           контакты» — в ячейке ФИО (была у телефона) */
         '<td class="user-fio" data-edit="' + c.id + '" title="Открыть карточку клиента">' + esc(c.full_name) +
           (c.name_confirmed ? ' <span class="muted" style="font-size:11px" title="Имя подтверждено администратором — новыми заказами не перезаписывается">✓</span>' : '') +
+          '<button class="eye" data-eye="' + c.id + '" title="Показать или скрыть контакты">' + (revealed ? 'скрыть контакты' : 'показать контакты') + '</button>' +
         '</td>' +
-        '<td class="tabular muted masked">' + esc(revealed ? (c.phone || '—') : maskPhone(c.phone)) +
-          '<button class="eye" data-eye="' + c.id + '" title="Показать или скрыть контакты">' + (revealed ? 'скрыть' : 'показать') + '</button>' +
-        '</td>' +
+        '<td class="tabular muted masked">' + esc(revealed ? (c.phone || '—') : maskPhone(c.phone)) + '</td>' +
         '<td class="muted">' + esc(revealed ? (c.email || '—') : maskEmail(c.email)) + '</td>' +
         '<td class="tabular muted">' + fmtDate(c.first) + '</td>' +
         '<td class="tabular muted">' + fmtDate(c.last) + '</td>' +

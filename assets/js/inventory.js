@@ -25,6 +25,12 @@
    Данные: draft_inventory_bundle (план/лист) и draft_writeoffs_bundle
    (журнал) — по одному RPC на представление; запись — только RPC скрипта 32.
    Авторство операций — текст 'draft-admin' (настоящая авторизация — M2).
+   v0.22.0 (приёмка v0.21.0): лист/итоги — модальное окно вместо подтабличной
+   секции (П16) с выгрузкой CSV (П19, Д6: sisku-invent-list/itogi-N-дата);
+   примечание о закрытии без внесения факта (П18, Д5); «Журнал списаний
+   и излишков» (П18); окно ручного списания — компоновка приложения В
+   черновика v0.22.0 (П26/Д7/АН-34): единый стиль инпутов, отступы 18–22px,
+   знак операции — переключатель-сегмент, причина ПОД количеством.
    ========================================================================== */
 (function () {
   'use strict';
@@ -50,6 +56,7 @@
     saving: false,
     variants: null,         /* варианты для модалки ручного списания (лениво) */
     woPicked: null,         /* выбранный вариант {vid, name, article, label, stock} */
+    woSign: 'out',          /* v0.22.0 (П26/Д7): знак операции — 'out' списание / 'in' излишек */
     cancelTarget: null,     /* id сессии, которую отменяем */
     finishing: false
   };
@@ -179,11 +186,12 @@
       });
   }
 
-  /* ---------- секция «Лист» (Д4) ---------- */
+  /* ---------- лист/итоги — модальное окно (Д4; v0.22.0 П16 — вместо
+     подтабличной секции: страница не «подпрыгивает», не нужно скроллить) ---------- */
   function openSheet(id, silent) {
     if (!db) return;
     if (!silent) {
-      $('inv-sheet-section').hidden = false;
+      $('inv-sheet-backdrop').classList.add('open');
       $('inv-sheet-loading').hidden = false;
       $('inv-sheet-error').hidden = true;
     } else {
@@ -196,7 +204,6 @@
       state.sheet = d.sheet || [];
       state.sheetSession = sessionById(id) || { id: id, status: 'planned' };
       renderSheet();
-      if (!silent) $('inv-sheet-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
     }).catch(function (e) {
       $('inv-sheet-loading').hidden = true;
       showError('inv-sheet-error', { message: 'Ошибка сети: ' + e.message });
@@ -205,7 +212,7 @@
   function closeSheet() {
     state.sheetSession = null;
     state.sheet = [];
-    $('inv-sheet-section').hidden = true;
+    $('inv-sheet-backdrop').classList.remove('open');
   }
   function renderSheet() {
     var s = state.sheetSession;
@@ -413,7 +420,7 @@
     $('inv-j-empty').hidden = list.length !== 0;
     $('inv-j-empty').textContent = state.journal.length
       ? 'Ничего не найдено по фильтру — выберите другую причину/сессию или очистите поиск.'
-      : 'Списаний пока нет. Записи появляются при проведении инвентаризаций и через кнопку «Ручное списание».';
+      : 'Списаний и излишков пока нет. Записи появляются при проведении инвентаризаций и через кнопку «Ручное списание».';
     $('inv-j-body').innerHTML = visible.map(function (w) {
       var cm = w.comment ? (w.comment.length > 60 ? w.comment.slice(0, 60) + '…' : w.comment) : '—';
       return '<tr>' +
@@ -447,6 +454,49 @@
     var a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
     a.download = 'sisku-writeoffs-' + dayKey(new Date()) + '.csv';   /* локальная дата (фикс F29) */
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  /* ---------- v0.22.0 (П19, Д6): CSV листа/итогов из модального окна ----------
+     Лист: шапка (сессия №, статус, дата, область) + колонки таблицы; итоги
+     (завершённая сессия): только строки с расхождением + новый остаток;
+     имена файлов — sisku-invent-list-N-ГГГГ-ММ-ДД.csv /
+     sisku-invent-itogi-N-ГГГГ-ММ-ДД.csv (локальная дата — фикс F29) */
+  function scopePlain(s) {
+    return s.scope === 'all' ? 'Весь магазин'
+      : 'Категории: ' + ((s.scope_names || []).join(', ') || '—');
+  }
+  function exportSheetCsv() {
+    var s = state.sheetSession;
+    if (!s) return;
+    var done = s.status === 'done';
+    var R = [];
+    R.push([(done ? 'Итоги инвентаризации' : 'Лист инвентаризации') + ' — сессия № ' + s.id]);
+    R.push(['Статус: ' + (INV_STATUS[s.status] || s.status)]);
+    R.push(['Дата: ' + fmtD(s.plan_date ? s.plan_date + 'T00:00:00' : s.created_at)]);
+    R.push(['Область: ' + scopePlain(s)]);
+    R.push([]);
+    if (done) {
+      R.push(['Позиция', 'Артикул', 'Вариант', 'В системе', 'В резерве', 'В карантине', 'Ожидаемо физически', 'Факт', 'Расхождение', 'Новый остаток']);
+      state.sheet.filter(function (r) { return r.fact_qty != null && r.diff !== 0; }).forEach(function (r) {
+        R.push([r.product, r.article, r.variant, r.system_qty, r.reserved_qty, r.quarantine_qty,
+                r.expected_qty, r.fact_qty, r.diff, r.stock_now + r.diff]);
+      });
+    } else {
+      R.push(['Позиция', 'Артикул', 'Вариант', 'В системе', 'В резерве', 'В карантине', 'Ожидаемо физически', 'Факт', 'Расхождение']);
+      state.sheet.forEach(function (r) {
+        R.push([r.product, r.article, r.variant, r.system_qty, r.reserved_qty, r.quarantine_qty,
+                r.expected_qty,
+                r.fact_qty == null ? '' : r.fact_qty,
+                (r.fact_qty == null || r.diff == null) ? '' : r.diff]);
+      });
+    }
+    var csv = R.map(function (row) { return row.map(csvCell).join(';'); }).join('\r\n');
+    var blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'sisku-invent-' + (done ? 'itogi' : 'list') + '-' + s.id + '-' + dayKey(new Date()) + '.csv';
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -497,9 +547,19 @@
     });
   }
 
-  /* ---------- ручное списание (Д7) ---------- */
+  /* ---------- ручное списание (Д7; v0.22.0 П26/АН-34 — компоновка
+     приложения В: знак операции — переключатель-сегмент «списание/излишек»,
+     количество — положительное число, кнопка меняет подпись) ---------- */
+  function syncWoSign() {
+    $('inv-w-sign').querySelectorAll('.wo-sign-btn').forEach(function (b) {
+      b.classList.toggle('active', b.getAttribute('data-sign') === state.woSign);
+    });
+    $('inv-w-submit').textContent = state.woSign === 'out' ? 'Списать' : 'Оприходовать излишек';
+  }
   function openWoModal() {
     state.woPicked = null;
+    state.woSign = 'out';
+    syncWoSign();
     $('inv-w-picked').textContent = 'Вариант не выбран';
     $('inv-w-search').value = '';
     $('inv-w-qty').value = '';
@@ -558,15 +618,16 @@
     $('inv-w-error').hidden = true;
     if (!state.woPicked) { showError('inv-w-error', { message: 'Выберите вариант товара' }); return; }
     var q = $('inv-w-qty').value.trim();
-    if (q === '' || !/^-?\d{1,5}$/.test(q) || Number(q) === 0) {
-      showError('inv-w-error', { message: 'Количество: целое число, не ноль («−» списание / «+» излишек)' }); return;
+    if (q === '' || !/^\d{1,5}$/.test(q) || Number(q) === 0) {
+      showError('inv-w-error', { message: 'Количество: целое число от 1 до 99999; знак — переключателем «списание / излишек»' }); return;
     }
+    var qty = state.woSign === 'out' ? -Number(q) : Number(q);
     var reason = $('inv-w-reason').value;
     if (!reason) { showError('inv-w-error', { message: 'Выберите причину' }); return; }
     $('inv-w-submit').disabled = true;
     db.rpc('admin_create_writeoff', {
       p: {
-        variant_id: state.woPicked.vid, qty: Number(q), reason_id: Number(reason),
+        variant_id: state.woPicked.vid, qty: qty, reason_id: Number(reason),
         comment: $('inv-w-comment').value.trim() || null, changed_by: 'draft-admin'
       }
     }).then(function (res) {
@@ -607,11 +668,13 @@
     $('inv-c-scope').addEventListener('change', syncScope);
     $('inv-create-form').addEventListener('submit', createSession);
 
-    /* лист */
+    /* лист (v0.22.0, П16 — модальное окно) */
     $('inv-sheet-close').addEventListener('click', closeSheet);
+    $('inv-sheet-backdrop').addEventListener('click', function (e) { if (e.target === $('inv-sheet-backdrop')) closeSheet(); });
     $('inv-sheet-body').addEventListener('input', onSheetInput);
     $('inv-save-facts').addEventListener('click', function () { saveFacts(this); });
     $('inv-finish').addEventListener('click', openFinishModal);
+    $('inv-sheet-csv').addEventListener('click', exportSheetCsv);   /* П19 */
 
     /* модалка завершения */
     $('inv-finish-close').addEventListener('click', function () { $('inv-finish-backdrop').classList.remove('open'); });
@@ -644,6 +707,13 @@
     $('inv-w-list').addEventListener('click', function (e) {
       var b = e.target.closest('button[data-vid]');
       if (b) pickVariant(Number(b.getAttribute('data-vid')));
+    });
+    /* v0.22.0 (П26/Д7): знак операции — переключатель-сегмент */
+    $('inv-w-sign').addEventListener('click', function (e) {
+      var b = e.target.closest('.wo-sign-btn');
+      if (!b) return;
+      state.woSign = b.getAttribute('data-sign');
+      syncWoSign();
     });
     $('inv-wo-form').addEventListener('submit', createWriteoff);
 

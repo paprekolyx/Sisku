@@ -6,6 +6,15 @@
    смена статусов только через серверную функцию с проверкой переходов.
    v0.18.0 (Д6): диплинк admin.html?order=N&back=client:M — карточка заказа
    из истории заказов карточки клиента, обратная навигация «← К клиенту».
+   v0.22.0 (приёмка v0.21.0): «Клиенты» — кросс-сегменты (П6/Д4: фильтр
+   «Сегмент» — мультивыбор, логика «И»; KPI и пилюли — по независимым флагам
+   is_new/is_repeat/is_vip бандла v4; CSV — «Сегменты»), ФИО — ссылка в
+   карточку клиента (П4), «показать/скрыть контакты» — у ФИО (П5), пустое
+   состояние ниже таблицы (П7); «Возвраты» — боксы по записке 8 (П8: сумма
+   возвратов — все заявки с отметкой «деньги возвращены», сумма заявок — все);
+   «Списания» — «стр.» убрано (П9), новые таблицы «Топ товаров с излишком» и
+   «Проведённые ручные списания» (П10); «Акции» — строка «использовано»
+   убрана, лимит отдельной строкой (П25).
    ========================================================================== */
 (function () {
   'use strict';
@@ -24,7 +33,7 @@
     revealed: {},            /* заказ, у которого раскрыты контакты */
     orderBack: null,         /* v0.18.0 (Д6): контекст обратной навигации карточки заказа */
     clientsStats: null,      /* v0.19.0 (fp №7): строки + пороги сегментов (лениво — при первом открытии подвкладки) */
-    cstFilter: '',           /* фильтр сегментов: '' | new | repeat | vip | dormant */
+    cstSegs: {},             /* v0.22.0 (П6/Д4): кросс-сегменты — выбранные признаки {new|repeat|vip|dormant: true}, логика «И» */
     cstSort: { field: 'sum', dir: 'desc' },
     cstPage: 1,              /* пагинация таблицы сегментов (30 на страницу) */
     cstRevealed: {},         /* клиент, у которого раскрыты контакты */
@@ -717,6 +726,17 @@
      Ленивая загрузка — паттерн «Возвратов» (грабля №6: один запрос). */
   var SEG_LABEL = { 'new': 'Новый', 'repeat': 'Повторный', 'vip': 'VIP' };
 
+  /* v0.22.0 (П6/Д4): подпись кнопки фильтра — перечень выбранных признаков */
+  function syncCstSegBtn() {
+    var sel = [];
+    if (state.cstSegs['new']) sel.push('новые');
+    if (state.cstSegs.repeat) sel.push('повторные');
+    if (state.cstSegs.vip) sel.push('VIP');
+    if (state.cstSegs.dormant) sel.push('уснувшие');
+    var btn = $('cst-seg-btn');
+    if (btn) btn.textContent = sel.length ? 'Сегмент: ' + sel.join(' + ') : 'Сегмент: все';
+  }
+
   function loadClientsStats(force) {
     if (state.clientsStats && !force) return Promise.resolve();
     if (!db) return Promise.reject({ message: dbError || 'нет БД' });
@@ -737,6 +757,11 @@
         c.last = st.last_order || null;
         /* клиент без заказов (крайний случай, смоук S7): тракт как «новый» */
         c.segment = st.segment || 'new';
+        /* v0.22.0 (П6/Д4, скрипт 35 — бандл v4): независимые кросс-флаги;
+           если бандл ещё без флагов (v3) — запасной вывод из счётчиков */
+        c.isNew = st.is_new != null ? !!st.is_new : c.orders <= 1;
+        c.isRepeat = st.is_repeat != null ? !!st.is_repeat : c.orders >= 2;
+        c.isVip = st.is_vip != null ? !!st.is_vip : c.segment === 'vip';
         c.dormant = !!st.is_dormant;
         return c;
       });
@@ -745,10 +770,15 @@
   }
 
   function cstFiltered() {
-    var f = state.cstFilter;
+    var f = state.cstSegs;
+    /* v0.22.0 (П6/Д4): мультивыбор — клиент показывается, если соответствует
+       ВСЕМ выбранным признакам (логика «И»; «уснувший VIP» виден в обоих) */
     var list = state.clientsStats.rows.filter(function (c) {
-      if (!f) return true;
-      return f === 'dormant' ? c.dormant : c.segment === f;
+      if (f['new'] && !c.isNew) return false;
+      if (f.repeat && !c.isRepeat) return false;
+      if (f.vip && !c.isVip) return false;
+      if (f.dormant && !c.dormant) return false;
+      return true;
     });
     var s = state.cstSort, dir = s.dir === 'asc' ? 1 : -1;
     list.sort(function (a, b) {
@@ -766,18 +796,19 @@
     if (!state.clientsStats) return;
     var rows = state.clientsStats.rows;
     var th = state.clientsStats.thresholds;
-    /* KPI — один проход (Д3): счётчики сегментов, доля выручки VIP, LTV, средний чек */
+    /* KPI — один проход (Д3); v0.22.0 (П6/Д4): счётчики — по независимым
+       флагам (пересечения допустимы: VIP с 11 заказами counted и в «повторных») */
     var nNew = 0, nRep = 0, nVip = 0, nDor = 0, sumAll = 0, ordAll = 0, sumVip = 0;
     rows.forEach(function (c) {
-      if (c.segment === 'vip') { nVip += 1; sumVip += c.sum; }
-      else if (c.segment === 'repeat') nRep += 1;
-      else nNew += 1;
+      if (c.isNew) nNew += 1;
+      if (c.isRepeat) nRep += 1;
+      if (c.isVip) { nVip += 1; sumVip += c.sum; }
       if (c.dormant) nDor += 1;
       sumAll += c.sum; ordAll += c.orders;
     });
     $('cst-kpi').innerHTML =
       kpi('Клиентов', rows.length, 'всего в базе') +
-      kpi('Новые', nNew, 'один заказ') +
+      kpi('Новые', nNew, 'заказов не более одного') +
       kpi('Повторные', nRep, 'два и более заказа') +
       kpi('VIP', nVip, 'заказов ≥ ' + (th.vip_orders_min != null ? th.vip_orders_min : 5) +
         ' или сумма ≥ ' + SiskuUtil.fmtNum(th.vip_sum_min != null ? th.vip_sum_min : 100000) + ' ₽') +
@@ -785,9 +816,7 @@
       kpi('Доля выручки VIP', sumAll ? Math.round(sumVip / sumAll * 100) + '%' : '0%', 'от суммы всех заказов') +
       kpi('LTV', money(rows.length ? sumAll / rows.length : 0), 'средняя сумма на клиента') +
       kpi('Средний чек', money(ordAll ? sumAll / ordAll : 0), 'сумма заказов / число заказов');
-    $('cst-filters').querySelectorAll('.seg-btn').forEach(function (b) {
-      b.classList.toggle('active', b.getAttribute('data-seg') === state.cstFilter);
-    });
+    syncCstSegBtn();
     var list = cstFiltered();
     var PAGESIZE = 30;                                 /* пагинация: 30 на страницу (паттерн проекта) */
     var pages = Math.max(1, Math.ceil(list.length / PAGESIZE));
@@ -821,14 +850,25 @@
                 : esc(c.email))
             : '—')
         : esc(maskEmail(c.email));
+      /* v0.22.0 (П6/Д4): все подходящие сегменты — пилюлями (пересечения
+         видны: VIP с 11 заказами — «Повторный» и «VIP») */
+      var segs = [];
+      if (c.isNew) segs.push('new');
+      if (c.isRepeat) segs.push('repeat');
+      if (c.isVip) segs.push('vip');
+      var segHtml = segs.map(function (s) {
+        return '<span class="seg-pill" data-seg="' + s + '">' + esc(SEG_LABEL[s] || s) + '</span>';
+      }).join(' ');
       return '<tr>' +
-        '<td class="user-fio">' + esc(c.full_name) + '</td>' +
-        '<td><span class="seg-pill" data-seg="' + esc(c.segment) + '">' + esc(SEG_LABEL[c.segment] || c.segment) + '</span>' +
+        /* П4: ФИО — ссылка в карточку клиента (диплинк clients.html?client=N,
+           v0.18.0); П5: кнопка «показать/скрыть контакты» — у ФИО */
+        '<td class="user-fio"><a class="cst-name" href="clients.html?client=' + c.id + '" title="Открыть карточку клиента">' + esc(c.full_name) + '</a>' +
+          '<button class="eye" data-cst-eye="' + c.id + '" title="Показать или скрыть контакты">' + (revealed ? 'скрыть контакты' : 'показать контакты') + '</button>' +
+        '</td>' +
+        '<td>' + segHtml +
           (c.dormant ? '<span class="dormant-mark" title="Без заказов ' + (th.dormant_days != null ? th.dormant_days : 90) + '+ дней">уснул</span>' : '') +
         '</td>' +
-        '<td class="tabular muted masked">' + phone +
-          '<button class="eye" data-cst-eye="' + c.id + '" title="Показать или скрыть контакты">' + (revealed ? 'скрыть' : 'показать') + '</button>' +
-        '</td>' +
+        '<td class="tabular muted masked">' + phone + '</td>' +
         '<td class="muted">' + email + '</td>' +
         '<td class="tabular">' + c.orders + '</td>' +
         '<td class="tabular">' + money(c.sum) + '</td>' +
@@ -858,11 +898,16 @@
   function exportCstCsv() {
     if (!state.clientsStats) return;
     var list = cstFiltered();                          /* выгрузка текущего сегмента — «для рассылок» (fp №7) */
-    var head = ['ФИО', 'Сегмент', 'Уснул', 'Телефон', 'E-mail', 'Заказов', 'Сумма заказов, ₽', 'Оплачено, ₽', 'Первый заказ', 'Последний заказ', 'Комментарий'];
+    /* v0.22.0 (П6/Д4): колонка «Сегмент» → «Сегменты» (список через «;») */
+    var head = ['ФИО', 'Сегменты', 'Уснул', 'Телефон', 'E-mail', 'Заказов', 'Сумма заказов, ₽', 'Оплачено, ₽', 'Первый заказ', 'Последний заказ', 'Комментарий'];
     var lines = [head.join(';')];
     list.forEach(function (c) {
+      var segs = [];
+      if (c.isNew) segs.push('Новый');
+      if (c.isRepeat) segs.push('Повторный');
+      if (c.isVip) segs.push('VIP');
       var row = [
-        c.full_name, SEG_LABEL[c.segment] || c.segment, c.dormant ? 'да' : 'нет',
+        c.full_name, segs.join('; '), c.dormant ? 'да' : 'нет',
         c.phone || '', c.email || '', c.orders, Math.round(c.sum), Math.round(c.paidSum),
         fmtDate(c.first), fmtDate(c.last),
         (c.note || '').replace(/;/g, ',').replace(/\n/g, ' ')
@@ -1034,8 +1079,10 @@
       $('promocodes-chart').hidden = true;
       $('promocodes-table').hidden = false;
       /* правка 2.13 (v0.15.0): короткие заголовки («Заказов», «Скидки, ₽»),
-         «Использовано» объединено с кодом (n/лимит), статус — короткое слово;
-         колонка «Скидки, ₽» прячется на узких экранах (.col-promo-disc) */
+         статус — короткое слово; колонка «Скидки, ₽» прячется на узких
+         экранах (.col-promo-disc). v0.22.0 (П25): строка «использовано:
+         n/лимит» убрана (дублировала столбец «Заказов»); лимит — «без лимита»
+         / «лимит: n» */
       $('table-promo-codes').innerHTML =
         '<thead><tr><th>Код</th><th style="text-align:right">Скидка</th>' +
         '<th style="text-align:right">Заказов</th><th class="col-promo-disc" style="text-align:right">Скидки, ₽</th>' +
@@ -1043,9 +1090,9 @@
         (rows.length
           ? rows.map(function (r) {
               var st = promoStateOf(r.p);
-              var used = r.p.used_count + (r.p.usage_limit != null ? '/' + r.p.usage_limit : ', без лимита');
+              var lim = r.p.usage_limit != null ? 'лимит: ' + r.p.usage_limit : 'без лимита';
               return '<tr><td><b>' + esc(r.p.code) + '</b>' +
-                '<div class="muted" style="font-size:11.5px">использовано: ' + used + '</div></td>' +
+                '<div class="muted" style="font-size:11.5px">' + lim + '</div></td>' +
                 '<td class="num">' + discountLabel(r.p) + '</td>' +
                 '<td class="num">' + r.n + '</td>' +
                 '<td class="num col-promo-disc">' + money(r.disc) + '</td>' +
@@ -1368,26 +1415,35 @@
   function returnAggregates(list) {
     var verified = list.filter(function (r) { return r.status === 'verified'; });
     var rejected = list.filter(function (r) { return r.status === 'rejected'; });
-    var sum = verified.reduce(function (s, r) {
+    function orderSum(r) {
       var o = orderById(r.order_id);
-      return s + (o ? o.total + o.delivery_cost : 0);
-    }, 0);
-    var paidN = verified.filter(function (r) { return r.refund_paid; }).length;
+      return o ? Number(o.total) + Number(o.delivery_cost) : 0;
+    }
+    /* П8 (записка 8, v0.22.0): «Сумма возвратов» — ВСЕ заявки с отметкой
+       «деньги возвращены» независимо от статуса (раньше считались только
+       заявки в статусе verified — отсюда 0 ₽ в записке); «Сумма заявок» —
+       все заявки периода, включая незавершённые */
+    var refundRows = list.filter(function (r) { return r.refund_paid; });
+    var sum = refundRows.reduce(function (s, r) { return s + orderSum(r); }, 0);
+    var allSum = list.reduce(function (s, r) { return s + orderSum(r); }, 0);
+    var paidN = refundRows.length;
     var resolved = list.filter(function (r) { return r.resolved_at; });
     var avgDays = resolved.length
       ? resolved.reduce(function (s, r) { return s + (new Date(r.resolved_at) - new Date(r.created_at)); }, 0) / resolved.length / 864e5
       : 0;
-    return { verified: verified, rejected: rejected, sum: sum, paidN: paidN, avgDays: avgDays };
+    return { verified: verified, rejected: rejected, sum: sum, allSum: allSum, paidN: paidN, avgDays: avgDays };
   }
   function renderReturnStats() {
     if (!state.returnsLoaded) return;
     var list = returnsInPeriod();
     var agg = returnAggregates(list);
+    /* П8: боксы — «Всего заявок» · «Оформлено / отклонено» (один бокс, через
+       наклонную черту) · «Сумма возвратов» · «Сумма заявок» · «Средний срок» */
     $('kpi-returns').innerHTML =
-      kpi('Заявок', list.length, 'за выбранный период') +
-      kpi('Возвратов оформлено', agg.verified.length, 'товар проверен, возврат оформлен') +
-      kpi('Отклонено', agg.rejected.length, 'заявок отклонено') +
-      kpi('Сумма возвратов', money(agg.sum), agg.paidN + ' с отметкой «деньги возвращены»') +
+      kpi('Всего заявок', list.length, 'за выбранный период') +
+      kpi('Оформлено / отклонено', agg.verified.length + ' / ' + agg.rejected.length, 'товар проверен / заявка отклонена') +
+      kpi('Сумма возвратов', money(agg.sum), agg.paidN + ' с отметкой «деньги возвращены» (любой статус)') +
+      kpi('Сумма заявок', money(agg.allSum), 'все заявки, включая незавершённые') +
       kpi('Средний срок', agg.avgDays ? agg.avgDays.toFixed(1) + ' дн.' : '—', 'от заявки до завершения');
     drawReasons(list);
     drawReturnDays(list);
@@ -1579,6 +1635,8 @@
     drawWoTop(list);
     drawWoAdmins(list);
     drawWoSessions(list);
+    drawWoSurplus(list);   /* П10: топ товаров с излишком */
+    drawWoManual(list);    /* П10: проведённые ручные списания */
   }
   function woReasonRows(list) {
     var agg = {};
@@ -1704,11 +1762,60 @@
         ? rows.map(function (r) {
             return '<tr><td>№ ' + r.id + '</td>' +
               '<td class="tabular muted">' + (r.finished ? SiskuUtil.fmtDate(r.finished) : '—') + '</td>' +
-              '<td class="tabular" style="text-align:right">' + r.g.wl + ' стр. · ' + fmtNum(r.g.wq) + ' шт.</td>' +
-              '<td class="tabular" style="text-align:right">' + r.g.sl + ' стр. · ' + fmtNum(r.g.sq) + ' шт.</td>' +
+              /* П9 (записка 9): «стр.» убрано — достаточно количества позиций (шт.) */
+              '<td class="tabular" style="text-align:right">' + fmtNum(r.g.wq) + ' шт.</td>' +
+              '<td class="tabular" style="text-align:right">' + fmtNum(r.g.sq) + ' шт.</td>' +
               '<td class="tabular" style="text-align:right">' + money(r.g.wsum) + '</td></tr>';
           }).join('')
         : '<tr><td colspan="5" class="muted">Проведённых инвентаризаций нет</td></tr>') +
+      '</tbody>';
+  }
+  /* П10 (записка 10, v0.22.0): «Топ товаров с излишком» — зеркально топу
+     списаний (товары с положительными расхождениями: строки, единицы, сумма) */
+  function drawWoSurplus(list) {
+    var agg = {};
+    list.filter(function (w) { return w.qty > 0; }).forEach(function (w) {
+      var k = w.product_id;
+      if (!agg[k]) agg[k] = { name: w.product, article: w.article, lines: 0, qty: 0, sum: 0 };
+      agg[k].lines += 1;
+      agg[k].qty += w.qty;
+      agg[k].sum += w.qty * w.price;
+    });
+    var rows = Object.keys(agg).map(function (k) { return agg[k]; });
+    rows.sort(function (x, y) { return y.qty - x.qty; });
+    rows = rows.slice(0, 10);
+    $('wo-surplus-empty').hidden = rows.length !== 0;
+    $('table-wo-surplus').innerHTML =
+      '<thead><tr><th>Товар</th><th style="text-align:right">Излишков</th><th style="text-align:right">Единиц</th><th style="text-align:right">Сумма</th></tr></thead><tbody>' +
+      (rows.length
+        ? rows.map(function (r) {
+            return '<tr><td>' + esc(r.name) + ' <span class="muted" style="font-size:12px">' + esc(r.article) + '</span></td>' +
+              '<td class="tabular" style="text-align:right">' + r.lines + '</td>' +
+              '<td class="tabular" style="text-align:right">' + fmtNum(r.qty) + '</td>' +
+              '<td class="tabular" style="text-align:right">' + money(r.sum) + '</td></tr>';
+          }).join('')
+        : '<tr><td colspan="4" class="muted">Излишков за период нет (списания — в топе выше)</td></tr>') +
+      '</tbody>';
+  }
+  /* П10: «Проведённые ручные списания» — записи журнала без сессии
+     (дата, товар/вариант, количество, причина, автор, комментарий) */
+  function drawWoManual(list) {
+    var rows = list.filter(function (w) { return w.session_id == null; });
+    $('wo-manual-empty').hidden = rows.length !== 0;
+    $('table-wo-manual').innerHTML =
+      '<thead><tr><th>Дата</th><th>Товар / вариант</th><th style="text-align:right">Кол-во</th><th>Причина</th><th>Автор</th><th>Комментарий</th></tr></thead><tbody>' +
+      (rows.length
+        ? rows.map(function (w) {
+            var cm = w.comment ? (w.comment.length > 40 ? w.comment.slice(0, 40) + '…' : w.comment) : '—';
+            var q = w.qty > 0 ? '+' + w.qty : '−' + Math.abs(w.qty);
+            return '<tr><td class="tabular muted">' + SiskuUtil.fmtDateTime(w.created_at) + '</td>' +
+              '<td>' + esc(w.product) + ' <span class="muted" style="font-size:12px">' + esc(w.variant) + '</span></td>' +
+              '<td class="tabular" style="text-align:right"><b>' + q + '</b></td>' +
+              '<td>' + esc(w.reason) + '</td>' +
+              '<td class="muted" style="font-size:13px">' + esc(w.changed_by) + '</td>' +
+              '<td class="muted" style="font-size:12.5px">' + esc(cm) + '</td></tr>';
+          }).join('')
+        : '<tr><td colspan="6" class="muted">Ручных списаний за период нет (журнал — «Магазин → Инвентаризация»)</td></tr>') +
       '</tbody>';
   }
   function exportWriteoffsCsv() {
@@ -1801,13 +1908,38 @@
     });
     $('p-period').addEventListener('change', renderPromoStats);
     $('btn-promos-csv').addEventListener('click', exportPromosCsv);
-    /* v0.19.0 (fp №7): подвкладка «Клиенты» — сегменты */
-    $('cst-filters').addEventListener('click', function (e) {
-      var b = e.target.closest('.seg-btn');
-      if (!b) return;
-      state.cstFilter = b.getAttribute('data-seg') || '';
+    /* v0.19.0 (fp №7): подвкладка «Клиенты» — сегменты; v0.22.0 (П6/Д4) —
+       фильтр «Сегмент» с выпадающим списком и множественным выбором */
+    $('cst-seg-btn').addEventListener('click', function () {
+      var pop = $('cst-seg-pop');
+      var open = pop.hidden;
+      pop.hidden = !open;
+      $('cst-seg-btn').setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    $('cst-seg-pop').addEventListener('change', function (e) {
+      var cb = e.target.closest('input[data-seg]');
+      if (!cb) return;
+      if (cb.checked) state.cstSegs[cb.getAttribute('data-seg')] = true;
+      else delete state.cstSegs[cb.getAttribute('data-seg')];
       state.cstPage = 1;
+      syncCstSegBtn();
       renderClientsStats();
+    });
+    $('cst-seg-clear').addEventListener('click', function () {
+      state.cstSegs = {};
+      $('cst-seg-pop').querySelectorAll('input[data-seg]').forEach(function (cb) { cb.checked = false; });
+      state.cstPage = 1;
+      syncCstSegBtn();
+      renderClientsStats();
+    });
+    document.addEventListener('click', function (e) {
+      if (!e.target.closest('#cst-seg-wrap')) {
+        var pop = $('cst-seg-pop');
+        if (pop && !pop.hidden) {
+          pop.hidden = true;
+          $('cst-seg-btn').setAttribute('aria-expanded', 'false');
+        }
+      }
     });
     $('cst-refresh').addEventListener('click', function () {
       loadClientsStats(true).then(function () { renderClientsStats(); }).catch(function (e2) {

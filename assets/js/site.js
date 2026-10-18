@@ -6,6 +6,13 @@
    из справочника (бандл витрины v3, скрипт 33) вместо хардкода «New по
    created_at»; универсальный стиль — токены брендбука (решение владельца
    05.10.2026); снятие «New» — только вручную (ответ 7.4).
+   v0.22.0 (fp №14 — атрибуты): бандл витрины v4 (скрипт 34) — блок
+   «Характеристики» в модалке товара, чипы show_in_list-атрибутов у карточек
+   списка, фильтр каталога по фильтруемым атрибутам (Д9 — блок показывается
+   только при выбранной ОДНОЙ категории; «ИЛИ» внутри атрибута, «И» между;
+   «Очистить»); пилюли бейджей — min/max-width, nowrap, ellipsis + title,
+   контейнер flex-wrap (П12в/Д8); ссылки ПДн/оферты — внутри текста согласия
+   (П1, JS-обёртка вхождений + fallback отдельной строкой).
    ========================================================================== */
 (function () {
   'use strict';
@@ -30,7 +37,9 @@
     returnReasons: [],      /* v0.16.0 (fp №3): активные причины возврата из справочника */
     lastTrack: null,        /* v0.16.0: результат отслеживания — вход в форму возврата */
     badges: [],             /* v0.21.0 (fp №16): активный справочник бейджей (бандл v3) */
-    productBadges: {}       /* v0.21.0: назначения product_id → [product_badges] (sort_order) */
+    productBadges: {},      /* v0.21.0: назначения product_id → [product_badges] (sort_order) */
+    attrDict: [],           /* v0.22.0 (fp №14): активные атрибуты по категориям (бандл v4, attr_dict; порядок sort_order) */
+    attrFilter: {}          /* v0.22.0: выбранные значения фильтра — attr_id → [значения] («ИЛИ» внутри, «И» между) */
   };
 
   /* ---------- утилиты ---------- */
@@ -143,6 +152,37 @@
     });
     setAboutImage();          /* п.2: тёмное фото «О магазине» (about.img.dark) */
     renderBrandbookHelp();    /* правка 2.18: палитры справки — из живых токенов */
+    linkifyConsent();         /* v0.22.0 (П1): ссылки ПДн/оферты — в тексте согласия */
+  }
+
+  /* ---------- v0.22.0 (П1, записка 1 приёмки v0.21.0): ссылки ПДн/оферты ----------
+     Ссылки «Политика обработки ПДн» (privacy.html) и «Публичная оферта»
+     (offer.html) — кликабельный подчёркнутый текст ВНУТРИ уведомления
+     чек-бокса согласия: JS оборачивает вхождения «персональных данных» и
+     «оферты» в тексте из site_content (checkout.consent.text). Владелец
+     изменит текст и вхождений не будет — fallback: отдельная строка ссылок
+     (без потери юр-смысла). Ссылки — интерактивный контент внутри label:
+     клик по ссылке не переключает чекбокс (стандартное поведение браузера). */
+  function linkifyConsent() {
+    var span = document.querySelector('[data-content="checkout.consent.text"]');
+    if (!span) return;
+    var fb = $('consent-fallback');
+    var html = esc(span.textContent || '');
+    var n = 0;
+    html = html.replace(/персональных данных/gi, function (m) {
+      n++;
+      return '<a class="consent-link" href="privacy.html" target="_blank" rel="noopener">' + m + '</a>';
+    });
+    html = html.replace(/оферты/gi, function (m) {
+      n++;
+      return '<a class="consent-link" href="offer.html" target="_blank" rel="noopener">' + m + '</a>';
+    });
+    if (n) {
+      span.innerHTML = html;
+      if (fb) fb.hidden = true;
+    } else if (fb) {
+      fb.hidden = false;   /* вхождений нет — ссылки отдельной строкой */
+    }
   }
 
   /* ---------- брендбук-справка: палитры из brand_colors (правка 2.18) ----------
@@ -244,6 +284,11 @@
       (state.productBadges[pb.product_id] = state.productBadges[pb.product_id] || []).push(pb);
     });
     if (!d.badges) loadBadges();
+    /* v0.22.0 (fp №14): атрибуты — из бандла витрины v4 (скрипт 34):
+       attr_dict (активные по категориям) + p.attrs у товаров ({attr_id: value}).
+       Нет ключа (скрипт 34 не выполнен) — атрибуты не рисуются, витрина не
+       падает (фильтр и чипы просто не появляются) */
+    state.attrDict = d.attr_dict || [];
     buildFilters();
     buildOrderSelects();
     buildReturnReasons();
@@ -327,19 +372,103 @@
   }
   /* v0.21.0 (fp №16, Д6): бейджи карточки — рендер по справочнику вместо
      хардкода «New по created_at < 30 дней» (v0.1.0). Универсальная пилюля
-     из токенов брендбука (.badge, styles.css); несколько бейджей — стопкой
-     со сдвигом через --bi; состав и порядок — из данных (активные, sort_order) */
+     из токенов брендбука (.badge, styles.css); v0.22.0 (П12в/Д8): несколько
+     бейджей — в контейнере .card-badges/.pm-badges с flex-wrap (бейдж
+     целиком уходит на следующую строку), пилюля — min/max-width, nowrap,
+     ellipsis + title; состав и порядок — из данных (активные, sort_order) */
   function renderBadges(productId) {
     var pbs = (state.productBadges || {})[productId] || [];
     if (!pbs.length || !(state.badges || []).length) return '';
     var byId = {};
     state.badges.forEach(function (b) { byId[b.id] = b; });
-    return pbs.map(function (pb, i) {
+    /* v0.22.0 (П12в/Д8): пилюля — min/max-width, nowrap, ellipsis + title с
+       полным названием (длинные названия вроде «- %» не рвутся на две строки);
+       контейнер — flex-wrap (бейдж целиком уходит на следующую строку) */
+    return pbs.map(function (pb) {
       var b = byId[pb.badge_id];
       if (!b) return '';   /* неактивный бейдж — не в справочнике бандла, пропускаем */
-      return '<span class="badge" style="--bi:' + i + '">' + esc(b.name) + '</span>';
+      return '<span class="badge" title="' + esc(b.name) + '">' + esc(b.name) + '</span>';
     }).join('');
   }
+  /* ---------- v0.22.0 (fp №14): атрибуты — чипы, характеристики, фильтр ---------- */
+  /* Чипы show_in_list-атрибутов у карточки списка (рядом с ценой, нейтральный
+     стиль; пример fp №14 — «стойкость 6–8 ч»); порядок — sort_order из attr_dict */
+  function renderAttrChips(p) {
+    var attrs = (p && p.attrs) || {};
+    var list = state.attrDict.filter(function (a) {
+      return String(a.category_id) === String(p.category_id) && a.show_in_list && attrs[a.id];
+    });
+    if (!list.length) return '';
+    return '<div class="card-attrs">' + list.map(function (a) {
+      return '<span class="attr-chip" title="' + esc(a.name) + ': ' + esc(attrs[a.id]) + '">' +
+        esc(a.name) + ': ' + esc(attrs[a.id]) + '</span>';
+    }).join('') + '</div>';
+  }
+  /* Блок «Характеристики» в модалке товара: все заполненные активные
+     атрибуты категории товара, порядок sort_order (attr_dict отсортирован
+     сервером; filter порядок сохраняет) */
+  function renderProductAttrs(p) {
+    var host = $('pm-attrs');
+    if (!host) return;
+    var attrs = (p && p.attrs) || {};
+    var list = state.attrDict.filter(function (a) {
+      return String(a.category_id) === String(p.category_id) && attrs[a.id];
+    });
+    if (!list.length) { host.hidden = true; host.innerHTML = ''; return; }
+    host.hidden = false;
+    host.innerHTML = '<div class="pa-title">Характеристики</div>' + list.map(function (a) {
+      return '<div class="pa-row"><span class="pa-name">' + esc(a.name) + '</span>' +
+        '<span class="pa-val">' + esc(attrs[a.id]) + '</span></div>';
+    }).join('');
+  }
+  function anyAttrSel() {
+    return Object.keys(state.attrFilter).some(function (k) { return state.attrFilter[k].length; });
+  }
+  /* Д9 (ответ аналитика 18.10.2026): блок фильтров по характеристикам —
+     только при выбранной ОДНОЙ категории (у разных категорий разные атрибуты;
+     в режиме «Все категории» пересечение фильтруемых пустое). Общие атрибуты
+     всех категорий — fp №14b (отложен). Каждый атрибут — выпадающий список
+     с множественным выбором; «ИЛИ» внутри атрибута, «И» между атрибутами;
+     учитываются только товары с заполненным значением; сброс — «Очистить» */
+  function renderAttrFilters() {
+    var host = $('attr-filters');
+    if (!host) return;
+    var attrs = state.filterCat
+      ? state.attrDict.filter(function (a) {
+          return String(a.category_id) === state.filterCat && a.is_filterable;
+        })
+      : [];
+    if (!attrs.length) { host.hidden = true; host.innerHTML = ''; return; }
+    host.hidden = false;
+    host.innerHTML = attrs.map(function (a) {
+      var sel = state.attrFilter[a.id] || [];
+      var vals = (a.enum_values || []).map(String);
+      return '<div class="af" data-af="' + a.id + '">' +
+        '<button type="button" class="chip af-btn" aria-expanded="false">' + esc(a.name) +
+          (sel.length ? ' · ' + sel.length : '') + '</button>' +
+        '<div class="af-pop" role="group" aria-label="' + esc(a.name) + '">' +
+          vals.map(function (v) {
+            return '<label class="af-item"><input type="checkbox" value="' + esc(v) + '"' +
+              (sel.indexOf(v) !== -1 ? ' checked' : '') + '> <span>' + esc(v) + '</span></label>';
+          }).join('') +
+        '</div></div>';
+    }).join('') +
+    '<button type="button" class="chip" id="attr-clear"' + (anyAttrSel() ? '' : ' hidden') + '>Очистить</button>';
+  }
+  function updateAfButton(aid) {
+    var host = $('attr-filters');
+    if (!host) return;
+    var w = host.querySelector('.af[data-af="' + aid + '"]');
+    if (!w) return;
+    var a = state.attrDict.filter(function (x) { return String(x.id) === String(aid); })[0];
+    var sel = state.attrFilter[aid] || [];
+    var btn = w.querySelector('.af-btn');
+    btn.textContent = (a ? a.name : '') + (sel.length ? ' · ' + sel.length : '');
+    btn.setAttribute('title', sel.length ? sel.join(', ') : (a ? a.name : ''));
+    var clr = $('attr-clear');
+    if (clr) clr.hidden = !anyAttrSel();
+  }
+
   function buildReturnReasons() {
     var sel = $('rr-reason');
     if (!sel) return;
@@ -363,6 +492,10 @@
       if (!b) return;
       state.filterCat = b.getAttribute('data-cat');
       state.shown = PAGE_SIZE;
+      /* v0.22.0 (Д9): смена категории — фильтр по атрибутам сбрасывается
+         и перерисовывается (у категорий разные наборы атрибутов) */
+      state.attrFilter = {};
+      renderAttrFilters();
       $('cat-chips').querySelectorAll('.chip').forEach(function (x) { x.classList.remove('active'); });
       b.classList.add('active');
       renderCatalog();
@@ -380,6 +513,59 @@
       renderCatalog();
     });
     $('show-more').addEventListener('click', function () { state.shown += PAGE_SIZE; renderCatalog(); });
+
+    /* v0.22.0 (fp №14, Д9): фильтр по характеристикам — делегирование
+       на контейнере (виджеты перерисовываются при смене категории) */
+    var afHost = $('attr-filters');
+    if (afHost) {
+      afHost.addEventListener('click', function (e) {
+        var clr = e.target.closest('#attr-clear');
+        if (clr) {
+          state.attrFilter = {};
+          renderAttrFilters();
+          state.shown = PAGE_SIZE;
+          renderCatalog();
+          return;
+        }
+        var btn = e.target.closest('.af-btn');
+        if (!btn) return;
+        var w = btn.closest('.af');
+        var wasOpen = w.classList.contains('open');
+        afHost.querySelectorAll('.af.open').forEach(function (x) {
+          x.classList.remove('open');
+          var b2 = x.querySelector('.af-btn');
+          if (b2) b2.setAttribute('aria-expanded', 'false');
+        });
+        if (!wasOpen) {
+          w.classList.add('open');
+          btn.setAttribute('aria-expanded', 'true');
+        }
+      });
+      afHost.addEventListener('change', function (e) {
+        var cb = e.target.closest('.af-item input');
+        if (!cb) return;
+        var w = cb.closest('.af');
+        var aid = Number(w.getAttribute('data-af'));
+        var val = cb.value;
+        var sel = (state.attrFilter[aid] || []).slice();
+        if (cb.checked) { if (sel.indexOf(val) === -1) sel.push(val); }
+        else sel = sel.filter(function (x) { return x !== val; });
+        if (sel.length) state.attrFilter[aid] = sel; else delete state.attrFilter[aid];
+        updateAfButton(aid);
+        state.shown = PAGE_SIZE;
+        renderCatalog();
+      });
+      document.addEventListener('click', function (e) {
+        if (!e.target.closest('#attr-filters')) {
+          afHost.querySelectorAll('.af.open').forEach(function (x) {
+            x.classList.remove('open');
+            var b2 = x.querySelector('.af-btn');
+            if (b2) b2.setAttribute('aria-expanded', 'false');
+          });
+        }
+      });
+    }
+    renderAttrFilters();
   }
 
   function productStock(p) {
@@ -390,6 +576,18 @@
     if (state.filterCat) list = list.filter(function (p) { return String(p.category_id) === state.filterCat; });
     if (state.filterBrand) list = list.filter(function (p) { return String(p.brand_id) === state.filterBrand; });
     if (state.filterStock) list = list.filter(function (p) { return productStock(p) > 0; });
+    /* v0.22.0 (fp №14, Д9): атрибуты — «ИЛИ» внутри атрибута, «И» между
+       атрибутами; учитываются только товары с заполненным значением */
+    var aids = Object.keys(state.attrFilter).filter(function (k) { return state.attrFilter[k].length; });
+    if (state.filterCat && aids.length) {
+      list = list.filter(function (p) {
+        var attrs = p.attrs || {};
+        return aids.every(function (aid) {
+          var v = attrs[aid];
+          return v != null && v !== '' && state.attrFilter[aid].indexOf(String(v)) !== -1;
+        });
+      });
+    }
     if (state.sort === 'asc') list.sort(function (a, b) { return a.price - b.price; });
     else if (state.sort === 'desc') list.sort(function (a, b) { return b.price - a.price; });
     return list;
@@ -407,14 +605,16 @@
     }
     $('product-grid').innerHTML = visible.map(function (p) {
       var stock = productStock(p);
+      var badges = renderBadges(p.id);
       return '<article class="card" data-id="' + p.id + '" tabindex="0">' +
         '<div class="card-media">' + imgTag(p.image_url, p.name) +
-          renderBadges(p.id) +
+          (badges ? '<div class="card-badges">' + badges + '</div>' : '') +
           '<button class="quick" data-id="' + p.id + '">Быстрый просмотр</button>' +
         '</div>' +
         '<div class="card-brand">' + esc(brandName(p.brand_id)) + '</div>' +
         '<div class="card-name">' + esc(p.name) + '</div>' +
         '<div class="card-price">' + money(p.price) + '</div>' +
+        renderAttrChips(p) +
         '<div class="card-stock' + (stock ? '' : ' out') + '">' + (stock ? 'в наличии' : 'нет в наличии') + '</div>' +
       '</article>';
     }).join('');
@@ -574,6 +774,7 @@
     $('pm-name').textContent = p.name;
     $('pm-price').textContent = money(p.price);
     $('pm-desc').textContent = p.description || '';
+    renderProductAttrs(p);   /* v0.22.0 (fp №14): блок «Характеристики» */
     $('pm-variant-label').textContent = isPerfume ? 'Объём' : 'Размер';
     $('pm-variants').innerHTML = vars.map(function (v) {
       return '<button class="variant' + (v.stock ? '' : ' out') + '" data-vid="' + v.id + '">' +
@@ -853,6 +1054,7 @@
     initTheme();
     initModals();
     initReveal();
+    linkifyConsent();   /* v0.22.0 (П1): ссылки в согласии — до загрузки бандла (статический текст) */
 
     /* кнопка «Очистить» в корзине */
     $('cart-clear').addEventListener('click', function () {

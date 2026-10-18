@@ -6,11 +6,19 @@
    связанных товаров (название, вариант, цена, остаток, активность) и
    фильтром: FK-защита удаления объясняет «почему нельзя», а список
    показывает «что именно мешает».
+   v0.22.0 (fp №14): конструктор атрибутов категории — кнопка «Атрибуты»
+   у строки категории, модалка: список (порядок, тип, флаги), добавление/
+   правка (код, название, тип text/number/enum, значения enum построчно,
+   порядок, «показывать в списке», «фильтруемый», активен), удаление с
+   подтверждением (значения товаров — каскадом); запись — RPC
+   admin_save_category_attr / admin_delete_category_attr (скрипт 34).
    ========================================================================== */
 (function () {
   'use strict';
 
-  var state = { cats: [], catCounts: {}, products: [], variants: {}, editingCatId: null, prodsCatId: null };
+  var state = { cats: [], catCounts: {}, products: [], variants: {}, editingCatId: null, prodsCatId: null,
+    /* v0.22.0 (fp №14): конструктор атрибутов */
+    attrs: [], attrsCatId: null, editingAttrId: null };
 
   function $(id) { return document.getElementById(id); }
   /* общие утилиты — assets/js/util.js (v0.14.0, фикс F32: одна копия на проект) */
@@ -57,7 +65,9 @@
         '<td class="tabular">' + (state.catCounts[c.id]
           ? '<button class="count-link" data-catprods="' + c.id + '" title="Показать товары категории">' + state.catCounts[c.id] + '</button>'
           : '0') + '</td>' +
-        '<td><button class="btn" data-catdel="' + c.id + '" style="min-height:34px;padding:0 14px">Удалить</button></td>' +
+        /* v0.22.0 (fp №14): «Атрибуты» — конструктор атрибутов категории */
+        '<td style="white-space:nowrap"><button class="btn" data-catattrs="' + c.id + '" style="min-height:34px;padding:0 14px;margin-right:8px">Атрибуты</button>' +
+        '<button class="btn" data-catdel="' + c.id + '" style="min-height:34px;padding:0 14px">Удалить</button></td>' +
       '</tr>';
     }).join('');
   }
@@ -92,6 +102,129 @@
         '<td>' + (p.is_active ? '<span class="role-pill" data-role="admin">активен</span>' : '<span class="role-pill">скрыт</span>') + '</td>' +
       '</tr>';
     }).join('');
+  }
+
+  /* ---------- v0.22.0 (fp №14): конструктор атрибутов категории ----------
+     Чтение — прямая выборка category_attrs (включая неактивные — для
+     повторной активации; anon_read_category_attrs, скрипт 34); запись —
+     только RPC (SECURITY DEFINER): admin_save_category_attr (upsert) и
+     admin_delete_category_attr (значения товаров — каскадом) */
+  function openAttrs(catId) {
+    state.attrsCatId = catId;
+    state.editingAttrId = null;
+    var c = state.cats.filter(function (x) { return x.id === catId; })[0];
+    $('at-title').textContent = 'Атрибуты категории: ' + (c ? c.name : '№ ' + catId);
+    $('at-form').hidden = true;
+    $('at-error').hidden = true;
+    loadAttrs();
+    $('attrs-modal-backdrop').classList.add('open');
+  }
+  function loadAttrs() {
+    $('at-body').innerHTML = '<tr><td colspan="7" class="muted">Загружаем атрибуты…</td></tr>';
+    db.from('category_attrs').select('*').eq('category_id', state.attrsCatId)
+      .order('sort_order').order('id')
+      .then(function (res) {
+        if (res.error) {
+          $('at-body').innerHTML = '<tr><td colspan="7" class="muted">Ошибка: ' +
+            esc(SiskuUtil.friendlyDbError(res.error)) + '</td></tr>';
+          return;
+        }
+        state.attrs = res.data || [];
+        renderAttrs();
+      });
+  }
+  function renderAttrs() {
+    $('at-empty').hidden = state.attrs.length !== 0;
+    var TYPE_NAMES = { text: 'text', number: 'number', enum: 'enum' };
+    $('at-body').innerHTML = state.attrs.map(function (a) {
+      var flags = [];
+      if (a.show_in_list) flags.push('в списке');
+      if (a.is_filterable) flags.push('фильтр');
+      var enumN = (a.type === 'enum' && Array.isArray(a.enum_values)) ? a.enum_values.length : 0;
+      return '<tr' + (a.is_active ? '' : ' style="opacity:.55"') + '>' +
+        '<td class="user-fio" data-atedit="' + a.id + '" title="Открыть редактирование">' + esc(a.name) + '</td>' +
+        '<td class="muted" style="font-size:13px">' + esc(a.code) + '</td>' +
+        '<td class="muted" style="font-size:13px" title="' + (enumN ? esc((a.enum_values || []).join(', ')) : '') + '">' +
+          esc(TYPE_NAMES[a.type] || a.type) + (enumN ? ' (' + enumN + ')' : '') + '</td>' +
+        '<td class="tabular" style="text-align:right">' + a.sort_order + '</td>' +
+        '<td class="muted" style="font-size:12.5px">' + (flags.length ? esc(flags.join(' · ')) : '—') + '</td>' +
+        '<td>' + (a.is_active ? '<span class="role-pill" data-role="admin">активен</span>' : '<span class="role-pill">скрыт</span>') + '</td>' +
+        '<td><button class="btn" data-atdel="' + a.id + '" style="min-height:32px;padding:0 12px">Удалить</button></td>' +
+      '</tr>';
+    }).join('');
+  }
+  function toggleEnumWrap() {
+    $('at-enum-wrap').hidden = $('at-type').value !== 'enum';
+  }
+  function openAttrForm(id) {
+    state.editingAttrId = id || null;
+    var a = id ? state.attrs.filter(function (x) { return x.id === id; })[0] : null;
+    $('at-form-title').textContent = a ? 'Атрибут: ' + a.name : 'Новый атрибут';
+    $('at-name').value = a ? a.name : '';
+    $('at-code').value = a ? a.code : '';
+    $('at-type').value = a ? a.type : 'text';
+    $('at-sort').value = a ? a.sort_order
+      : (state.attrs.reduce(function (m, x) { return Math.max(m, x.sort_order || 0); }, 0) + 1);
+    $('at-enum').value = a && Array.isArray(a.enum_values) ? a.enum_values.join('\n') : '';
+    $('at-list').checked = a ? !!a.show_in_list : false;
+    $('at-filter').checked = a ? !!a.is_filterable : false;
+    $('at-active').checked = a ? !!a.is_active : true;
+    $('at-form-err').hidden = true;
+    toggleEnumWrap();
+    if (window.enhanceSelects) { enhanceSelects($('at-form')); $('at-type').dispatchEvent(new Event('refresh')); }
+    $('at-form').hidden = false;
+    $('at-name').focus();
+  }
+  function saveAttr(e) {
+    e.preventDefault();
+    var err = $('at-form-err');
+    err.hidden = true;
+    var name = $('at-name').value.trim();
+    var code = $('at-code').value.trim().toLowerCase();
+    var type = $('at-type').value;
+    var sortN = parseInt($('at-sort').value, 10);
+    if (name.length < 1) { err.textContent = 'Укажите название'; err.hidden = false; return; }
+    if (!/^[a-z0-9_]{1,50}$/.test(code)) { err.textContent = 'Код: строчная латиница, цифры и «_», 1–50 (например, composition)'; err.hidden = false; return; }
+    if (!(sortN >= 1)) { err.textContent = 'Порядок — число от 1'; err.hidden = false; return; }
+    var enumValues = [];
+    if (type === 'enum') {
+      enumValues = $('at-enum').value.split('\n').map(function (s) { return s.trim(); })
+        .filter(function (s) { return s !== ''; });
+      if (!enumValues.length) { err.textContent = 'Атрибут enum: нужно хотя бы одно значение (каждое с новой строки)'; err.hidden = false; return; }
+    }
+    var pAttr = {
+      category_id: state.attrsCatId,
+      code: code, name: name, type: type,
+      enum_values: enumValues,
+      sort_order: sortN,
+      show_in_list: $('at-list').checked,
+      is_filterable: $('at-filter').checked,
+      is_active: $('at-active').checked
+    };
+    if (state.editingAttrId) pAttr.id = state.editingAttrId;
+    var btn = $('at-submit');
+    btn.disabled = true;
+    db.rpc('admin_save_category_attr', { p_attr: pAttr }).then(function (res) {
+      btn.disabled = false;
+      if (res.error) { err.textContent = SiskuUtil.friendlyDbError(res.error); err.hidden = false; return; }
+      $('at-form').hidden = true;
+      state.editingAttrId = null;
+      loadAttrs();
+    }).catch(function (e2) {
+      btn.disabled = false;
+      err.textContent = 'Ошибка сети: ' + e2.message;
+      err.hidden = false;
+    });
+  }
+  function delAttr(id) {
+    var a = state.attrs.filter(function (x) { return x.id === id; })[0];
+    if (!confirm('Удалить атрибут «' + (a ? a.name : '№ ' + id) + '»? Значения этого атрибута у товаров будут удалены (без восстановления).')) return;
+    db.rpc('admin_delete_category_attr', { p_attr_id: id }).then(function (res) {
+      var box = $('at-error');
+      if (res.error) { box.textContent = SiskuUtil.friendlyDbError(res.error); box.hidden = false; return; }
+      box.hidden = true;
+      loadAttrs();
+    });
   }
 
   function slugify(s) {
@@ -157,7 +290,27 @@
     $('cp-filter').addEventListener('input', renderCatProds);
     $('cp-modal-close').addEventListener('click', function () { $('catprods-modal-backdrop').classList.remove('open'); });
     $('catprods-modal-backdrop').addEventListener('click', function (e) { if (e.target === $('catprods-modal-backdrop')) $('catprods-modal-backdrop').classList.remove('open'); });
+    /* v0.22.0 (fp №14): конструктор атрибутов — события модалки */
+    $('at-new').addEventListener('click', function () { openAttrForm(null); });
+    $('at-modal-close').addEventListener('click', function () { $('attrs-modal-backdrop').classList.remove('open'); });
+    $('attrs-modal-backdrop').addEventListener('click', function (e) { if (e.target === $('attrs-modal-backdrop')) $('attrs-modal-backdrop').classList.remove('open'); });
+    $('at-form').addEventListener('submit', saveAttr);
+    $('at-cancel').addEventListener('click', function () { $('at-form').hidden = true; state.editingAttrId = null; });
+    $('at-type').addEventListener('change', toggleEnumWrap);
+    /* авто-код из названия — только при создании (паттерн авто-slug категории) */
+    $('at-name').addEventListener('input', function () {
+      if (state.editingAttrId) return;
+      $('at-code').value = slugify(this.value).replace(/-/g, '_').slice(0, 50);
+    });
+    $('at-body').addEventListener('click', function (e) {
+      var del = e.target.closest('button[data-atdel]');
+      if (del) { delAttr(Number(del.getAttribute('data-atdel'))); return; }
+      var ed = e.target.closest('[data-atedit]');
+      if (ed) openAttrForm(Number(ed.getAttribute('data-atedit')));
+    });
     $('cat-body').addEventListener('click', function (e) {
+      var ca = e.target.closest('button[data-catattrs]');
+      if (ca) { openAttrs(Number(ca.getAttribute('data-catattrs'))); return; }
       var cp = e.target.closest('button[data-catprods]');
       if (cp) { openCatProds(Number(cp.getAttribute('data-catprods'))); return; }
       var del = e.target.closest('button[data-catdel]');

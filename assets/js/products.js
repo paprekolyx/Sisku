@@ -12,6 +12,13 @@
    из справочника, сохранение набора одним RPC draft_save_product_badges —
    Д3), пилюли в списке (Д8), «New» предвыбран у нового товара (Д2);
    предпросмотры — с бейджами; хардкод «New по created_at» убран (Д6).
+   v0.22.0 (fp №14 — атрибуты): динамическая секция «Характеристики» в
+   карточке товара по категории (draft_attrs_bundle + сохранение
+   draft_save_product_attrs); вторая кнопка таблицы — «Предпросмотр»
+   (П14/Д12 — модалка из данных БД без редакционной формы); полный
+   предпросмотр — явный <base href> в srcdoc (П13: относительные пути
+   картинок), блок характеристик, описание модалки убрано; чек-бокс бейджа —
+   стандартного размера, пилюля «системный» убрана (П12а/б).
    ========================================================================== */
 (function () {
   'use strict';
@@ -19,6 +26,7 @@
   var state = {
     products: [], variants: {}, brands: [], cats: [], reserved: {},
     badges: [], prodBadges: {},   /* v0.21.0 (fp №16): справочник и назначения */
+    attrs: [], attrValues: {},    /* v0.22.0 (fp №14): активные атрибуты и значения товаров (draft_attrs_bundle) */
     editingId: null, saving: false, imgData: null
   };
 
@@ -94,6 +102,12 @@
       }),
       db.from('product_badges').select('*').order('sort_order').order('id').then(function (r) {
         return r.error ? [] : (r.data || []);
+      }),
+      /* v0.22.0 (fp №14): атрибуты и значения — если скрипт 34 не выполнен
+         (42883), бандл пуст, секция «Характеристики» не рисуется (паттерн
+         бейджей); ошибка запроса не роняет загрузку */
+      db.rpc('draft_attrs_bundle').then(function (r) {
+        return (r.error || !r.data) ? { attrs: [], values: [] } : r.data;
       })
     ]).then(function (res) {
       [res[0], res[1], res[2], res[3], res[4]].forEach(function (r) { if (r && r.error) throw r.error; });
@@ -110,6 +124,13 @@
       state.prodBadges = {};
       (res[6] || []).forEach(function (pb) {
         (state.prodBadges[pb.product_id] = state.prodBadges[pb.product_id] || []).push(pb);
+      });
+      /* v0.22.0 (fp №14): attrs — активные атрибуты (порядок sort_order),
+         attrValues — product_id → { attr_id: value } */
+      state.attrs = res[7].attrs || [];
+      state.attrValues = {};
+      (res[7].values || []).forEach(function (v) {
+        (state.attrValues[v.product_id] = state.attrValues[v.product_id] || {})[v.attr_id] = v.value;
       });
       $('p-cat').innerHTML = '<option value="">Все категории</option>' +
         state.cats.map(function (c) { return '<option value="' + c.id + '">' + esc(c.name) + '</option>'; }).join('');
@@ -154,7 +175,9 @@
         '<td class="tabular' + (quarantineOf(p.id) ? ' quarantine-cell' : ' muted') + '">' + (quarantineOf(p.id) || '—') + '</td>' +
         '<td><button class="btn" data-active="' + p.id + '" style="min-height:32px;padding:0 12px">' +
           (p.is_active ? 'активен' : 'скрыт') + '</button></td>' +
-        '<td><button class="btn" data-edit="' + p.id + '" style="min-height:34px;padding:0 14px">Карточка</button></td>' +
+        /* v0.22.0 (П14/Д12): вторая кнопка — «Предпросмотр» (модалка карточки
+           витрины из данных БД); наименование — по-прежнему открывает карточку */
+        '<td><button class="btn" data-preview="' + p.id + '" style="min-height:34px;padding:0 14px" title="Карточка глазами покупателя — данные из БД">Предпросмотр</button></td>' +
       '</tr>';
     }).join('');
   }
@@ -187,30 +210,57 @@
      Разметка модалки товара витрины рендерится в iframe, который грузит
      настоящие styles.css/fonts.css и применяет кэш токенов брендбука
      (brandvars.js) — переиспользование, а не дублирование стилей.
-     Тема iframe — текущая тема админки. */
-  function openFullPreview() {
-    var name = $('pf-name').value.trim() || 'Название товара';
-    var price = $('pf-price').value || 0;
-    var brand = $('pf-brand').value ? brandName(Number($('pf-brand').value)) : '';
-    if (brand === '—') brand = '';
-    var desc = $('pf-desc').value.trim();
-    var img = $('pf-img-url').value.trim() || state.imgData || stubSrc();
-    var vars = [];
-    $('pf-variants').querySelectorAll('.var-row').forEach(function (r) {
-      var label = r.querySelector('.var-label').value.trim();
-      var stock = Number(r.querySelector('.var-stock').value || 0);
-      if (label) vars.push({ label: label, stock: stock });
-    });
-    var isPerfume = /мл/i.test((vars[0] || {}).label || '');
-    var totalStock = vars.reduce(function (s, v) { return s + v.stock; }, 0);
-    /* v0.21.0 (fp №16, Д6): вместо хардкода «New по created_at < 30 дней» —
-       бейджи из чекбоксов карточки (активные, в порядке справочника) */
-    var badgeHtml = checkedBadgeIds().map(function (id) {
+     Тема iframe — текущая тема админки.
+     v0.22.0 (П13): в srcdoc — явный <base href> (URL родительского документа):
+     относительные пути картинок (assets/img/…) в about:srcdoc ломались.
+     v0.22.0 (П14/Д12): второй вход openDbPreview(id) — карточка из данных БД
+     (товар, варианты, бейджи, атрибуты) без показа редакционной формы и
+     несохранённых правок; общий построитель pvCardHtml. */
+  function pvCardHtml(o) {
+    return '<div class="product-grid" style="max-width:920px;margin:0 auto;border:1px solid var(--line);background:var(--surface)">' +
+      '<div class="product-media"><img src="' + esc(o.img) + '" alt=""></div>' +
+      '<div class="product-info">' +
+        '<div class="brand">' + esc(o.brand) + '</div>' +
+        (o.badgeHtml ? '<div style="margin:10px 0 2px">' + o.badgeHtml + '</div>' : '') +
+        '<h3>' + esc(o.name) + '</h3>' +
+        '<div class="price">' + money(o.price) + '</div>' +
+        '<p class="desc">' + esc(o.desc) + '</p>' +
+        o.attrsHtml +
+        '<div class="variant-label">' + (o.isPerfume ? 'Объём' : 'Размер') + '</div>' +
+        '<div class="variants">' + (o.vars.length
+          ? o.vars.map(function (v) {
+              return '<button class="variant' + (v.stock ? '' : ' out') + '">' + esc(v.label) +
+                '<span class="st">' + (v.stock ? v.stock + ' шт.' : 'нет') + '</span></button>';
+            }).join('')
+          : '<span class="muted">варианты не заданы</span>') + '</div>' +
+        '<div style="margin-top:26px;display:flex;gap:12px;align-items:center">' +
+          '<button class="btn accent">В корзину</button>' +
+          '<span class="muted" style="font-size:13px">' + (o.totalStock ? 'остаток: ' + o.totalStock + ' шт.' : 'нет в наличии') + '</span>' +
+        '</div>' +
+      '</div>' +
+    '</div>';
+  }
+  /* пилюли бейджей — из списка id (только активные, порядок назначений);
+     v0.22.0 (П12в/Д8): min/max-ширина, nowrap, ellipsis + title — как на витрине */
+  function pvBadgeHtml(ids) {
+    return (ids || []).map(function (id) {
       var b = badgeById(id);
       return b && b.is_active
-        ? '<span style="display:inline-block;background:var(--bg);border:1px solid var(--line);color:var(--accent);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;padding:4px 10px;font-weight:600;margin:0 6px 6px 0">' + esc(b.name) + '</span>'
+        ? '<span title="' + esc(b.name) + '" style="display:inline-block;min-width:72px;max-width:180px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:center;background:var(--bg);border:1px solid var(--line);color:var(--accent);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;padding:4px 10px;font-weight:600;margin:0 6px 6px 0">' + esc(b.name) + '</span>'
         : '';
     }).join('');
+  }
+  /* блок «Характеристики» — пары [{name, value}]; стили витрины .pm-attrs/
+     .pa-row (styles.css загружается в iframe — волна v0.22.0, fp №14) */
+  function pvAttrsHtml(pairs) {
+    if (!pairs.length) return '';
+    return '<div class="pm-attrs"><div class="pa-title">Характеристики</div>' +
+      pairs.map(function (x) {
+        return '<div class="pa-row"><span class="pa-name">' + esc(x.name) + '</span>' +
+          '<span class="pa-val">' + esc(x.value) + '</span></div>';
+      }).join('') + '</div>';
+  }
+  function showPvFrame(card) {
     var theme = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
     /* v0.17.0 (внешний ревью 06.10.2026, находка A1): токены брендбука для
        предпросмотра — статическим инлайн-<style> из КЭША токенов
@@ -248,35 +298,72 @@
       if (typoScale) css += '--type-scale:' + (Number(typoScale) / 100) + ';';
       return css + '}';
     })();
-    var card =
-      '<div class="product-grid" style="max-width:920px;margin:0 auto;border:1px solid var(--line);background:var(--surface)">' +
-        '<div class="product-media"><img src="' + esc(img) + '" alt=""></div>' +
-        '<div class="product-info">' +
-          '<div class="brand">' + esc(brand) + '</div>' +
-          (badgeHtml ? '<div style="margin:10px 0 2px">' + badgeHtml + '</div>' : '') +
-          '<h3>' + esc(name) + '</h3>' +
-          '<div class="price">' + money(price) + '</div>' +
-          '<p class="desc">' + esc(desc) + '</p>' +
-          '<div class="variant-label">' + (isPerfume ? 'Объём' : 'Размер') + '</div>' +
-          '<div class="variants">' + (vars.length
-            ? vars.map(function (v) {
-                return '<button class="variant' + (v.stock ? '' : ' out') + '">' + esc(v.label) +
-                  '<span class="st">' + (v.stock ? v.stock + ' шт.' : 'нет') + '</span></button>';
-              }).join('')
-            : '<span class="muted">варианты не заданы</span>') + '</div>' +
-          '<div style="margin-top:26px;display:flex;gap:12px;align-items:center">' +
-            '<button class="btn accent">В корзину</button>' +
-            '<span class="muted" style="font-size:13px">' + (totalStock ? 'остаток: ' + totalStock + ' шт.' : 'нет в наличии') + '</span>' +
-          '</div>' +
-        '</div>' +
-      '</div>';
     $('pvfull-frame').srcdoc =
       '<!DOCTYPE html><html lang="ru" data-theme="' + theme + '"><head><meta charset="utf-8">' +
+      '<base href="' + esc(location.href.replace(/[#?].*$/, '')) + '">' +
       '<link rel="stylesheet" href="assets/css/fonts.css">' +
       '<link rel="stylesheet" href="assets/css/styles.css">' +
       '<style>' + pvTokenCss + '</style>' +
       '</head><body style="margin:0;padding:28px 20px">' + card + '</body></html>';
     $('pvfull-modal-backdrop').classList.add('open');
+  }
+  function openFullPreview() {
+    var name = $('pf-name').value.trim() || 'Название товара';
+    var price = $('pf-price').value || 0;
+    var brand = $('pf-brand').value ? brandName(Number($('pf-brand').value)) : '';
+    if (brand === '—') brand = '';
+    var desc = $('pf-desc').value.trim();
+    var img = $('pf-img-url').value.trim() || state.imgData || stubSrc();
+    var vars = [];
+    $('pf-variants').querySelectorAll('.var-row').forEach(function (r) {
+      var label = r.querySelector('.var-label').value.trim();
+      var stock = Number(r.querySelector('.var-stock').value || 0);
+      if (label) vars.push({ label: label, stock: stock });
+    });
+    var isPerfume = /мл/i.test((vars[0] || {}).label || '');
+    var totalStock = vars.reduce(function (s, v) { return s + v.stock; }, 0);
+    /* v0.22.0 (fp №14): характеристики — из текущей формы (живьём, включая
+       несохранённые правки) */
+    var pairs = [];
+    $('pf-attrs').querySelectorAll('.attr-row').forEach(function (row) {
+      var el = row.querySelector('.attr-val');
+      var v = el ? String(el.value == null ? '' : el.value).trim() : '';
+      if (v) pairs.push({ name: row.querySelector('label').textContent, value: v });
+    });
+    showPvFrame(pvCardHtml({
+      name: name, price: price, brand: brand, desc: desc, img: img,
+      vars: vars, isPerfume: isPerfume, totalStock: totalStock,
+      badgeHtml: pvBadgeHtml(checkedBadgeIds()),
+      attrsHtml: pvAttrsHtml(pairs)
+    }));
+  }
+  /* П14/Д12: «Предпросмотр» из таблицы товаров — данные из БД (товар,
+     варианты, бейджи, атрибуты), без редакционной формы */
+  function openDbPreview(id) {
+    var p = state.products.filter(function (x) { return x.id === id; })[0];
+    if (!p) return;
+    var vars = (state.variants[id] || []).slice().sort(function (a, b) {
+      return (a.sort_order || 0) - (b.sort_order || 0);
+    }).map(function (v) { return { label: v.label, stock: Number(v.stock) || 0 }; });
+    var isPerfume = /мл/i.test((vars[0] || {}).label || '');
+    var totalStock = vars.reduce(function (s, v) { return s + v.stock; }, 0);
+    var brand = p.brand_id ? brandName(p.brand_id) : '';
+    if (brand === '—') brand = '';
+    showPvFrame(pvCardHtml({
+      name: p.name, price: p.price, brand: brand,
+      desc: p.description || '',
+      img: p.image_url || stubSrc(),
+      vars: vars, isPerfume: isPerfume, totalStock: totalStock,
+      badgeHtml: pvBadgeHtml((state.prodBadges[id] || []).map(function (pb) { return pb.badge_id; })),
+      attrsHtml: pvAttrsHtml(dbAttrPairs(p))
+    }));
+  }
+  /* заполненные активные атрибуты категории товара (порядок sort_order) */
+  function dbAttrPairs(p) {
+    var vals = state.attrValues[p.id] || {};
+    return state.attrs.filter(function (a) {
+      return a.category_id === p.category_id && vals[a.id];
+    }).map(function (a) { return { name: a.name, value: String(vals[a.id]) }; });
   }
 
   /* ---------- варианты ---------- */
@@ -349,8 +436,9 @@
       var checked = p ? !!assigned[b.id] : b.code === 'new';   /* Д2: новому товару — New */
       return '<label class="inv-check"' + (b.is_system ? ' title="Системный бейдж: по умолчанию у всех товаров; справочником не деактивируется; снятие с товара — только вручную (ответ 7.4)"' : '') + '>' +
         '<input type="checkbox" data-bid="' + b.id + '"' + (checked ? ' checked' : '') + '>' +
+        /* v0.22.0 (П12б): пилюля «системный» убрана — пояснение осталось
+           в title и в пометке внизу секции (products.html) */
         '<span>' + esc(b.name) +
-          (b.is_system ? ' <span class="inv-sys-mark">системный</span>' : '') +
           (b.is_active ? '' : ' <span class="muted" style="font-size:12px">(отключён)</span>') +
         '</span>' +
       '</label>';
@@ -366,6 +454,58 @@
       if (cb.checked) ids.push(Number(cb.getAttribute('data-bid')));
     });
     return ids;
+  }
+
+  /* ---------- атрибуты карточки товара (v0.22.0, fp №14) ----------
+     Динамическая секция «Характеристики» по категории из формы: text/number —
+     инпут, enum — select из enum_values; значения — draft_attrs_bundle
+     (state.attrs/attrValues); сохранение — RPC draft_save_product_attrs
+     вместе с сохранением карточки (пустые значения удаляются). При смене
+     категории в форме секция перерисовывается: значения другой категории не
+     показываются; сохранённые остаются в БД до правки (бандлы витрины их
+     тоже не отдают — фильтр по категории товара). */
+  function renderAttrEditor(p) {
+    var field = $('pf-attrs-field');
+    var host = $('pf-attrs');
+    var catId = $('pf-cat').value ? Number($('pf-cat').value) : null;
+    var attrs = catId ? state.attrs.filter(function (a) { return a.category_id === catId; }) : [];
+    if (!catId || !attrs.length) {
+      field.hidden = true;
+      host.innerHTML = '';
+      return;
+    }
+    field.hidden = false;
+    var vals = (p && state.attrValues[p.id]) || {};
+    host.innerHTML = attrs.map(function (a) {
+      var v = vals[a.id] != null ? String(vals[a.id]) : '';
+      var ctrl;
+      if (a.type === 'enum') {
+        ctrl = '<select class="attr-val" data-aid="' + a.id + '">' +
+          '<option value="">— не задано —</option>' +
+          (a.enum_values || []).map(function (ev) {
+            return '<option value="' + esc(ev) + '"' + (String(ev) === v ? ' selected' : '') + '>' + esc(ev) + '</option>';
+          }).join('') + '</select>';
+      } else {
+        ctrl = '<input class="attr-val" data-aid="' + a.id + '"' +
+          ' type="' + (a.type === 'number' ? 'number' : 'text') + '"' +
+          (a.type === 'number' ? ' step="any"' : '') +
+          ' value="' + esc(v) + '" placeholder="' + (a.type === 'number' ? '0' : 'значение') + '">';
+      }
+      return '<div class="attr-row"><label>' + esc(a.name) + '</label>' + ctrl + '</div>';
+    }).join('');
+    if (window.enhanceSelects) enhanceSelects(host);
+  }
+  function editingProduct() {
+    return state.editingId
+      ? state.products.filter(function (x) { return x.id === state.editingId; })[0] || null
+      : null;
+  }
+  function collectAttrValues() {
+    var out = {};
+    $('pf-attrs').querySelectorAll('.attr-val').forEach(function (el) {
+      out[el.getAttribute('data-aid')] = String(el.value == null ? '' : el.value).trim();
+    });
+    return out;
   }
 
   /* ---------- черновая загрузка фото: сжатие в браузере ---------- */
@@ -415,6 +555,7 @@
     $('pf-brand').dispatchEvent(new Event('refresh'));
     $('pf-cat').dispatchEvent(new Event('refresh'));
     renderBadgeEditor(p);   /* v0.21.0 (fp №16) */
+    renderAttrEditor(p);    /* v0.22.0 (fp №14): «Характеристики» по категории */
     $('prod-modal-backdrop').classList.add('open');
     refreshPreview();
   }
@@ -496,6 +637,21 @@
       });
     };
 
+    /* v0.22.0 (fp №14): значения атрибутов — одним RPC draft_save_product_attrs
+       (пустые значения удаляют строки); скрипт 34 не выполнен — пропускаем;
+       ошибка RPC — предупреждением (товар сохранён) */
+    var attrPayload = collectAttrValues();
+    var saveAttrs = function (productId) {
+      if (!state.attrs.length) return Promise.resolve([]);
+      return db.rpc('draft_save_product_attrs', { p_product_id: productId, p_attrs: attrPayload })
+        .then(function (res) {
+          if (!res.error) return [];
+          return [res.error.code === '42883'
+            ? 'атрибуты: функция draft_save_product_attrs не найдена (скрипт 34 не выполнен) — значения не сохранены'
+            : 'атрибуты: ' + res.error.message];
+        });
+    };
+
     var done = function (warns) {
       state.saving = false;
       $('pf-submit').disabled = false;
@@ -516,7 +672,9 @@
       db.from('products').update(row).eq('id', state.editingId).then(function (res) {
         if (res.error) { fail(res.error.message); return; }
         saveProduct(state.editingId).then(function (warns) {
-          saveBadges(state.editingId).then(function (bw) { done(warns.concat(bw)); });
+          saveBadges(state.editingId).then(function (bw) {
+            saveAttrs(state.editingId).then(function (aw) { done(warns.concat(bw, aw)); });
+          });
         });
       }).catch(function (err) { fail('Ошибка сети: ' + err.message); });
     } else {
@@ -525,7 +683,9 @@
         var newId = res.data && res.data.length ? res.data[0].id : null;
         if (!newId) { fail('Товар создан, но id не вернулся — обновите список'); return; }
         saveProduct(newId).then(function (warns) {
-          saveBadges(newId).then(function (bw) { done(warns.concat(bw)); });
+          saveBadges(newId).then(function (bw) {
+            saveAttrs(newId).then(function (aw) { done(warns.concat(bw, aw)); });
+          });
         });
       }).catch(function (err) { fail('Ошибка сети: ' + err.message); });
     }
@@ -658,6 +818,8 @@
     ['pf-name', 'pf-price', 'pf-img-url'].forEach(function (id) {
       $(id).addEventListener('input', refreshPreview);
     });
+    /* v0.22.0 (fp №14): смена категории — перерисовка секции «Характеристики» */
+    $('pf-cat').addEventListener('change', function () { renderAttrEditor(editingProduct()); });
     $('prod-body').addEventListener('click', function (e) {
       var act = e.target.closest('button[data-active]');
       if (act) {
@@ -671,6 +833,9 @@
         });
         return;
       }
+      /* v0.22.0 (П14/Д12): «Предпросмотр» — модалка витрины из данных БД */
+      var pv = e.target.closest('button[data-preview]');
+      if (pv) { openDbPreview(Number(pv.getAttribute('data-preview'))); return; }
       var ed = e.target.closest('[data-edit]');
       if (ed) openModal(Number(ed.getAttribute('data-edit')));
     });

@@ -245,18 +245,12 @@
     });
   }
 
-  /* правка 2.11 (v0.15.0): manage.html#audit — панель-заглушка «Журнал действий и отмена» */
-  function applyAuditHash() {
-    var on = location.hash === '#audit';
-    $('panel-audit').hidden = !on;
-    $('panel-manage').hidden = on;
-  }
+  /* v0.22.0 (П23): панель-заглушка «Журнал действий» перенесена в
+     «Пользователи» (users.html#audit) — hash-логика manage.html убрана */
 
   document.addEventListener('DOMContentLoaded', function () {
     $('ver').textContent = SITE_VERSION;
     if (window.initAdminTheme) window.initAdminTheme();
-    applyAuditHash();
-    window.addEventListener('hashchange', applyAuditHash);
     $('btn-logout').addEventListener('click', function () { if (window.mockLogout) window.mockLogout(); });
     $('btn-refresh').addEventListener('click', load);
     $('btn-new-delivery').addEventListener('click', function () { openModal('delivery', null); });
